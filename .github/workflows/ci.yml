@@ -4,11 +4,13 @@ on:
   push:
     branches:
       - main
+    tags-ignore:
+      - "v*"
   pull_request:
 
 jobs:
   flutter:
-    name: Analyze, test, and build Android
+    name: Analyze and test
     runs-on: ubuntu-latest
 
     steps:
@@ -29,13 +31,3 @@ jobs:
 
       - name: Test
         run: flutter test
-
-      - name: Build Android APK
-        run: flutter build apk --release --split-per-abi
-
-      - name: Upload Android APK artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: uwhLife-android-apk
-          path: build/app/outputs/flutter-apk/*.apk
-          if-no-files-found: error
