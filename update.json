@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "app": "uwhLife",
+  "android": {
+    "versionName": "1.2.1",
+    "versionCode": 11,
+    "minSupportedVersionCode": 11,
+    "mandatory": false,
+    "title": "v1.2.1 更新",
+    "notes": [
+      "新增 Android 应用内更新检测、APK 下载与系统安装引导。",
+      "新增 AltStore 源一键导入与稳定 IPA 下载入口。",
+      "整理 GitHub Release、source.json、update.json 的自动发布流程。"
+    ],
+    "apkUrl": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
+    "fallbackApkUrl": "https://github.com/coldin04/uwhLife/releases/download/v1.2.1/UWHLife_android_arm64-v8a.apk",
+    "sha256": ""
+  },
+  "ios": {
+    "versionName": "1.2.1",
+    "buildVersion": "11",
+    "title": "v1.2.1 更新",
+    "notes": [
+      "新增 Android 应用内更新检测、APK 下载与系统安装引导。",
+      "新增 AltStore 源一键导入与稳定 IPA 下载入口。",
+      "整理 GitHub Release、source.json、update.json 的自动发布流程。"
+    ],
+    "altSourceUrl": "https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/master/source.json"
+  }
+}

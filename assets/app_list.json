@@ -1,0 +1,60 @@
+[
+  {"name": "消费账单",       "category": "一码通", "icon": "receipt_long_rounded",       "color": "6366F1", "url": "https://webapp.xiaofubao.com/card/card_order_list_new.shtml?platform=WJ&schoolCode=2023061501&authAppid=4622023061501"},
+  {"name": "免密签约",       "category": "一码通", "icon": "handshake_rounded",          "color": "8B5CF6", "url": "https://pay.xiaofubao.com/h5/pay/sign/auth?appId=2308501772816875521&cpCode=2023061501_2&businessType=28&channelCode=ALIPAY&platform=WJ&schoolCode=2023061501&authAppid=4622023061501"},
+  {"name": "一码通充值",     "category": "一码通", "icon": "account_balance_wallet_rounded", "color": "14B8A6", "url": "https://webapp.xiaofubao.com/card/card_recharge.shtml?platform=WJ&schoolCode=2023061501&authAppid=4622023061501"},
+  {"name": "一码通余额",     "category": "一码通", "icon": "savings_rounded",            "color": "22C55E", "url": "https://webapp.xiaofubao.com/card/card_remain.shtml?platform=WJ&schoolCode=2023061501&authAppid=4622023061501"},
+  {"name": "宿舍电费充值",   "category": "一码通", "icon": "bolt_rounded",               "color": "F59E0B", "url": "http://223.241.72.135:24381/Recharge.aspx"},
+  {"name": "开水洗浴",       "category": "一码通", "icon": "shower_rounded",             "color": "06B6D4", "url": "http://ymtpt.uwh.edu.cn:27072/uwc_webapp"},
+
+  {"name": "座位预约",       "category": "教务",   "icon": "event_seat_rounded",         "color": "3B82F6", "url": "http://223.241.72.135:9091/tsgintf/main4/seat/index"},
+  {"name": "考试安排",       "category": "教务",   "icon": "event_note_rounded",         "color": "EF4444", "url": "http://ehall.uwh.edu.cn/jwmobile/index#/kwApp/jkapcx"},
+  {"name": "教学评价",       "category": "教务",   "icon": "rate_review_rounded",        "color": "F59E0B", "url": "https://ehall.uwh.edu.cn/jwmobile/auth/index?service=pjApp/xspj/pjsy&serviceKey=PJ.XSPJ"},
+  {"name": "我的课表",       "category": "教务",   "icon": "calendar_month_rounded",     "color": "2563EB", "url": "http://ehall.uwh.edu.cn/jwmobile/auth/index?serviceKey=PK.WDKB", "topSafeArea": false, "bottomSafeArea": false},
+  {"name": "考试安排(学)",   "category": "教务",   "icon": "event_available_rounded",    "color": "DC2626", "url": "http://ehall.uwh.edu.cn/jwmobile/auth/index?service=kwApp/ksapcx&serviceKey=KW.KSAPCX"},
+  {"name": "成绩查询",       "category": "教务",   "icon": "grade_rounded",              "color": "F97316", "url": "http://ehall.uwh.edu.cn/jwmobile/auth/index?service=kwApp/cjcx&serviceKey=KW.CJCX"},
+  {"name": "缓考申请",       "category": "教务",   "icon": "schedule_send_rounded",      "color": "EAB308", "url": "http://ehall.uwh.edu.cn/jwmobile/auth/index?service=kwApp/hksq&serviceKey=KW.HKSQ"},
+  {"name": "身份核验",       "category": "教务",   "icon": "face_rounded",               "color": "0EA5E9", "url": "http://ai.uwh.edu.cn:19280/cms/signin"},
+  {"name": "教务系统",       "category": "教务",   "icon": "school_rounded",             "color": "4F46E5", "url": "http://ehall.uwh.edu.cn/jwmobile/auth/index"},
+
+  {"name": "校园活动",       "category": "团学",   "icon": "celebration_rounded",        "color": "EC4899", "url": "https://ekta.uwh.edu.cn/#/service/activity"},
+  {"name": "素质学分",       "category": "团学",   "icon": "emoji_events_rounded",       "color": "F59E0B", "url": "https://ekta.uwh.edu.cn/#/service/declare"},
+  {"name": "社团管理",       "category": "团学",   "icon": "groups_rounded",             "color": "14B8A6", "url": "https://ekta.uwh.edu.cn/#/service/organize"},
+
+  {"name": "学工管理",       "category": "学工",   "icon": "admin_panel_settings_rounded", "color": "64748B", "url": "http://ehall.uwh.edu.cn/student/cas"},
+  {"name": "学生信息",       "category": "学工",   "icon": "badge_rounded",              "color": "3B82F6", "url": "http://ehall.uwh.edu.cn/student/cas/wap/menu/stu/student/self/myinfo?show_model=2&show_model_only_one=1"},
+  {"name": "请假申请",       "category": "学工",   "icon": "event_busy_rounded",         "color": "F97316", "url": "http://ehall.uwh.edu.cn/student/cas/wap/menu/student/leave/apply_stu?show_model=2&show_model_only_one=1"},
+  {"name": "分值申报",       "category": "学工",   "icon": "format_list_numbered_rounded", "color": "6366F1", "url": "http://ehall.uwh.edu.cn/student/cas/wap/menu/student/zhcp/stu/jfsb?show_model=2&show_model_only_one=1"},
+  {"name": "测评成绩",       "category": "学工",   "icon": "assessment_rounded",         "color": "22C55E", "url": "http://ehall.uwh.edu.cn/student/cas/wap/menu/student/zhcp/stu/myinfo?show_model=2&show_model_only_one=1"},
+  {"name": "心理咨询",       "category": "学工",   "icon": "psychology_rounded",         "color": "EC4899", "url": "http://ehall.uwh.edu.cn/student/cas/wap/menu/student/psyca/stu/order?show_model=2&show_model_only_one=1"},
+  {"name": "辅导员评价",     "category": "学工",   "icon": "reviews_rounded",            "color": "EAB308", "url": "http://ehall.uwh.edu.cn/student/cas/wap/menu/student/evaluate/fdy/result/single/xspj/FDY?show_model=2&show_model_only_one=1"},
+  {"name": "学生打卡",       "category": "学工",   "icon": "how_to_reg_rounded",         "color": "14B8A6", "url": "https://ehall.uwh.edu.cn/student/cas/wap/menu/student/sign/stu/sign?show_model=2&show_model_only_one=1"},
+  {"name": "消息推送",       "category": "学工",   "icon": "notifications_active_rounded", "color": "EF4444", "url": "http://ehall.uwh.edu.cn/qljfwapp/sys/lwPsMsgPushApp/*default/index.do"},
+  {"name": "问卷调查",       "category": "学工",   "icon": "poll_rounded",               "color": "7C3AED", "url": "http://ehall.uwh.edu.cn/qljfwapp/sys/lwPsWjdcApp/*default/index.do"},
+  {"name": "宿舍管理",       "category": "学工",   "icon": "bed_rounded",                "color": "92400E", "url": "http://ehall.uwh.edu.cn/gygl/cas"},
+  {"name": "学子心声",       "category": "学工",   "icon": "forum_rounded",              "color": "8B5CF6", "url": "https://xzxs.uwh.edu.cn:18090/"},
+
+  {"name": "学费缴费",       "category": "财务",   "icon": "payments_rounded",           "color": "22C55E", "url": "http://cwsf.uwh.edu.cn/xysf/CasLogin.aspx?type=0"},
+  {"name": "生活缴费",       "category": "财务",   "icon": "receipt_rounded",            "color": "14B8A6", "url": "http://cwsf.uwh.edu.cn/xysf/CasLogin.aspx?type=2"},
+  {"name": "其它费用",       "category": "财务",   "icon": "request_quote_rounded",      "color": "64748B", "url": "http://cwsf.uwh.edu.cn/xysf/CasLogin.aspx?type=1"},
+  {"name": "报名信息",       "category": "财务",   "icon": "assignment_rounded",         "color": "4F46E5", "url": "http://cwsf.uwh.edu.cn/xysf/CasLogin.aspx?type=5"},
+  {"name": "交易查询",       "category": "财务",   "icon": "query_stats_rounded",        "color": "22C55E", "url": "http://cwsf.uwh.edu.cn/xysf/CasLogin.aspx?type=6"},
+  {"name": "收款查询",       "category": "财务",   "icon": "account_balance_rounded",    "color": "0D9488", "url": "http://xysf.uwh.edu.cn:18083/htwx/OAuthPage?FragmentKey=ResearchAssistant"},
+  {"name": "资助系统",       "category": "财务",   "icon": "volunteer_activism_rounded", "color": "EC4899", "url": "https://ids.uwh.edu.cn/authserver/login?service=https://zzxt.uwh.edu.cn/api/auth-server/user/casLoginsj"},
+
+  {"name": "图书检索",       "category": "图书",   "icon": "menu_book_rounded",          "color": "2563EB", "url": "http://223.241.72.135:7001/book/api/h5/guide"},
+  {"name": "中国知网",       "category": "图书",   "icon": "library_books_rounded",      "color": "1D4ED8", "url": "https://fsso.cnki.net/Shibboleth.sso/Login?entityID=https://idp.uwh.edu.cn/idp/shibboleth&target=https%3A%2F%2Ffsso.cnki.net%2Fsecure%2Fdefault.aspx"},
+
+  {"name": "物业报修",       "category": "后勤",   "icon": "build_rounded",              "color": "F97316", "url": "http://zwgl.uwh.edu.cn/fix/add"},
+  {"name": "后勤投诉",       "category": "后勤",   "icon": "support_agent_rounded",      "color": "EA580C", "url": "http://zwgl.uwh.edu.cn/complaint/add"},
+
+  {"name": "就业管理",       "category": "就业",   "icon": "work_rounded",               "color": "92400E", "url": "http://ehall.uwh.edu.cn/job/cas"},
+  {"name": "简历管理",       "category": "就业",   "icon": "description_rounded",        "color": "4F46E5", "url": "http://ehall.uwh.edu.cn/job/cas/wap/menu/job/resume/myinfo?show_model=2&show_model_only_one=1"},
+  {"name": "就业信息",       "category": "就业",   "icon": "business_center_rounded",    "color": "7C3AED", "url": "http://ehall.uwh.edu.cn/job/cas/wap/menu/job/employment/stu?show_model=2&show_model_only_one=1"},
+  {"name": "迎新管理",       "category": "就业",   "icon": "person_add_alt_1_rounded",   "color": "22C55E", "url": "http://ehall.uwh.edu.cn/zzyx/cas"},
+  {"name": "毕业离校",       "category": "就业",   "icon": "school_outlined",            "color": "EA580C", "url": "http://ehall.uwh.edu.cn/leaschool/cas"},
+
+  {"name": "人脸采集",       "category": "其他",   "icon": "face_retouching_natural_rounded", "color": "0EA5E9", "url": "http://223.241.72.135:2880/wj/cas_demo/caslogin.jsp"},
+  {"name": "校园地图",       "category": "其他",   "icon": "map_rounded",                "color": "22C55E", "url": "https://gis.uwh.edu.cn:16480/cmipsh5/#/"},
+  {"name": "修改密码",       "category": "其他",   "icon": "vpn_key_rounded",            "color": "EF4444", "url": "https://ids.uwh.edu.cn/personalInfo/personalMobile/index.html#/setPassword"},
+  {"name": "学生服务台",     "category": "其他",   "icon": "headset_mic_rounded",        "color": "8B5CF6", "url": "https://wjcollege.campusphere.net/wec-counselor-extend-apps/stu/mobile-v3/index.html"}
+]
