@@ -1,11 +1,12 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'update_config.dart';
+
 typedef DateTimeProvider = DateTime Function();
 
 class UpdateCheckCooldown {
   UpdateCheckCooldown({DateTimeProvider? now}) : _now = now ?? DateTime.now;
 
-  static const Duration cooldown = Duration(days: 10);
   static const String _cancelledAtKey = 'update_check_cancelled_at';
 
   final DateTimeProvider _now;
@@ -16,7 +17,8 @@ class UpdateCheckCooldown {
       prefs.getString(_cancelledAtKey) ?? '',
     );
     if (cancelledAt == null) return false;
-    return _now().difference(cancelledAt) < cooldown;
+    return _now().difference(cancelledAt) <
+        UpdateConfig.automaticCheckCooldown;
   }
 
   Future<void> recordUserCancelled() async {

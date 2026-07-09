@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -143,27 +142,13 @@ class UpdateDialogs {
             notes: update.notes,
           ),
           actions: [
-            TextButton(
+            FilledButton(
               onPressed: () async {
                 await cooldown.recordUserCancelled();
                 if (!dialogContext.mounted) return;
                 Navigator.of(dialogContext).pop();
               },
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final messenger = ScaffoldMessenger.of(context);
-                await Clipboard.setData(
-                  ClipboardData(text: update.altSourceUrl),
-                );
-                if (!dialogContext.mounted) return;
-                Navigator.of(dialogContext).pop();
-                messenger.showSnackBar(
-                  const SnackBar(content: Text('AltStore 源链接已复制')),
-                );
-              },
-              child: const Text('复制源链接'),
+              child: const Text('我知道了'),
             ),
           ],
         );

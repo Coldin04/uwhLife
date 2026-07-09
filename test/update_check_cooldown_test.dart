@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uwhlife/features/update/update_check_cooldown.dart';
+import 'package:uwhlife/features/update/update_config.dart';
 
 void main() {
   group('UpdateCheckCooldown', () {
@@ -21,7 +22,9 @@ void main() {
 
       await cooldown.recordUserCancelled();
 
-      currentTime = currentTime.add(const Duration(days: 9, hours: 23));
+      currentTime = currentTime.add(
+        UpdateConfig.automaticCheckCooldown - const Duration(hours: 1),
+      );
       expect(await cooldown.shouldSkipAutomaticCheck(), isTrue);
 
       currentTime = currentTime.add(const Duration(hours: 2));
