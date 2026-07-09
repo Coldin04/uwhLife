@@ -1,10 +1,10 @@
 {
-  "title": "v1.2.1 更新",
+  "title": "v1.2.2 更新",
   "mandatory": false,
   "minSupportedVersionCode": 10,
   "notes": [
-    "新增 Android 应用内更新检测、APK 下载与系统安装引导。",
-    "新增 AltStore 源一键导入与稳定 IPA 下载入口。",
-    "整理 GitHub Release、source.json、update.json 的自动发布流程。"
+    "修复 Android 与 iOS 更新弹窗交互问题，非强制更新可取消并进入 10 天冷却。",
+    "修复 Android 授权安装权限后返回 App 无法继续安装的问题。",
+    "优化 Android APK 更新包缓存复用与旧缓存清理，减少重复下载。"
   ]
 }
