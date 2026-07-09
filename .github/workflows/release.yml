@@ -75,9 +75,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout -B main origin/main
           git add source.json update.json
           git commit -m "chore: update release metadata for ${{ github.ref_name }}" || exit 0
-          git push origin HEAD:main
+          git push origin main
 
       - name: Publish artifacts to GitHub Release
         uses: softprops/action-gh-release@v2
