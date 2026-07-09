@@ -36,10 +36,10 @@
         {
           "version": "1.2.1",
           "buildVersion": "11",
-          "date": "2026-07-08",
+          "date": "2026-07-09",
           "localizedDescription": "1. 新增 Android 应用内更新检测、APK 下载与系统安装引导。\n2. 新增 AltStore 源一键导入与稳定 IPA 下载入口。\n3. 整理 GitHub Release、source.json、update.json 的自动发布流程。",
           "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_unsigned.ipa",
-          "size": 38208973,
+          "size": 38304051,
           "minOSVersion": "15.0"
         },
         {
@@ -140,7 +140,7 @@
       "title": "v1.2.1 更新",
       "identifier": "1.2.1",
       "caption": "新增 Android 应用内更新检测、APK 下载与系统安装引导。",
-      "date": "2026-07-08",
+      "date": "2026-07-09",
       "tintColor": "#2196F3",
       "notify": true,
       "appID": "com.cold04.uwhlife"

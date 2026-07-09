@@ -13,8 +13,8 @@
       "整理 GitHub Release、source.json、update.json 的自动发布流程。"
     ],
     "apkUrl": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
-    "fallbackApkUrl": "https://github.com/coldin04/uwhLife/releases/download/v1.2.1/UWHLife_android_arm64-v8a.apk",
-    "sha256": ""
+    "fallbackApkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v1.2.1/UWHLife_android_arm64-v8a.apk",
+    "sha256": "92327eb0cc54effc48bbf254efe84011ec4f8e6679b170888357f549d8922c01"
   },
   "ios": {
     "versionName": "1.2.1",
