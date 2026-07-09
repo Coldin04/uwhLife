@@ -6,6 +6,9 @@ import 'package:uwhlife/features/update/update_manifest.dart';
 import 'package:uwhlife/features/update/update_service.dart';
 
 void main() {
+  const updatePayload = 'uwhLife update payload';
+  const updatePayloadSha256 =
+      '2257977f0c01cad5f870f41ec563403ed5634dcc99491ddf930c0bbf28cbd26f';
   const rawManifest = '''
 {
   "schemaVersion": 1,
@@ -63,7 +66,7 @@ void main() {
 
   test('validates sha256 when a checksum is provided', () async {
     final file = File('${Directory.systemTemp.path}/uwhlife-update-test.apk');
-    await file.writeAsString('uwhLife update payload');
+    await file.writeAsString(updatePayload);
     addTearDown(() {
       if (file.existsSync()) file.deleteSync();
     });
@@ -71,11 +74,52 @@ void main() {
     expect(
       await UpdateService.verifySha256(
         file,
-        '2257977f0c01cad5f870f41ec563403ed5634dcc99491ddf930c0bbf28cbd26f',
+        updatePayloadSha256,
       ),
       isTrue,
     );
     expect(await UpdateService.verifySha256(file, 'deadbeef'), isFalse);
     expect(await UpdateService.verifySha256(file, ''), isTrue);
+  });
+
+  test('reuses a cached apk when checksum still matches', () async {
+    final dir = await Directory.systemTemp.createTemp('uwhlife-cache-test-');
+    addTearDown(() {
+      if (dir.existsSync()) dir.deleteSync(recursive: true);
+    });
+    final service = UpdateService(cacheDirectory: dir);
+    final manifest = UpdateManifest.fromJson(
+      jsonDecode(rawManifest.replaceFirst('abc123', updatePayloadSha256))
+          as Map<String, dynamic>,
+    );
+    final file = await service.androidApkCacheFile(manifest.android);
+    await file.writeAsString(updatePayload);
+
+    final cached = await service.cachedAndroidApk(manifest.android);
+
+    expect(cached?.path, file.path);
+  });
+
+  test('removes stale apk caches but keeps the current version', () async {
+    final dir = await Directory.systemTemp.createTemp('uwhlife-cache-test-');
+    addTearDown(() {
+      if (dir.existsSync()) dir.deleteSync(recursive: true);
+    });
+    final service = UpdateService(cacheDirectory: dir);
+    final manifest = UpdateManifest.fromJson(
+      jsonDecode(rawManifest) as Map<String, dynamic>,
+    );
+    final current = await service.androidApkCacheFile(manifest.android);
+    final stale = File('${dir.path}/UWHLife-1.2.0-update.apk');
+    final partial = File('${dir.path}/UWHLife-1.2.0-update.apk.part');
+    await current.writeAsString(updatePayload);
+    await stale.writeAsString('old apk');
+    await partial.writeAsString('partial old apk');
+
+    await service.cleanupStaleAndroidApks(keep: manifest.android);
+
+    expect(await current.exists(), isTrue);
+    expect(await stale.exists(), isFalse);
+    expect(await partial.exists(), isFalse);
   });
 }

@@ -10,7 +10,9 @@ import 'update_manifest.dart';
 typedef DownloadProgress = void Function(int received, int? total);
 
 class UpdateService {
-  const UpdateService({HttpClient? client}) : _client = client;
+  const UpdateService({HttpClient? client, Directory? cacheDirectory})
+    : _client = client,
+      _cacheDirectory = cacheDirectory;
 
   static const manifestUrls = [
     'https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/master/update.json',
@@ -18,6 +20,7 @@ class UpdateService {
   ];
 
   final HttpClient? _client;
+  final Directory? _cacheDirectory;
 
   Future<UpdateManifest?> fetchManifest({
     List<String> urls = manifestUrls,
@@ -34,6 +37,14 @@ class UpdateService {
     AndroidUpdateInfo info, {
     DownloadProgress? onProgress,
   }) async {
+    await cleanupStaleAndroidApks(keep: info);
+    final cached = await cachedAndroidApk(info);
+    if (cached != null) {
+      final length = await cached.length();
+      onProgress?.call(length, length);
+      return cached;
+    }
+
     Object? lastError;
     for (final url in info.downloadUrls) {
       try {
@@ -50,6 +61,37 @@ class UpdateService {
       }
     }
     throw StateError('下载更新失败：${lastError ?? '无可用下载地址'}');
+  }
+
+  Future<File?> cachedAndroidApk(AndroidUpdateInfo info) async {
+    final file = await androidApkCacheFile(info);
+    if (!await file.exists()) return null;
+    final valid = await verifySha256(file, info.sha256);
+    if (valid) return file;
+    await file.delete().catchError((_) => file);
+    return null;
+  }
+
+  Future<void> cleanupStaleAndroidApks({AndroidUpdateInfo? keep}) async {
+    final dir = await _androidApkCacheDirectory();
+    if (!await dir.exists()) return;
+
+    final keepPath = keep == null ? null : (await androidApkCacheFile(keep)).path;
+    await for (final entity in dir.list()) {
+      if (entity is! File) continue;
+      final name = entity.uri.pathSegments.last;
+      final isUpdateApk =
+          name.startsWith('UWHLife-') &&
+          (name.endsWith('-update.apk') || name.endsWith('-update.apk.part'));
+      if (!isUpdateApk || entity.path == keepPath) continue;
+      await entity.delete().catchError((_) => entity);
+    }
+  }
+
+  Future<File> androidApkCacheFile(AndroidUpdateInfo info) async {
+    final dir = await _androidApkCacheDirectory();
+    final safeVersion = _safeVersionName(info.versionName);
+    return File('${dir.path}/UWHLife-$safeVersion-update.apk');
   }
 
   static Future<bool> verifySha256(File file, String expected) async {
@@ -93,13 +135,11 @@ class UpdateService {
         throw HttpException('HTTP ${response.statusCode}', uri: Uri.parse(url));
       }
 
-      final dir = await getTemporaryDirectory();
-      final safeVersion = versionName.replaceAll(
-        RegExp(r'[^0-9A-Za-z._-]'),
-        '_',
-      );
+      final dir = await _androidApkCacheDirectory();
+      final safeVersion = _safeVersionName(versionName);
       final file = File('${dir.path}/UWHLife-$safeVersion-update.apk');
-      final sink = file.openWrite();
+      final partialFile = File('${file.path}.part');
+      final sink = partialFile.openWrite();
       var received = 0;
       final total = response.contentLength >= 0 ? response.contentLength : null;
       try {
@@ -111,9 +151,21 @@ class UpdateService {
       } finally {
         await sink.close();
       }
+      if (await file.exists()) await file.delete();
+      await partialFile.rename(file.path);
       return file;
     } finally {
       ownedClient?.close(force: true);
     }
+  }
+
+  Future<Directory> _androidApkCacheDirectory() async {
+    final dir = _cacheDirectory ?? await getTemporaryDirectory();
+    if (!await dir.exists()) await dir.create(recursive: true);
+    return dir;
+  }
+
+  static String _safeVersionName(String versionName) {
+    return versionName.replaceAll(RegExp(r'[^0-9A-Za-z._-]'), '_');
   }
 }

@@ -60,6 +60,7 @@ class UpdateDialogs {
       final hasUpdate = update.isNewerThan(buildNumber: info.buildNumber);
       final forceUpdate = update.requiresUpdate(buildNumber: info.buildNumber);
       if (!hasUpdate && !forceUpdate) {
+        await service.cleanupStaleAndroidApks();
         if (!automatic) {
           messenger?.showSnackBar(const SnackBar(content: Text('当前已是最新版本')));
         }
@@ -190,29 +191,19 @@ class UpdateDialogs {
     if (!canInstall) {
       await showDialog<void>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('允许安装应用'),
-          content: const Text(
-            'Android 需要先允许芜忧皖江安装未知来源应用，开启后回到 App 再次检查更新即可安装。',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await ApkInstaller.openInstallPermissionSettings();
-              },
-              child: const Text('去设置'),
-            ),
-          ],
+        barrierDismissible: false,
+        builder: (dialogContext) => _InstallPermissionDialog(
+          apkFile: file,
+          onInstall: () => _installApk(context, file),
         ),
       );
       return;
     }
 
+    await _installApk(context, file);
+  }
+
+  static Future<void> _installApk(BuildContext context, File file) async {
     try {
       await ApkInstaller.install(file.path);
     } catch (_) {
@@ -221,6 +212,80 @@ class UpdateDialogs {
         const SnackBar(content: Text('无法打开安装器，请稍后重试')),
       );
     }
+  }
+}
+
+class _InstallPermissionDialog extends StatefulWidget {
+  const _InstallPermissionDialog({
+    required this.apkFile,
+    required this.onInstall,
+  });
+
+  final File apkFile;
+  final Future<void> Function() onInstall;
+
+  @override
+  State<_InstallPermissionDialog> createState() =>
+      _InstallPermissionDialogState();
+}
+
+class _InstallPermissionDialogState extends State<_InstallPermissionDialog>
+    with WidgetsBindingObserver {
+  bool _openingSettings = false;
+  bool _installing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _openingSettings) {
+      _openingSettings = false;
+      _tryInstallAfterPermission();
+    }
+  }
+
+  Future<void> _tryInstallAfterPermission() async {
+    if (_installing) return;
+    final canInstall = await ApkInstaller.canRequestPackageInstalls();
+    if (!mounted || !canInstall) return;
+    setState(() => _installing = true);
+    Navigator.of(context).pop();
+    await widget.onInstall();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('允许安装应用'),
+      content: const Text(
+        'Android 需要先允许芜忧皖江安装未知来源应用，开启后回到 App 会继续安装已下载的更新包。',
+      ),
+      actions: [
+        TextButton(
+          onPressed: _installing ? null : () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+        FilledButton(
+          onPressed: _installing
+              ? null
+              : () async {
+                  setState(() => _openingSettings = true);
+                  await ApkInstaller.openInstallPermissionSettings();
+                },
+          child: Text(_installing ? '正在打开' : '去设置'),
+        ),
+      ],
+    );
   }
 }
 

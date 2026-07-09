@@ -1,7 +1,7 @@
 {
   "title": "v1.2.1 更新",
   "mandatory": false,
-  "minSupportedVersionCode": 11,
+  "minSupportedVersionCode": 10,
   "notes": [
     "新增 Android 应用内更新检测、APK 下载与系统安装引导。",
     "新增 AltStore 源一键导入与稳定 IPA 下载入口。",

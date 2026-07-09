@@ -4,7 +4,7 @@
   "android": {
     "versionName": "1.2.1",
     "versionCode": 11,
-    "minSupportedVersionCode": 11,
+    "minSupportedVersionCode": 10,
     "mandatory": false,
     "title": "v1.2.1 更新",
     "notes": [
