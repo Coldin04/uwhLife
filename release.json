@@ -1,10 +1,10 @@
 {
-  "title": "v1.2.2 更新",
+  "title": "v1.2.3 更新",
   "mandatory": false,
   "minSupportedVersionCode": 10,
   "notes": [
-    "修复 Android 与 iOS 更新弹窗交互问题，非强制更新可取消并进入 10 天冷却。",
-    "修复 Android 授权安装权限后返回 App 无法继续安装的问题。",
-    "优化 Android APK 更新包缓存复用与旧缓存清理，减少重复下载。"
+    "修复 split APK 版本号显示与更新比较问题，关于页会显示逻辑版本号。",
+    "新增 Android 多 ABI 更新包选择，按设备架构下载对应 APK。",
+    "完善 release 自动清单生成，补充 armeabi-v7a、arm64-v8a 与 x86_64 下载信息。"
   ]
 }
