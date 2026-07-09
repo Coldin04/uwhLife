@@ -34,6 +34,15 @@
       ],
       "versions": [
         {
+          "version": "1.2.3",
+          "buildVersion": "13",
+          "date": "2026-07-09",
+          "localizedDescription": "1. 修复 split APK 版本号显示与更新比较问题，关于页会显示逻辑版本号。\n2. 新增 Android 多 ABI 更新包选择，按设备架构下载对应 APK。\n3. 完善 release 自动清单生成，补充 armeabi-v7a、arm64-v8a 与 x86_64 下载信息。",
+          "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_unsigned.ipa",
+          "size": 38303913,
+          "minOSVersion": "15.0"
+        },
+        {
           "version": "1.2.2",
           "buildVersion": "12",
           "date": "2026-07-09",
@@ -145,6 +154,15 @@
     }
   ],
   "news": [
+    {
+      "title": "v1.2.3 更新",
+      "identifier": "1.2.3",
+      "caption": "修复 split APK 版本号显示与更新比较问题，关于页会显示逻辑版本号。",
+      "date": "2026-07-09",
+      "tintColor": "#2196F3",
+      "notify": true,
+      "appID": "com.cold04.uwhlife"
+    },
     {
       "title": "v1.2.2 更新",
       "identifier": "1.2.2",
