@@ -34,6 +34,15 @@
       ],
       "versions": [
         {
+          "version": "1.2.2",
+          "buildVersion": "12",
+          "date": "2026-07-09",
+          "localizedDescription": "1. 修复 Android 与 iOS 更新弹窗交互问题，非强制更新可取消并进入 10 天冷却。\n2. 修复 Android 授权安装权限后返回 App 无法继续安装的问题。\n3. 优化 Android APK 更新包缓存复用与旧缓存清理，减少重复下载。",
+          "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_unsigned.ipa",
+          "size": 38306909,
+          "minOSVersion": "15.0"
+        },
+        {
           "version": "1.2.1",
           "buildVersion": "11",
           "date": "2026-07-09",
@@ -136,6 +145,15 @@
     }
   ],
   "news": [
+    {
+      "title": "v1.2.2 更新",
+      "identifier": "1.2.2",
+      "caption": "修复 Android 与 iOS 更新弹窗交互问题，非强制更新可取消并进入 10 天冷却。",
+      "date": "2026-07-09",
+      "tintColor": "#2196F3",
+      "notify": true,
+      "appID": "com.cold04.uwhlife"
+    },
     {
       "title": "v1.2.1 更新",
       "identifier": "1.2.1",
