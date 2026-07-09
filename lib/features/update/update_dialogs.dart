@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/theme/app_theme.dart';
 import 'apk_installer.dart';
+import 'update_check_cooldown.dart';
 import 'update_manifest.dart';
 import 'update_service.dart';
 
@@ -18,10 +19,14 @@ class UpdateDialogs {
     BuildContext context, {
     bool automatic = false,
     UpdateService service = const UpdateService(),
+    UpdateCheckCooldown? cooldown,
   }) async {
+    final checkCooldown = cooldown ?? UpdateCheckCooldown();
     if (automatic) {
       if (_automaticCheckShown) return;
       _automaticCheckShown = true;
+      if (await checkCooldown.shouldSkipAutomaticCheck()) return;
+      if (!context.mounted) return;
     }
 
     final messenger = ScaffoldMessenger.maybeOf(context);
@@ -63,8 +68,9 @@ class UpdateDialogs {
       await _showAndroidUpdateDialog(
         context,
         service: service,
+        cooldown: checkCooldown,
         update: update,
-        forceUpdate: forceUpdate || update.mandatory,
+        forceUpdate: update.mandatory,
       );
       return;
     }
@@ -77,20 +83,21 @@ class UpdateDialogs {
         }
         return;
       }
-      await _showIosUpdateDialog(context, update);
+      await _showIosUpdateDialog(context, update, cooldown: checkCooldown);
     }
   }
 
   static Future<void> _showAndroidUpdateDialog(
     BuildContext context, {
     required UpdateService service,
+    required UpdateCheckCooldown cooldown,
     required AndroidUpdateInfo update,
     required bool forceUpdate,
   }) {
     return showDialog<void>(
       context: context,
       barrierDismissible: !forceUpdate,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           title: Text(update.title),
           content: _UpdateNotes(
@@ -100,12 +107,16 @@ class UpdateDialogs {
           actions: [
             if (!forceUpdate)
               TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('稍后再说'),
+                onPressed: () async {
+                  await cooldown.recordUserCancelled();
+                  if (!dialogContext.mounted) return;
+                  Navigator.of(dialogContext).pop();
+                },
+                child: const Text('取消'),
               ),
             FilledButton(
               onPressed: () async {
-                Navigator.of(context).pop();
+                Navigator.of(dialogContext).pop();
                 await _downloadAndInstall(context, service, update);
               },
               child: const Text('立即更新'),
@@ -118,11 +129,12 @@ class UpdateDialogs {
 
   static Future<void> _showIosUpdateDialog(
     BuildContext context,
-    IosUpdateInfo update,
-  ) {
+    IosUpdateInfo update, {
+    required UpdateCheckCooldown cooldown,
+  }) {
     return showDialog<void>(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           title: Text(update.title),
           content: _UpdateNotes(
@@ -131,8 +143,12 @@ class UpdateDialogs {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('稍后再说'),
+              onPressed: () async {
+                await cooldown.recordUserCancelled();
+                if (!dialogContext.mounted) return;
+                Navigator.of(dialogContext).pop();
+              },
+              child: const Text('取消'),
             ),
             FilledButton(
               onPressed: () async {
@@ -140,8 +156,8 @@ class UpdateDialogs {
                 await Clipboard.setData(
                   ClipboardData(text: update.altSourceUrl),
                 );
-                if (!context.mounted) return;
-                Navigator.of(context).pop();
+                if (!dialogContext.mounted) return;
+                Navigator.of(dialogContext).pop();
                 messenger.showSnackBar(
                   const SnackBar(content: Text('AltStore 源链接已复制')),
                 );
@@ -197,7 +213,14 @@ class UpdateDialogs {
       return;
     }
 
-    await ApkInstaller.install(file.path);
+    try {
+      await ApkInstaller.install(file.path);
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('无法打开安装器，请稍后重试')),
+      );
+    }
   }
 }
 

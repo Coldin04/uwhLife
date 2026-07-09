@@ -1,6 +1,7 @@
 package com.cold04.uwhlife
 
 import android.content.Intent
+import android.content.ClipData
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -324,10 +325,12 @@ class MainActivity : FlutterActivity() {
                 "$packageName.apk_provider",
                 file,
             )
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, "application/vnd.android.package-archive")
+            val intent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+                data = uri
+                clipData = ClipData.newUri(contentResolver, "UWHLife update", uri)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
             }
             startActivity(intent)
             result.success(null)
