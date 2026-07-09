@@ -14,6 +14,10 @@ void main() {
       DateTime.now().toUtc().toIso8601String().split('T').first;
   final ipaSize = int.tryParse(Platform.environment['IPA_SIZE'] ?? '');
   final androidSha256 = Platform.environment['ANDROID_ARM64_SHA256'] ?? '';
+  final androidArmeabiV7aSha256 =
+      Platform.environment['ANDROID_ARMEABI_V7A_SHA256'] ?? '';
+  final androidX8664Sha256 =
+      Platform.environment['ANDROID_X86_64_SHA256'] ?? '';
   final githubRepository =
       Platform.environment['GITHUB_REPOSITORY'] ?? 'coldin04/uwhLife';
   final release = _readReleaseConfig();
@@ -29,6 +33,16 @@ void main() {
       'https://gitee.com/coldin04/uwhlife_source/releases/download/latest';
   final githubRelease =
       'https://github.com/$githubRepository/releases/download/$tag';
+  final apkUrls = {
+    'armeabi-v7a': '$giteeLatest/UWHLife_android_armeabi-v7a.apk',
+    'arm64-v8a': '$giteeLatest/UWHLife_android_arm64-v8a.apk',
+    'x86_64': '$giteeLatest/UWHLife_android_x86_64.apk',
+  };
+  final fallbackApkUrls = {
+    'armeabi-v7a': '$githubRelease/UWHLife_android_armeabi-v7a.apk',
+    'arm64-v8a': '$githubRelease/UWHLife_android_arm64-v8a.apk',
+    'x86_64': '$githubRelease/UWHLife_android_x86_64.apk',
+  };
   final numberedNotes = _numberedNotes(notes);
 
   final sourceFile = File('source.json');
@@ -87,6 +101,13 @@ void main() {
     'notes': notes,
     'apkUrl': '$giteeLatest/UWHLife_android_arm64-v8a.apk',
     'fallbackApkUrl': '$githubRelease/UWHLife_android_arm64-v8a.apk',
+    'apkUrls': apkUrls,
+    'fallbackApkUrls': fallbackApkUrls,
+    'sha256ByAbi': {
+      'armeabi-v7a': androidArmeabiV7aSha256,
+      'arm64-v8a': androidSha256,
+      'x86_64': androidX8664Sha256,
+    },
     'sha256': androidSha256,
   };
   update['ios'] = {

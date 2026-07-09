@@ -139,6 +139,7 @@ class MainActivity : FlutterActivity() {
                     result.success(allowed)
                 }
                 "openInstallPermissionSettings" -> openInstallPermissionSettings(result)
+                "supportedAbis" -> result.success(Build.SUPPORTED_ABIS.toList())
                 "installApk" -> installApk(call.arguments as? Map<*, *>, result)
                 else -> result.notImplemented()
             }

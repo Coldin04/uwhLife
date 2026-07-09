@@ -22,6 +22,19 @@ void main() {
     "notes": ["优化首页加载体验", "修复若干问题"],
     "apkUrl": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
     "fallbackApkUrl": "https://github.com/coldin04/uwhLife/releases/download/v1.2.1/UWHLife_android_arm64-v8a.apk",
+    "apkUrls": {
+      "armeabi-v7a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_armeabi-v7a.apk",
+      "arm64-v8a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
+      "x86_64": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_x86_64.apk"
+    },
+    "fallbackApkUrls": {
+      "armeabi-v7a": "https://github.com/coldin04/uwhLife/releases/download/v1.2.1/UWHLife_android_armeabi-v7a.apk",
+      "arm64-v8a": "https://github.com/coldin04/uwhLife/releases/download/v1.2.1/UWHLife_android_arm64-v8a.apk",
+      "x86_64": "https://github.com/coldin04/uwhLife/releases/download/v1.2.1/UWHLife_android_x86_64.apk"
+    },
+    "sha256ByAbi": {
+      "arm64-v8a": "abc123"
+    },
     "sha256": "abc123"
   },
   "ios": {
@@ -53,6 +66,23 @@ void main() {
     );
   });
 
+  test('selects android download URLs by supported ABI', () {
+    final manifest = UpdateManifest.fromJson(
+      jsonDecode(rawManifest) as Map<String, dynamic>,
+    );
+
+    expect(manifest.android.selectedAbi(['armeabi-v7a']), 'armeabi-v7a');
+    expect(manifest.android.selectedAbi(['x86_64']), 'x86_64');
+    expect(manifest.android.downloadUrlsFor(['armeabi-v7a']), [
+      'https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_armeabi-v7a.apk',
+      'https://github.com/coldin04/uwhLife/releases/download/v1.2.1/UWHLife_android_armeabi-v7a.apk',
+    ]);
+    expect(manifest.android.downloadUrlsFor(['mips']), [
+      'https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk',
+      'https://github.com/coldin04/uwhLife/releases/download/v1.2.1/UWHLife_android_arm64-v8a.apk',
+    ]);
+  });
+
   test('compares android versionCode and ios buildVersion', () {
     final manifest = UpdateManifest.fromJson(
       jsonDecode(rawManifest) as Map<String, dynamic>,
@@ -60,6 +90,8 @@ void main() {
 
     expect(manifest.android.isNewerThan(buildNumber: '10'), isTrue);
     expect(manifest.android.isNewerThan(buildNumber: '11'), isFalse);
+    expect(manifest.android.isNewerThan(buildNumber: '2011'), isFalse);
+    expect(manifest.android.isNewerThan(buildNumber: '2010'), isTrue);
     expect(manifest.ios.isNewerThan(buildNumber: '10'), isTrue);
     expect(manifest.ios.isNewerThan(buildNumber: '11'), isFalse);
   });
@@ -71,13 +103,7 @@ void main() {
       if (file.existsSync()) file.deleteSync();
     });
 
-    expect(
-      await UpdateService.verifySha256(
-        file,
-        updatePayloadSha256,
-      ),
-      isTrue,
-    );
+    expect(await UpdateService.verifySha256(file, updatePayloadSha256), isTrue);
     expect(await UpdateService.verifySha256(file, 'deadbeef'), isFalse);
     expect(await UpdateService.verifySha256(file, ''), isTrue);
   });

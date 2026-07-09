@@ -8,6 +8,7 @@ import '../../core/storage/portal_credentials.dart';
 import '../../core/storage/portal_user_store.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/route_utils.dart';
+import '../update/android_version_code.dart';
 import '../paycode/pay_result_sheet.dart';
 import '../update/update_dialogs.dart';
 import '../webview/portal_webview_page.dart';
@@ -506,9 +507,10 @@ class _AboutPageState extends State<_AboutPage> {
 
   Future<void> _loadVersion() async {
     final info = await PackageInfo.fromPlatform();
+    final buildNumber = AndroidVersionCode.logicalBuildNumber(info.buildNumber);
     if (!mounted) return;
     setState(() {
-      _versionText = '${info.version}(${info.buildNumber})';
+      _versionText = '${info.version}($buildNumber)';
     });
   }
 

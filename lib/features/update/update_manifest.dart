@@ -1,3 +1,5 @@
+import 'android_version_code.dart';
+
 class UpdateManifest {
   const UpdateManifest({
     required this.schemaVersion,
@@ -31,6 +33,9 @@ class AndroidUpdateInfo {
     required this.notes,
     required this.apkUrl,
     required this.fallbackApkUrl,
+    required this.apkUrls,
+    required this.fallbackApkUrls,
+    required this.sha256ByAbi,
     required this.sha256,
   });
 
@@ -44,6 +49,9 @@ class AndroidUpdateInfo {
       notes: _readStringList(json['notes']),
       apkUrl: json['apkUrl']?.toString() ?? '',
       fallbackApkUrl: json['fallbackApkUrl']?.toString() ?? '',
+      apkUrls: _readStringMap(json['apkUrls']),
+      fallbackApkUrls: _readStringMap(json['fallbackApkUrls']),
+      sha256ByAbi: _readStringMap(json['sha256ByAbi']),
       sha256: json['sha256']?.toString() ?? '',
     );
   }
@@ -56,21 +64,51 @@ class AndroidUpdateInfo {
   final List<String> notes;
   final String apkUrl;
   final String fallbackApkUrl;
+  final Map<String, String> apkUrls;
+  final Map<String, String> fallbackApkUrls;
+  final Map<String, String> sha256ByAbi;
   final String sha256;
 
   List<String> get downloadUrls {
-    return [apkUrl, fallbackApkUrl]
+    return downloadUrlsFor(const []);
+  }
+
+  List<String> downloadUrlsFor(List<String> supportedAbis) {
+    final abi = selectedAbi(supportedAbis);
+    final primaryUrl = abi == null ? apkUrl : apkUrls[abi] ?? apkUrl;
+    final fallbackUrl = abi == null
+        ? fallbackApkUrl
+        : fallbackApkUrls[abi] ?? fallbackApkUrl;
+    return [primaryUrl, fallbackUrl]
         .map((url) => url.trim())
         .where((url) => url.isNotEmpty)
         .toList(growable: false);
   }
 
+  String? selectedAbi(List<String> supportedAbis) {
+    for (final abi in supportedAbis) {
+      if (apkUrls.containsKey(abi)) return abi;
+    }
+    if (apkUrls.containsKey('arm64-v8a')) return 'arm64-v8a';
+    if (apkUrls.isNotEmpty) return apkUrls.keys.first;
+    return null;
+  }
+
+  String sha256For(List<String> supportedAbis) {
+    final abi = selectedAbi(supportedAbis);
+    if (abi == null) return sha256;
+    return sha256ByAbi[abi]?.trim().isNotEmpty == true
+        ? sha256ByAbi[abi]!
+        : sha256;
+  }
+
   bool isNewerThan({required String buildNumber}) {
-    return versionCode > (int.tryParse(buildNumber) ?? 0);
+    return versionCode > AndroidVersionCode.logicalBuildNumber(buildNumber);
   }
 
   bool requiresUpdate({required String buildNumber}) {
-    return minSupportedVersionCode > (int.tryParse(buildNumber) ?? 0);
+    return minSupportedVersionCode >
+        AndroidVersionCode.logicalBuildNumber(buildNumber);
   }
 }
 
@@ -119,4 +157,9 @@ int _readInt(Object? value) {
 List<String> _readStringList(Object? value) {
   if (value is! List) return const [];
   return value.map((item) => item.toString()).toList(growable: false);
+}
+
+Map<String, String> _readStringMap(Object? value) {
+  if (value is! Map) return const {};
+  return value.map((key, item) => MapEntry(key.toString(), item.toString()));
 }

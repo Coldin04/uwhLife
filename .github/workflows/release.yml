@@ -47,7 +47,9 @@ jobs:
           cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk build/release/UWHLife_android_armeabi-v7a.apk
           cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/release/UWHLife_android_arm64-v8a.apk
           cp build/app/outputs/flutter-apk/app-x86_64-release.apk build/release/UWHLife_android_x86_64.apk
+          shasum -a 256 build/release/UWHLife_android_armeabi-v7a.apk | awk '{print $1}' > build/release/android_armeabi_v7a.sha256
           shasum -a 256 build/release/UWHLife_android_arm64-v8a.apk | awk '{print $1}' > build/release/android_arm64.sha256
+          shasum -a 256 build/release/UWHLife_android_x86_64.apk | awk '{print $1}' > build/release/android_x86_64.sha256
 
       - name: Build iOS app without codesigning
         run: flutter build ios --release --no-codesign
@@ -63,12 +65,13 @@ jobs:
           TAG_NAME: ${{ github.ref_name }}
           RELEASE_DATE: ${{ github.event.head_commit.timestamp }}
           IPA_SIZE: ${{ hashFiles('build/release/UWHLife_unsigned.ipa') }}
-          ANDROID_ARM64_SHA256: ${{ hashFiles('build/release/UWHLife_android_arm64-v8a.apk') }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           export RELEASE_DATE="$(date -u +%Y-%m-%d)"
           export IPA_SIZE="$(wc -c < build/release/UWHLife_unsigned.ipa | tr -d ' ')"
+          export ANDROID_ARMEABI_V7A_SHA256="$(cat build/release/android_armeabi_v7a.sha256)"
           export ANDROID_ARM64_SHA256="$(cat build/release/android_arm64.sha256)"
+          export ANDROID_X86_64_SHA256="$(cat build/release/android_x86_64.sha256)"
           dart run tool/update_release_metadata.dart
 
       - name: Commit updated metadata to main

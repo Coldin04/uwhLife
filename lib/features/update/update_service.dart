@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter/services.dart';
 
 import 'update_manifest.dart';
 
@@ -37,8 +38,9 @@ class UpdateService {
     AndroidUpdateInfo info, {
     DownloadProgress? onProgress,
   }) async {
-    await cleanupStaleAndroidApks(keep: info);
-    final cached = await cachedAndroidApk(info);
+    final supportedAbis = await currentAndroidAbis();
+    await cleanupStaleAndroidApks(keep: info, supportedAbis: supportedAbis);
+    final cached = await cachedAndroidApk(info, supportedAbis: supportedAbis);
     if (cached != null) {
       final length = await cached.length();
       onProgress?.call(length, length);
@@ -46,10 +48,15 @@ class UpdateService {
     }
 
     Object? lastError;
-    for (final url in info.downloadUrls) {
+    for (final url in info.downloadUrlsFor(supportedAbis)) {
       try {
-        final file = await _downloadFile(url, info.versionName, onProgress);
-        final valid = await verifySha256(file, info.sha256);
+        final file = await _downloadFile(
+          url,
+          info.versionName,
+          info.selectedAbi(supportedAbis),
+          onProgress,
+        );
+        final valid = await verifySha256(file, info.sha256For(supportedAbis));
         if (!valid) {
           lastError = const FileSystemException('APK checksum mismatch');
           await file.delete().catchError((_) => file);
@@ -63,20 +70,28 @@ class UpdateService {
     throw StateError('下载更新失败：${lastError ?? '无可用下载地址'}');
   }
 
-  Future<File?> cachedAndroidApk(AndroidUpdateInfo info) async {
-    final file = await androidApkCacheFile(info);
+  Future<File?> cachedAndroidApk(
+    AndroidUpdateInfo info, {
+    List<String> supportedAbis = const [],
+  }) async {
+    final file = await androidApkCacheFile(info, supportedAbis: supportedAbis);
     if (!await file.exists()) return null;
-    final valid = await verifySha256(file, info.sha256);
+    final valid = await verifySha256(file, info.sha256For(supportedAbis));
     if (valid) return file;
     await file.delete().catchError((_) => file);
     return null;
   }
 
-  Future<void> cleanupStaleAndroidApks({AndroidUpdateInfo? keep}) async {
+  Future<void> cleanupStaleAndroidApks({
+    AndroidUpdateInfo? keep,
+    List<String> supportedAbis = const [],
+  }) async {
     final dir = await _androidApkCacheDirectory();
     if (!await dir.exists()) return;
 
-    final keepPath = keep == null ? null : (await androidApkCacheFile(keep)).path;
+    final keepPath = keep == null
+        ? null
+        : (await androidApkCacheFile(keep, supportedAbis: supportedAbis)).path;
     await for (final entity in dir.list()) {
       if (entity is! File) continue;
       final name = entity.uri.pathSegments.last;
@@ -88,10 +103,15 @@ class UpdateService {
     }
   }
 
-  Future<File> androidApkCacheFile(AndroidUpdateInfo info) async {
+  Future<File> androidApkCacheFile(
+    AndroidUpdateInfo info, {
+    List<String> supportedAbis = const [],
+  }) async {
     final dir = await _androidApkCacheDirectory();
     final safeVersion = _safeVersionName(info.versionName);
-    return File('${dir.path}/UWHLife-$safeVersion-update.apk');
+    final abi = info.selectedAbi(supportedAbis);
+    final abiSuffix = abi == null ? '' : '-$abi';
+    return File('${dir.path}/UWHLife-$safeVersion$abiSuffix-update.apk');
   }
 
   static Future<bool> verifySha256(File file, String expected) async {
@@ -124,6 +144,7 @@ class UpdateService {
   Future<File> _downloadFile(
     String url,
     String versionName,
+    String? abi,
     DownloadProgress? onProgress,
   ) async {
     HttpClient? ownedClient;
@@ -137,7 +158,10 @@ class UpdateService {
 
       final dir = await _androidApkCacheDirectory();
       final safeVersion = _safeVersionName(versionName);
-      final file = File('${dir.path}/UWHLife-$safeVersion-update.apk');
+      final abiSuffix = abi == null ? '' : '-$abi';
+      final file = File(
+        '${dir.path}/UWHLife-$safeVersion$abiSuffix-update.apk',
+      );
       final partialFile = File('${file.path}.part');
       final sink = partialFile.openWrite();
       var received = 0;
@@ -167,5 +191,20 @@ class UpdateService {
 
   static String _safeVersionName(String versionName) {
     return versionName.replaceAll(RegExp(r'[^0-9A-Za-z._-]'), '_');
+  }
+
+  static const MethodChannel _apkInstallerChannel = MethodChannel(
+    'uwhlife/apk_installer',
+  );
+
+  static Future<List<String>> currentAndroidAbis() async {
+    try {
+      final result = await _apkInstallerChannel.invokeListMethod<String>(
+        'supportedAbis',
+      );
+      return result ?? const [];
+    } catch (_) {
+      return const [];
+    }
   }
 }
