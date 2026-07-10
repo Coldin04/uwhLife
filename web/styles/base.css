@@ -1,0 +1,45 @@
+:root {
+  color-scheme: light dark;
+  --brand: #22c55e;
+  --mint: #a2efc1;
+  --teal: #43c99a;
+  --ink: #111827;
+  --muted: #6b7280;
+  --surface: #ffffff;
+  --page: #f9fafb;
+  --line: #e5e7eb;
+  --phone: #111827;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { min-width: 320px; margin: 0; color: var(--ink); background: var(--page); font-family: Inter, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif; }
+button, a { font: inherit; }
+button:focus-visible, a:focus-visible { outline: 3px solid color-mix(in srgb, var(--brand), white 25%); outline-offset: 3px; }
+h1, h2, h3, p { margin-top: 0; }
+
+.site-header { position: sticky; top: 0; z-index: 10; padding: 13px 24px; background: color-mix(in srgb, var(--page), transparent 20%); border-bottom: 1px solid color-mix(in srgb, var(--line), transparent 42%); backdrop-filter: blur(16px); }
+.nav-shell { width: min(1120px, 100%); height: 46px; margin: auto; display: flex; justify-content: space-between; align-items: center; }
+.brand { display: flex; align-items: center; gap: 11px; color: var(--ink); font-size: 17px; font-weight: 700; text-decoration: none; }
+.brand img { border-radius: 9px; box-shadow: 0 4px 12px rgb(34 197 94 / 22%); }
+.nav-links { display: flex; align-items: center; gap: 6px; }
+.nav-link { min-height: 40px; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; color: var(--muted); border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; }
+.nav-link:hover { color: var(--ink); background: color-mix(in srgb, var(--brand), transparent 92%); }
+.nav-link i { font-size: 15px; }
+
+.site-footer { padding: 34px 24px; color: var(--muted); border-top: 1px solid var(--line); font-size: 14px; text-align: center; }
+.site-footer a { color: inherit; text-decoration: none; }
+.site-footer a:hover { color: var(--ink); }
+.footer-note { margin: 8px 0 0; font-size: 12px; }
+
+@media (max-width: 760px) {
+  .site-header { padding-inline: 16px; }
+  .nav-links { gap: 0; }
+  .nav-link { padding-inline: 8px; font-size: 13px; }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root { --ink: #f3f4f6; --muted: #9ca3af; --surface: #273244; --page: #1f2937; --line: #374151; --phone: #111827; }
+}
+
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }

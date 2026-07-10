@@ -1,0 +1,114 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import test from 'node:test';
+
+const root = new URL('../', import.meta.url);
+
+test('landing page uses a split app hero and focuses on product features', async () => {
+  const [html, baseCss, heroCss, featuresCss, script] = await Promise.all([
+    readFile(new URL('index.html', root), 'utf8'),
+    readFile(new URL('styles/base.css', root), 'utf8'),
+    readFile(new URL('styles/hero.css', root), 'utf8'),
+    readFile(new URL('styles/features.css', root), 'utf8'),
+    readFile(new URL('script.js', root), 'utf8'),
+  ]);
+  const css = [baseCss, heroCss, featuresCss].join('\n');
+
+  assert.match(html, /<title>芜忧皖江/);
+  assert.match(html, /<link rel="stylesheet" href="styles\/base\.css" \/>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\/hero\.css" \/>/);
+  assert.match(html, /<link rel="stylesheet" href="styles\/features\.css" \/>/);
+  assert.doesNotMatch(html, /href="styles\.css"/);
+  assert.match(html, /<script src="script\.js\?v=theme-screenshots-2" defer><\/script>/);
+  assert.match(html, /bootstrap-icons/);
+  assert.match(html, /<p class="hero-tagline">更易用的芜湖学院客户端<\/p>/);
+  assert.match(html, /class="hero-layout"/);
+  assert.match(html, /class="phone-shell"/);
+  assert.match(html, /<img class="phone-screenshot" src="img\/homepage_dark\.jpeg" data-dark-src="img\/homepage_dark\.jpeg" data-light-src="img\/homepage\.jpeg" width="1080" height="2340" alt="芜忧皖江应用截图" \/>/);
+  assert.doesNotMatch(html, /phone-speaker/);
+  assert.match(html, /href="https:\/\/github\.com\/Coldin04\/uwhLife"/);
+  assert.match(html, /href="https:\/\/gitee\.com\/coldin04\/uwhlife_source\/releases"/);
+  assert.match(html, /href="https:\/\/gitee\.com\/coldin04\/uwhlife_source\/releases\/download\/latest\/UWHLife_android_arm64-v8a\.apk"/);
+  assert.match(html, /href="https:\/\/stikstore\.app\/altdirect\/\?url=https:\/\/raw\.giteeusercontent\.com\/coldin04\/uwhlife_source\/raw\/master\/source\.json"/);
+  assert.match(html, /href="https:\/\/gitee\.com\/coldin04\/uwhlife_source\/releases\/download\/latest\/UWHLife_unsigned\.ipa"/);
+  assert.match(html, /class="download-button download-button--android"/);
+  assert.match(html, /class="download-button download-button--ios"/);
+  assert.match(html, /更多版本/);
+  assert.match(html, /IPA 下载/);
+  assert.match(html, /Android APK/);
+  assert.match(html, /AltStore/);
+  assert.match(html, /便捷生活/);
+  assert.match(html, /校园通知/);
+  assert.match(html, /支付/);
+  assert.doesNotMatch(html, /缴费/);
+  assert.match(html, /class="feature-bento"/);
+  assert.match(html, /class="feature-card feature-card--life"/);
+  assert.match(html, /class="feature-card feature-card--notice"/);
+  assert.match(html, /class="feature-card feature-card--payment"/);
+  assert.match(html, /© 2026 uwhLife contributors · MIT License/);
+  assert.match(html, /仅供学习使用。/);
+  assert.match(html, /href="https:\/\/cold04\.com"/);
+  assert.equal((html.match(/class="feature-phone"/g) ?? []).length, 3);
+  assert.match(html, /class="feature-card feature-card--life"[\s\S]*?<img class="feature-screenshot" src="img\/applist_dark\.jpeg" data-dark-src="img\/applist_dark\.jpeg" data-light-src="img\/applist\.jpeg" width="1080" height="2340" alt="便捷生活功能截图" \/>/);
+  assert.match(html, /class="feature-card feature-card--notice"[\s\S]*?<img class="feature-screenshot" src="img\/message_dark\.jpeg" data-dark-src="img\/message_dark\.jpeg" data-light-src="img\/message\.jpeg" width="1080" height="2340" alt="校园通知功能截图" \/>/);
+  assert.match(html, /class="feature-card feature-card--payment"[\s\S]*?<img class="feature-screenshot" src="img\/qrcard_dark\.jpeg" data-dark-src="img\/qrcard_dark\.jpeg" data-light-src="img\/qrcard\.jpeg" width="1080" height="2340" alt="支付功能截图" \/>/);
+  assert.match(script, /const screenshotImages = document\.querySelectorAll\('\[data-dark-src\]\[data-light-src\]'\);/);
+  assert.match(script, /function applyScreenshotTheme\(theme\)/);
+  assert.match(script, /image\.src = image\.dataset\[`\$\{theme\}Src`\];/);
+  assert.match(script, /image\.dataset\.displayedTheme === 'light'/);
+  assert.doesNotMatch(html, /data-screenshot-src="assets\/feature-/);
+  assert.match(html, /<h2 id="features-title">校园生活，掌上就有。<\/h2>/);
+  assert.doesNotMatch(html, /theme-toggle/);
+  assert.doesNotMatch(html, /aria-disabled="true"/);
+  assert.doesNotMatch(html, /更多下载/);
+  assert.match(script, /const colorScheme = window\.matchMedia\('\(prefers-color-scheme: dark\)'\);/);
+  assert.match(script, /colorScheme\.addEventListener\('change'/);
+  assert.doesNotMatch(script, /localStorage|themeToggle|root\.dataset/);
+  assert.match(css, /prefers-color-scheme: dark/);
+  assert.match(css, /prefers-reduced-motion: reduce/);
+  assert.match(css, /#22c55e/i);
+  assert.match(css, /\.nav-links \{[^}]*display:\s*flex;[^}]*align-items:\s*center;/s);
+  assert.match(css, /\.download-actions \{[^}]*width:\s*fit-content;[^}]*display:\s*flex;[^}]*flex-wrap:\s*wrap;[^}]*gap:\s*20px;/s);
+  assert.match(css, /\.download-button \{[^}]*min-height:\s*52px;[^}]*border-radius:\s*999px;/s);
+  assert.match(css, /\.hero-tagline \{[^}]*margin:\s*24px\s+0\s+28px;[^}]*color:\s*#6b7280;/s);
+  assert.match(css, /@media \(prefers-color-scheme: dark\) \{[\s\S]*\.hero-tagline \{[^}]*color:\s*#aeb6c4;/);
+  assert.doesNotMatch(css, /\.theme-toggle|:root\[data-theme=/);
+  assert.match(css, /\.hero \{[^}]*place-items:\s*center;[^}]*padding:\s*52px\s+clamp\(40px,\s*5vw,\s*80px\);/s);
+  assert.match(css, /\.phone-shell \{[^}]*width:\s*clamp\(230px,\s*calc\(46\.15svh\s*-\s*92px\),\s*300px\);/s);
+  assert.match(css, /@media \(max-width:\s*880px\) \{[\s\S]*\.hero \{[^}]*padding:\s*72px\s+24px\s+68px;/);
+  assert.match(css, /@media \(max-width:\s*880px\) \{[\s\S]*\.hero-layout \{[^}]*grid-template-columns:\s*1fr;[^}]*justify-items:\s*center;[^}]*text-align:\s*center;/);
+  assert.match(css, /@media \(max-width:\s*880px\) \{[\s\S]*\.hero-copy \{[^}]*display:\s*flex;[^}]*align-items:\s*center;/);
+  assert.match(css, /@media \(max-width:\s*880px\) \{[\s\S]*\.hero-device \{[^}]*order:\s*2;/);
+  assert.match(css, /@media \(max-height:\s*700px\) and \(min-width:\s*881px\) \{[\s\S]*\.hero \{[^}]*padding-block:\s*20px;/);
+  assert.match(css, /@media \(max-height:\s*700px\) and \(min-width:\s*881px\) \{[\s\S]*\.download-button \{[^}]*min-height:\s*46px;/);
+  assert.match(css, /\.feature-card \{[^}]*color:\s*var\(--ink\);/s);
+  assert.match(css, /\.feature-phone-screen img:not\(\[hidden\]\)/);
+  assert.match(css, /\.phone-screenshot:not\(\[hidden\]\)/);
+  assert.match(css, /\.phone-screenshot:not\(\[hidden\]\) \{[^}]*object-fit:\s*contain;[^}]*object-position:\s*center top;/s);
+  assert.match(css, /\.phone-screen \{[^}]*aspect-ratio:\s*9\s*\/\s*19\.5;[^}]*height:\s*auto;/s);
+  assert.match(css, /\.feature-phone \{[^}]*border:/s);
+  assert.match(css, /\.feature-shot \{[^}]*width:\s*min\(70%,\s*250px\);[^}]*min-height:\s*250px;[^}]*max-height:\s*333px;[^}]*flex:\s*1\s+1\s+auto;[^}]*overflow:\s*hidden;/s);
+  assert.match(css, /\.feature-phone-screen \{[^}]*aspect-ratio:\s*9\s*\/\s*19\.5;[^}]*height:\s*auto;/s);
+  assert.match(css, /\.feature-phone-screen img:not\(\[hidden\]\) \{[^}]*object-fit:\s*contain;[^}]*object-position:\s*center top;/s);
+  assert.doesNotMatch(css, /\.feature-shot--left \{|\.feature-shot--right \{|\.feature-shot--bottom \{/);
+  assert.match(css, /--page:\s*#f9fafb/);
+  assert.match(css, /--page:\s*#1f2937/);
+  assert.match(css, /\.feature-bento \{[^}]*grid-template-columns:\s*repeat\(auto-fit,/s);
+  assert.match(css, /\.feature-bento \{[^}]*align-items:\s*stretch;/s);
+  assert.match(css, /\.feature-card \{[^}]*justify-content:\s*space-between;/s);
+  assert.match(css, /\.features \{[^}]*min-height:\s*calc\(100svh - 73px\)/s);
+  assert.match(css, /\.features \{[^}]*;\s*height:\s*calc\(100svh - 73px\)/s);
+  assert.match(css, /\.feature-card \{[^}]*background:\s*var\(--surface\)/s);
+  assert.match(css, /\.site-footer a \{[^}]*color:\s*inherit;[^}]*text-decoration:\s*none;/s);
+  assert.doesNotMatch(css, /#e2edff|#fff6dc|#e2f4e8/);
+  assert.match(css, /@media \(max-width: 989px\) and \(min-width: 761px\) \{[\s\S]*\.feature-bento \{[^}]*grid-template-rows:\s*repeat\(2,\s*302px\);[^}]*align-items:\s*stretch;/);
+  assert.match(css, /@media \(max-width: 989px\) and \(min-width: 761px\) \{[\s\S]*\.feature-card--notice \{[^}]*grid-area:\s*1\s*\/\s*1;/);
+  assert.match(css, /\.feature-card--life \{[^}]*grid-area:\s*1\s*\/\s*2\s*\/\s*3\s*\/\s*3;/);
+  assert.match(css, /\.feature-card--payment \{[^}]*grid-area:\s*2\s*\/\s*1;/);
+  assert.match(css, /\.feature-card--notice, \.feature-card--payment \{[^}]*justify-content:\s*flex-start;/s);
+  assert.match(css, /\.feature-card--notice \.feature-shot, \.feature-card--payment \.feature-shot \{[^}]*width:\s*min\(56%,\s*211px\);[^}]*min-height:\s*211px;[^}]*max-height:\s*211px;[^}]*margin:\s*24px\s+auto\s+0;[^}]*flex:\s*0\s+0\s+211px;/s);
+  assert.match(css, /\.feature-card--life \.feature-shot \{[^}]*width:\s*min\(66%,\s*235px\);[^}]*min-height:\s*493px;[^}]*max-height:\s*none;[^}]*flex:\s*0\s+0\s+493px;/s);
+  assert.match(css, /@media \(max-width: 989px\) and \(min-width: 761px\) \{[\s\S]*h1 \{[^}]*font-size:\s*64px;/);
+  assert.doesNotMatch(css, /\.feature-card--life \.feature-shot \{[^}]*aspect-ratio:\s*5\s*\/\s*9;/s);
+  assert.match(css, /@media \(min-width:\s*990px\) \{[\s\S]*\.feature-card--life, \.feature-card--notice, \.feature-card--payment \{[^}]*height:\s*500px;[^}]*min-height:\s*500px;/);
+});

@@ -1,0 +1,51 @@
+.hero { min-height: calc(100svh - 73px); display: grid; place-items: center; padding: 52px clamp(40px, 5vw, 80px); }
+.hero-layout { width: min(100%, 1030px); margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) 360px; align-items: center; gap: clamp(56px, 11vw, 150px); }
+.hero-copy { padding-block: 42px; }
+h1 { margin-bottom: 0; font-size: 78px; font-weight: 700; line-height: 1.08; letter-spacing: 0; }
+h1 span { display: block; background: linear-gradient(105deg, var(--brand), var(--mint) 53%, var(--teal)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero-tagline { margin: 24px 0 28px; color: #6b7280; font-size: 18px; line-height: 1.5; }
+
+.download-actions { width: fit-content; max-width: 100%; display: flex; flex-wrap: wrap; gap: 20px; }
+.download-button { min-height: 52px; padding: 0 18px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; color: var(--ink); border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: 15px; text-decoration: none; transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease; }
+.download-button:hover { color: var(--ink); border-color: color-mix(in srgb, var(--brand), var(--line) 60%); transform: translateY(-1px); }
+.download-button > i { font-size: 20px; }
+.download-button span { font-size: 15px; font-weight: 600; }
+.download-button--android { color: white; border-color: transparent; background: linear-gradient(108deg, var(--brand), var(--teal)); box-shadow: 0 15px 30px rgb(34 197 94 / 18%); }
+.download-button--android:hover { color: white; border-color: transparent; }
+.download-meta { margin: 12px 0 0; color: var(--muted); font-size: 13px; }
+.download-meta a { color: inherit; text-decoration: none; }
+.download-meta a:hover { color: var(--ink); }
+
+.hero-device { display: grid; place-items: center; }
+.phone-shell { position: relative; width: clamp(230px, calc(46.15svh - 92px), 300px); padding: 10px; background: var(--phone); border: 1px solid color-mix(in srgb, var(--phone), white 17%); border-radius: 42px; box-shadow: 0 28px 60px rgb(17 24 39 / 28%); }
+.phone-screen { width: 100%; aspect-ratio: 9 / 19.5; height: auto; overflow: hidden; border-radius: 34px; background: var(--surface); }
+.phone-screenshot:not([hidden]) { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center top; }
+
+@media (max-width: 880px) {
+  .hero { padding: 72px 24px 68px; }
+  .hero-layout { grid-template-columns: 1fr; gap: 46px; justify-items: center; text-align: center; }
+  .hero-copy { padding: 0; display: flex; flex-direction: column; align-items: center; }
+  .hero-device { order: 2; }
+  .phone-shell { width: min(260px, 74vw); }
+}
+
+@media (max-width: 760px) {
+  h1 { font-size: 62px; }
+}
+
+@media (max-width: 989px) and (min-width: 761px) {
+  h1 { font-size: 64px; }
+}
+
+@media (max-height: 700px) and (min-width: 881px) {
+  .hero { padding-block: 20px; }
+  h1 { font-size: 56px; }
+  .hero-copy { padding-block: 0; }
+  .download-actions { gap: 14px; }
+  .download-button { min-height: 46px; }
+}
+
+@media (prefers-color-scheme: dark) {
+  .phone-screen { background: #1f2937; }
+  .hero-tagline { color: #aeb6c4; }
+}
