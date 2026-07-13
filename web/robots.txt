@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://uwh.cold04.com/sitemap.xml

@@ -40,6 +40,6 @@
       "新增 Android 多 ABI 更新包选择，按设备架构下载对应 APK。",
       "完善 release 自动清单生成，补充 armeabi-v7a、arm64-v8a 与 x86_64 下载信息。"
     ],
-    "altSourceUrl": "https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/master/source.json"
+    "altSourceUrl": "https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/main/source.json"
   }
 }

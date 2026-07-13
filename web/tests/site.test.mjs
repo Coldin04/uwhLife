@@ -5,12 +5,14 @@ import test from 'node:test';
 const root = new URL('../', import.meta.url);
 
 test('landing page uses a split app hero and focuses on product features', async () => {
-  const [html, baseCss, heroCss, featuresCss, script] = await Promise.all([
+  const [html, baseCss, heroCss, featuresCss, script, robots, sitemap] = await Promise.all([
     readFile(new URL('index.html', root), 'utf8'),
     readFile(new URL('styles/base.css', root), 'utf8'),
     readFile(new URL('styles/hero.css', root), 'utf8'),
     readFile(new URL('styles/features.css', root), 'utf8'),
     readFile(new URL('script.js', root), 'utf8'),
+    readFile(new URL('robots.txt', root), 'utf8'),
+    readFile(new URL('sitemap.xml', root), 'utf8'),
   ]);
   const css = [baseCss, heroCss, featuresCss].join('\n');
 
@@ -22,6 +24,14 @@ test('landing page uses a split app hero and focuses on product features', async
   assert.match(html, /<script src="script\.js\?v=theme-screenshots-2" defer><\/script>/);
   assert.match(html, /bootstrap-icons/);
   assert.match(html, /<p class="hero-tagline">更易用的芜湖学院客户端<\/p>/);
+  assert.match(html, /<footer class="site-footer">[\s\S]*?非官方项目，与校芜忧应用并非同一产品/);
+  assert.match(html, /<link rel="canonical" href="https:\/\/uwh\.cold04\.com\/" \/>/);
+  assert.match(html, /<meta property="og:url" content="https:\/\/uwh\.cold04\.com\/" \/>/);
+  assert.match(html, /"disambiguatingDescription": "芜忧皖江与官方校芜忧应用并非同一产品。"/);
+  assert.match(html, /"applicationCategory": "EducationalApplication"/);
+  assert.match(robots, /^User-agent: \*\nAllow: \/\n\nSitemap: https:\/\/uwh\.cold04\.com\/sitemap\.xml\n$/);
+  assert.match(sitemap, /<loc>https:\/\/uwh\.cold04\.com\/<\/loc>/);
+  assert.equal((sitemap.match(/<url>/g) ?? []).length, 1);
   assert.match(html, /class="hero-layout"/);
   assert.match(html, /class="phone-shell"/);
   assert.match(html, /<img class="phone-screenshot" src="img\/homepage_dark\.jpeg" data-dark-src="img\/homepage_dark\.jpeg" data-light-src="img\/homepage\.jpeg" width="1080" height="2340" alt="芜忧皖江应用截图" \/>/);
@@ -29,7 +39,7 @@ test('landing page uses a split app hero and focuses on product features', async
   assert.match(html, /href="https:\/\/github\.com\/Coldin04\/uwhLife"/);
   assert.match(html, /href="https:\/\/gitee\.com\/coldin04\/uwhlife_source\/releases"/);
   assert.match(html, /href="https:\/\/gitee\.com\/coldin04\/uwhlife_source\/releases\/download\/latest\/UWHLife_android_arm64-v8a\.apk"/);
-  assert.match(html, /href="https:\/\/stikstore\.app\/altdirect\/\?url=https:\/\/raw\.giteeusercontent\.com\/coldin04\/uwhlife_source\/raw\/master\/source\.json"/);
+  assert.match(html, /href="https:\/\/stikstore\.app\/altdirect\/\?url=https:\/\/raw\.giteeusercontent\.com\/coldin04\/uwhlife_source\/raw\/main\/source\.json"/);
   assert.match(html, /href="https:\/\/gitee\.com\/coldin04\/uwhlife_source\/releases\/download\/latest\/UWHLife_unsigned\.ipa"/);
   assert.match(html, /class="download-button download-button--android"/);
   assert.match(html, /class="download-button download-button--ios"/);
@@ -46,7 +56,7 @@ test('landing page uses a split app hero and focuses on product features', async
   assert.match(html, /class="feature-card feature-card--notice"/);
   assert.match(html, /class="feature-card feature-card--payment"/);
   assert.match(html, /© 2026 uwhLife contributors · MIT License/);
-  assert.match(html, /仅供学习使用。/);
+  assert.match(html, /供学习使用/);
   assert.match(html, /href="https:\/\/cold04\.com"/);
   assert.equal((html.match(/class="feature-phone"/g) ?? []).length, 3);
   assert.match(html, /class="feature-card feature-card--life"[\s\S]*?<img class="feature-screenshot" src="img\/applist_dark\.jpeg" data-dark-src="img\/applist_dark\.jpeg" data-light-src="img\/applist\.jpeg" width="1080" height="2340" alt="便捷生活功能截图" \/>/);

@@ -8,7 +8,7 @@ uwhLife / 芜忧皖江 是一个面向芜湖学院校园生活场景的 Flutter 
 
 
 <div align="center" style="display: flex; justify-content: center; align-items: center; gap: 16px; flex-wrap: wrap;">
-  <a href="https://stikstore.app/altdirect/?url=https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/master/source.json" target="_blank">
+  <a href="https://stikstore.app/altdirect/?url=https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/main/source.json" target="_blank">
     <img src="https://raw.githubusercontent.com/stikstore/altdirect/main/assets/png/AltSource_Blue.png" alt="Add AltSource" width="200">
   </a>
   <a href="https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_unsigned.ipa" target="_blank">

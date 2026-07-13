@@ -16,7 +16,7 @@ class UpdateService {
       _cacheDirectory = cacheDirectory;
 
   static const manifestUrls = [
-    'https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/master/update.json',
+    'https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/main/update.json',
     'https://raw.githubusercontent.com/coldin04/uwhLife/main/update.json',
   ];
 

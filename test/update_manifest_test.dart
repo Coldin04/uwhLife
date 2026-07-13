@@ -42,7 +42,7 @@ void main() {
     "buildVersion": "11",
     "title": "发现新版本",
     "notes": ["优化首页加载体验"],
-    "altSourceUrl": "https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/master/source.json"
+    "altSourceUrl": "https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/main/source.json"
   }
 }
 ''';
@@ -62,7 +62,7 @@ void main() {
     expect(manifest.ios.buildVersion, '11');
     expect(
       manifest.ios.altSourceUrl,
-      'https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/master/source.json',
+      'https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/main/source.json',
     );
   });
 

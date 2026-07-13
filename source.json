@@ -2,7 +2,7 @@
   "name": "芜忧皖江",
   "subtitle": "芜湖学院校园生活助手",
   "description": "芜湖学院校园APP第三方实现，提供一键开门、课表查看、校园活动等功能。",
-  "iconURL": "https://gitee.com/coldin04/uwhlife_source/raw/master/assets/icon.png",
+  "iconURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/assets/icon.png",
   "website": "https://gitee.com/coldin04/uwhlife_source",
   "tintColor": "#2196F3",
   "apps": [
@@ -12,22 +12,22 @@
       "developerName": "coldin04",
       "subtitle": "芜湖学院校园生活助手",
       "localizedDescription": "芜湖学院校园APP第三方实现。\n\n功能特性：\n- 🚪 一键开门：蓝牙快速开门，无需等待\n- 📅 快速查看课表：清晰直观的课程安排\n- 🎉 快速加入校园活动：一键报名，不错过精彩\n- 🚿 开水洗浴：蓝牙控制热水设备\n- 📱 轻量快速：告别臃肿，极速启动",
-      "iconURL": "https://gitee.com/coldin04/uwhlife_source/raw/master/assets/icon.png",
+      "iconURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/assets/icon.png",
       "tintColor": "#2196F3",
       "category": "lifestyle",
       "screenshots": [
         {
-          "imageURL": "https://gitee.com/coldin04/uwhlife_source/raw/master/assets/screenshot1.png",
+          "imageURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/assets/screenshot1.png",
           "width": 750,
           "height": 1334
         },
         {
-          "imageURL": "https://gitee.com/coldin04/uwhlife_source/raw/master/assets/screenshot2.png",
+          "imageURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/assets/screenshot2.png",
           "width": 750,
           "height": 1334
         },
         {
-          "imageURL": "https://gitee.com/coldin04/uwhlife_source/raw/master/assets/screenshot3.png",
+          "imageURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/assets/screenshot3.png",
           "width": 750,
           "height": 1334
         }

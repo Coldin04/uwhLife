@@ -116,7 +116,7 @@ void main() {
     'title': title,
     'notes': notes,
     'altSourceUrl':
-        'https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/master/source.json',
+        'https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/main/source.json',
   };
   updateFile.writeAsStringSync(_prettyJson(update));
 
