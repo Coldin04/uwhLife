@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+enum AppNativeDestination { schedule }
+
 const Map<String, IconData> iconRegistry = <String, IconData>{
   'receipt_long_rounded': Icons.receipt_long_rounded,
   'handshake_rounded': Icons.handshake_rounded,
@@ -64,6 +66,7 @@ class AppEntry {
     required this.url,
     this.topSafeArea = true,
     this.bottomSafeArea = true,
+    this.nativeDestination,
   }) : lightColor = color.withValues(alpha: 0.14);
 
   factory AppEntry.fromJson(Map<String, dynamic> j) {
@@ -77,6 +80,10 @@ class AppEntry {
       url: (j['url'] as String?) ?? '',
       topSafeArea: (j['topSafeArea'] as bool?) ?? true,
       bottomSafeArea: (j['bottomSafeArea'] as bool?) ?? true,
+      nativeDestination: switch (j['nativeDestination']) {
+        'schedule' => AppNativeDestination.schedule,
+        _ => null,
+      },
     );
   }
 
@@ -88,4 +95,5 @@ class AppEntry {
   final String url;
   final bool topSafeArea;
   final bool bottomSafeArea;
+  final AppNativeDestination? nativeDestination;
 }

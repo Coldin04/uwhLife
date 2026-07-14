@@ -1,3 +1,4 @@
+import EventKit
 import Flutter
 import UIKit
 import WebKit
@@ -7,6 +8,10 @@ import webview_flutter_wkwebview
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private let wkInjectorChannelName = "uwhlife/wkwebview_injector"
   private let browserDataChannelName = "uwhlife/browser_data"
+  private let calendarChannelName = "uwhlife/calendar"
+  private let documentExportChannelName = "uwhlife/document_export"
+  private let eventStore = EKEventStore()
+  private var documentExportDelegate: DocumentExportDelegate?
   private weak var webViewPluginRegistry: FlutterPluginRegistry?
 
   override func application(
@@ -39,6 +44,163 @@ import webview_flutter_wkwebview
     browserDataChannel.setMethodCallHandler { [weak self] call, result in
       self?.handleBrowserData(call: call, result: result)
     }
+
+    let calendarChannel = FlutterMethodChannel(
+      name: calendarChannelName,
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
+    calendarChannel.setMethodCallHandler { [weak self] call, result in
+      self?.handleCalendar(call: call, result: result)
+    }
+
+    let documentExportChannel = FlutterMethodChannel(
+      name: documentExportChannelName,
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
+    documentExportChannel.setMethodCallHandler { [weak self] call, result in
+      self?.handleDocumentExport(call: call, result: result)
+    }
+  }
+
+  private func handleDocumentExport(call: FlutterMethodCall, result: @escaping FlutterResult) {
+    guard call.method == "exportFile" else {
+      result(FlutterMethodNotImplemented)
+      return
+    }
+    guard
+      let args = call.arguments as? [String: Any],
+      let sourcePath = args["sourcePath"] as? String
+    else {
+      result(FlutterError(code: "bad_args", message: "Missing sourcePath", details: nil))
+      return
+    }
+    let sourceURL = URL(fileURLWithPath: sourcePath)
+    guard FileManager.default.fileExists(atPath: sourceURL.path) else {
+      result(FlutterError(code: "file_missing", message: "Export file not found", details: nil))
+      return
+    }
+    guard documentExportDelegate == nil else {
+      result(FlutterError(code: "export_busy", message: "Another export is active", details: nil))
+      return
+    }
+    guard let presenter = topViewController() else {
+      result(FlutterError(code: "no_presenter", message: "No active view controller", details: nil))
+      return
+    }
+
+    let picker: UIDocumentPickerViewController
+    if #available(iOS 14.0, *) {
+      picker = UIDocumentPickerViewController(forExporting: [sourceURL], asCopy: true)
+    } else {
+      picker = UIDocumentPickerViewController(url: sourceURL, in: .exportToService)
+    }
+    let delegate = DocumentExportDelegate { [weak self] error in
+      self?.documentExportDelegate = nil
+      if let error {
+        result(error)
+      } else {
+        result(nil)
+      }
+    }
+    documentExportDelegate = delegate
+    picker.delegate = delegate
+    presenter.present(picker, animated: true)
+  }
+
+  private func handleCalendar(call: FlutterMethodCall, result: @escaping FlutterResult) {
+    guard call.method == "addEvents" else {
+      result(FlutterMethodNotImplemented)
+      return
+    }
+    guard
+      let args = call.arguments as? [String: Any],
+      let rawEvents = args["events"] as? [[String: Any]],
+      !rawEvents.isEmpty
+    else {
+      result(FlutterError(code: "bad_args", message: "Missing events", details: nil))
+      return
+    }
+
+    requestCalendarWriteAccess { [weak self] granted, error in
+      guard let self else { return }
+      if let error {
+        DispatchQueue.main.async {
+          result(FlutterError(code: "permission_failed", message: error.localizedDescription, details: nil))
+        }
+        return
+      }
+      guard granted else {
+        DispatchQueue.main.async {
+          result(FlutterError(code: "permission_denied", message: "日历写入权限未开启", details: nil))
+        }
+        return
+      }
+      do {
+        guard let calendar = self.eventStore.defaultCalendarForNewEvents else {
+          throw CalendarExportError.noDefaultCalendar
+        }
+        var savedCount = 0
+        for rawEvent in rawEvents {
+          guard
+            let title = rawEvent["title"] as? String,
+            let startMilliseconds = rawEvent["startMilliseconds"] as? NSNumber,
+            let endMilliseconds = rawEvent["endMilliseconds"] as? NSNumber
+          else {
+            continue
+          }
+          let start = Date(timeIntervalSince1970: startMilliseconds.doubleValue / 1000)
+          let end = Date(timeIntervalSince1970: endMilliseconds.doubleValue / 1000)
+          guard end > start else { continue }
+
+          let event = EKEvent(eventStore: self.eventStore)
+          event.calendar = calendar
+          event.title = title
+          event.startDate = start
+          event.endDate = end
+          event.timeZone = TimeZone(identifier: "Asia/Shanghai")
+          event.location = rawEvent["location"] as? String
+          event.notes = rawEvent["notes"] as? String
+          try self.eventStore.save(event, span: .thisEvent, commit: false)
+          savedCount += 1
+        }
+        try self.eventStore.commit()
+        DispatchQueue.main.async { result(savedCount) }
+      } catch {
+        self.eventStore.reset()
+        DispatchQueue.main.async {
+          result(FlutterError(code: "calendar_save_failed", message: error.localizedDescription, details: nil))
+        }
+      }
+    }
+  }
+
+  private func requestCalendarWriteAccess(
+    completion: @escaping (Bool, Error?) -> Void
+  ) {
+    if #available(iOS 17.0, *) {
+      eventStore.requestWriteOnlyAccessToEvents(completion: completion)
+    } else {
+      eventStore.requestAccess(to: .event, completion: completion)
+    }
+  }
+
+  private func topViewController() -> UIViewController? {
+    let root = UIApplication.shared.connectedScenes
+      .compactMap { $0 as? UIWindowScene }
+      .flatMap(\.windows)
+      .first(where: \.isKeyWindow)?
+      .rootViewController
+    var current = root
+    while let presented = current?.presentedViewController {
+      current = presented
+    }
+    if let navigation = current as? UINavigationController {
+      return navigation.visibleViewController ?? navigation
+    }
+    if let tabs = current as? UITabBarController {
+      return tabs.selectedViewController ?? tabs
+    }
+    return current
   }
 
   private func handleWebViewInjection(call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -204,5 +366,42 @@ import webview_flutter_wkwebview
     default:
       result(FlutterMethodNotImplemented)
     }
+  }
+}
+
+private enum CalendarExportError: LocalizedError {
+  case noDefaultCalendar
+
+  var errorDescription: String? {
+    switch self {
+    case .noDefaultCalendar:
+      return "没有可写入的默认日历"
+    }
+  }
+}
+
+private final class DocumentExportDelegate: NSObject, UIDocumentPickerDelegate {
+  init(completion: @escaping (FlutterError?) -> Void) {
+    self.completion = completion
+  }
+
+  private let completion: (FlutterError?) -> Void
+  private var completed = false
+
+  func documentPicker(
+    _ controller: UIDocumentPickerViewController,
+    didPickDocumentsAt urls: [URL]
+  ) {
+    finish(nil)
+  }
+
+  func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+    finish(nil)
+  }
+
+  private func finish(_ error: FlutterError?) {
+    guard !completed else { return }
+    completed = true
+    completion(error)
   }
 }

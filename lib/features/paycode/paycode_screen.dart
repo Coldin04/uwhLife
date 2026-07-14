@@ -37,7 +37,7 @@ class _PayCodeScreenState extends State<PayCodeScreen>
     _refreshTimer?.cancel();
     _statusTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
-    PayCodeApi.reset();
+    unawaited(PayCodeApi.dispose());
     super.dispose();
   }
 

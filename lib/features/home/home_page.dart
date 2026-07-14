@@ -8,6 +8,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../../core/platform/browser_data_cleaner.dart';
 import '../../core/storage/login_state_store.dart';
 import '../../core/storage/portal_user_store.dart';
+import '../door/door_api.dart';
 import 'widgets/home_cards.dart';
 import 'widgets/status_indicator.dart';
 
@@ -41,32 +42,13 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   static const _hitokotoCacheKey = 'home_hitokoto_text';
   static const _hitokotoUrl = 'https://v1.hitokoto.cn/?encode=json&c=i&c=k';
   static const _defaultHitokoto = '读万卷书，行万里路';
-  static const String _doorSubmitScript = r'''
-(function(){
-  var form = document.getElementById('aspnetForm');
-  if (!form) return;
-  ['x','y'].forEach(function(s){
-    var n = 'ctl00$btnOpen.' + s;
-    if (!form.querySelector('input[name="' + n + '"]')){
-      var i = document.createElement('input');
-      i.type = 'hidden'; i.name = n; i.value = '1';
-      form.appendChild(i);
-    }
-  });
-  form.submit();
-})();
-''';
-
   bool _loggedIn = false;
   String _hitokoto = _defaultHitokoto;
   late final WebViewController _probeController;
   Completer<({String body, String url})>? _probeCompleter;
   bool _probing = false;
 
-  WebViewController? _doorController;
-  Completer<String?>? _doorCompleter;
   bool _doorBusy = false;
-  int _doorStep = 0;
   String? _doorMessage;
   Timer? _doorMessageTimer;
 
@@ -187,53 +169,10 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
         return;
       }
 
-      var bodyText = res.body;
-      if (bodyText.startsWith('"')) {
-        try {
-          final unwrapped = jsonDecode(bodyText);
-          if (unwrapped is String) bodyText = unwrapped;
-        } catch (_) {}
+      if (await PortalUserStore.saveFromLoginUserResponse(res.body)) {
+        await LoginStateStore.markLoggedIn();
+        if (mounted) await _loadLoginState();
       }
-      if (bodyText.isEmpty) return;
-
-      try {
-        final parsed = jsonDecode(bodyText);
-        if (parsed is Map && parsed['data'] is Map) {
-          final data = (parsed['data'] as Map).cast<String, dynamic>();
-          final userName = data['userName']?.toString();
-          if (userName != null && userName.isNotEmpty) {
-            String? className;
-            final orgs = data['orgs'];
-            if (orgs is List && orgs.isNotEmpty) {
-              final first = orgs.first;
-              if (first is Map) {
-                final name = first['name']?.toString();
-                if (name != null && name.isNotEmpty) className = name;
-              }
-            }
-            if (className == null) {
-              final deptRaw = data['deptName']?.toString();
-              if (deptRaw != null && deptRaw.isNotEmpty) {
-                final segs = deptRaw
-                    .split('/')
-                    .where((s) => s.isNotEmpty)
-                    .toList();
-                if (segs.isNotEmpty) className = segs.last;
-              }
-            }
-
-            await LoginStateStore.markLoggedIn();
-            await PortalUserStore.save(
-              userName: userName,
-              userAccount: data['userAccount']?.toString(),
-              categoryName: data['categoryName']?.toString(),
-              className: className,
-            );
-            if (mounted) await _loadLoginState();
-            return;
-          }
-        }
-      } catch (_) {}
     } finally {
       _probing = false;
     }
@@ -312,62 +251,6 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
     ).showSnackBar(const SnackBar(content: Text('已清除登录状态')));
   }
 
-  Future<WebViewController> _ensureDoorController() async {
-    final existing = _doorController;
-    if (existing != null) return existing;
-
-    final controller = WebViewController();
-    controller
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (url) async {
-            final c = _doorCompleter;
-            if (c == null || c.isCompleted) return;
-            final uri = Uri.tryParse(url);
-            final host = uri?.host.toLowerCase() ?? '';
-
-            if (_doorStep == 1) {
-              if (host == 'ids.uwh.edu.cn') {
-                c.complete('__needs_login__');
-                return;
-              }
-              _doorStep = 2;
-              try {
-                await controller.runJavaScript(_doorSubmitScript);
-              } catch (_) {
-                if (!c.isCompleted) c.complete(null);
-              }
-            } else if (_doorStep == 2) {
-              try {
-                final r = await controller.runJavaScriptReturningResult(
-                  "(function(){var e=document.getElementById('ctl00_lblInfo');return e?(e.textContent||'').trim():'';})()",
-                );
-                var text = r.toString();
-                if (text.startsWith('"')) {
-                  try {
-                    final unwrapped = jsonDecode(text);
-                    if (unwrapped is String) text = unwrapped;
-                  } catch (_) {}
-                }
-                c.complete(text);
-              } catch (_) {
-                c.complete('');
-              }
-            }
-          },
-          onWebResourceError: (_) {
-            final c = _doorCompleter;
-            if (c != null && !c.isCompleted) c.complete(null);
-          },
-        ),
-      );
-
-    _doorController = controller;
-    if (mounted) setState(() {});
-    return controller;
-  }
-
   Future<void> _triggerDoor() async {
     if (_doorBusy) return;
     _doorMessageTimer?.cancel();
@@ -378,31 +261,26 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final messenger = ScaffoldMessenger.of(context);
 
     try {
-      final controller = await _ensureDoorController();
-      _doorStep = 1;
-      _doorCompleter = Completer<String?>();
-      await controller.loadRequest(
-        Uri.parse('http://opendoor.uwh.edu.cn:46010/Default.aspx'),
-      );
-      final result = await _doorCompleter!.future.timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => null,
-      );
+      final result = await DoorApi.openDoor();
 
       if (!mounted) return;
-      if (result == '__needs_login__') {
-        _showDoorMessage('需要先登录统一门户');
-        messenger.hideCurrentSnackBar();
-        messenger.showSnackBar(
-          SnackBar(
-            content: const Text('需要先登录统一门户'),
-            action: SnackBarAction(label: '去登录', onPressed: _openPortal),
-          ),
-        );
-      } else if (result == null) {
-        _showDoorMessage('开门超时，请重试');
-      } else {
-        _showDoorMessage(result.isEmpty ? '已发送开门指令' : result);
+      switch (result.status) {
+        case DoorOpenStatus.opened:
+          _showDoorMessage(result.message);
+          break;
+        case DoorOpenStatus.needsLogin:
+          _showDoorMessage(result.message);
+          messenger.hideCurrentSnackBar();
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(result.message),
+              action: SnackBarAction(label: '去登录', onPressed: _openPortal),
+            ),
+          );
+          break;
+        case DoorOpenStatus.failed:
+          _showDoorMessage(result.message);
+          break;
       }
     } finally {
       if (mounted) {
@@ -412,7 +290,6 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
       } else {
         _doorBusy = false;
       }
-      _doorStep = 0;
     }
   }
 
@@ -619,19 +496,6 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
             ),
           ),
         ),
-        if (_doorController != null)
-          Positioned(
-            left: -10,
-            top: -10,
-            width: 1,
-            height: 1,
-            child: IgnorePointer(
-              child: Opacity(
-                opacity: 0,
-                child: WebViewWidget(controller: _doorController!),
-              ),
-            ),
-          ),
       ],
     );
   }

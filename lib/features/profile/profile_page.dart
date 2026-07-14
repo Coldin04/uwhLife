@@ -8,6 +8,7 @@ import '../../core/storage/portal_credentials.dart';
 import '../../core/storage/portal_user_store.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/route_utils.dart';
+import '../auth/ids_login_page.dart';
 import '../update/android_version_code.dart';
 import '../paycode/pay_result_sheet.dart';
 import '../update/update_dialogs.dart';
@@ -65,16 +66,23 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
   }
 
   Future<void> _openPortal() async {
-    await Navigator.of(context).push<String?>(
-      createSlideFadeRoute(
-        const PortalWebViewPage(
-          title: '统一门户',
-          icon: Icons.account_circle_outlined,
-          initialUrl:
-              'https://ids.uwh.edu.cn/authserver/login?service=https%3A%2F%2Fehall.uwh.edu.cn%2Flogin',
+    final loggedIn = await LoginStateStore.readLoggedIn();
+    if (!mounted) return;
+    if (loggedIn) {
+      await Navigator.of(context).push<String?>(
+        createSlideFadeRoute(
+          const PortalWebViewPage(
+            title: '统一门户',
+            icon: Icons.account_circle_outlined,
+            initialUrl: 'https://ehall.uwh.edu.cn/login',
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      await Navigator.of(
+        context,
+      ).push<bool>(createSlideFadeRoute(const IdsLoginPage()));
+    }
     if (!mounted) return;
     await _refresh();
   }

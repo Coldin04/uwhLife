@@ -9,7 +9,7 @@
   {"name": "座位预约",       "category": "教务",   "icon": "event_seat_rounded",         "color": "3B82F6", "url": "http://223.241.72.135:9091/tsgintf/main4/seat/index"},
   {"name": "考试安排",       "category": "教务",   "icon": "event_note_rounded",         "color": "EF4444", "url": "http://ehall.uwh.edu.cn/jwmobile/index#/kwApp/jkapcx"},
   {"name": "教学评价",       "category": "教务",   "icon": "rate_review_rounded",        "color": "F59E0B", "url": "https://ehall.uwh.edu.cn/jwmobile/auth/index?service=pjApp/xspj/pjsy&serviceKey=PJ.XSPJ"},
-  {"name": "我的课表",       "category": "教务",   "icon": "calendar_month_rounded",     "color": "2563EB", "url": "http://ehall.uwh.edu.cn/jwmobile/auth/index?serviceKey=PK.WDKB", "topSafeArea": false, "bottomSafeArea": false},
+  {"name": "我的课表",       "category": "教务",   "icon": "calendar_month_rounded",     "color": "2563EB", "url": "http://ehall.uwh.edu.cn/jwmobile/auth/index?serviceKey=PK.WDKB", "nativeDestination": "schedule"},
   {"name": "考试安排(学)",   "category": "教务",   "icon": "event_available_rounded",    "color": "DC2626", "url": "http://ehall.uwh.edu.cn/jwmobile/auth/index?service=kwApp/ksapcx&serviceKey=KW.KSAPCX"},
   {"name": "成绩查询",       "category": "教务",   "icon": "grade_rounded",              "color": "F97316", "url": "http://ehall.uwh.edu.cn/jwmobile/auth/index?service=kwApp/cjcx&serviceKey=KW.CJCX"},
   {"name": "缓考申请",       "category": "教务",   "icon": "schedule_send_rounded",      "color": "EAB308", "url": "http://ehall.uwh.edu.cn/jwmobile/auth/index?service=kwApp/hksq&serviceKey=KW.HKSQ"},

@@ -5,13 +5,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/deep_links/deep_link_destination.dart';
+import '../../core/storage/login_state_store.dart';
 import '../../core/utils/route_utils.dart';
 import '../apps/app_list_page.dart';
 import '../apps/models/app_entry.dart';
+import '../auth/ids_login_page.dart';
 import '../home/home_page.dart';
 import '../message/message_list_page.dart';
 import '../paycode/paycode_screen.dart';
 import '../profile/profile_page.dart';
+import '../schedule/schedule_page.dart';
 import '../update/update_dialogs.dart';
 import '../webview/portal_webview_page.dart';
 
@@ -131,6 +134,10 @@ class _RootPageState extends State<RootPage>
   }
 
   void _openAppEntry(AppEntry app) {
+    if (app.nativeDestination == AppNativeDestination.schedule) {
+      unawaited(_openSchedule());
+      return;
+    }
     Navigator.of(context).push(
       createSlideFadeRoute(
         PortalWebViewPage(
@@ -146,16 +153,24 @@ class _RootPageState extends State<RootPage>
   }
 
   Future<void> _openPortal() async {
-    await Navigator.of(context).push<String?>(
-      createSlideFadeRoute(
-        const PortalWebViewPage(
-          title: '统一门户',
-          icon: Icons.account_circle_outlined,
-          initialUrl:
-              'https://ids.uwh.edu.cn/authserver/login?service=https%3A%2F%2Fehall.uwh.edu.cn%2Flogin',
+    final loggedIn = await LoginStateStore.readLoggedIn();
+    if (!mounted) return;
+    if (loggedIn) {
+      await Navigator.of(context).push<String?>(
+        createSlideFadeRoute(
+          const PortalWebViewPage(
+            title: '统一门户',
+            icon: Icons.account_circle_outlined,
+            initialUrl: 'https://ehall.uwh.edu.cn/login',
+          ),
         ),
-      ),
-    );
+      );
+      return;
+    }
+
+    await Navigator.of(
+      context,
+    ).push<bool>(createSlideFadeRoute(const IdsLoginPage()));
   }
 
   Future<void> _openPayCode() async {
@@ -165,19 +180,9 @@ class _RootPageState extends State<RootPage>
   }
 
   Future<void> _openSchedule() async {
-    await Navigator.of(context).push(
-      createSlideFadeRoute(
-        const PortalWebViewPage(
-          title: '我的课表',
-          icon: Icons.calendar_month_outlined,
-          initialUrl:
-              'http://ehall.uwh.edu.cn/jwmobile/auth/index?serviceKey=PK.WDKB',
-          topSafeArea: false,
-          bottomSafeArea: false,
-          accentColor: Color(0xFF4A8AF4),
-        ),
-      ),
-    );
+    await Navigator.of(
+      context,
+    ).push(createSlideFadeRoute(const SchedulePage()));
   }
 
   Future<void> _openClassroom() async {

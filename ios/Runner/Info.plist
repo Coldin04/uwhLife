@@ -79,6 +79,10 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>用于扫描洗浴 / 智慧课堂等校园服务的二维码</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>用于将课程安排添加到系统日历。</string>
+	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+	<string>用于将课程安排添加到系统日历。</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>用于连接开水洗浴等校园蓝牙设备并完成离线开阀</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>

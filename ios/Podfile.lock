@@ -67,6 +67,8 @@ PODS:
     - FlutterMacOS
     - Protobuf (~> 3.5)
     - SwiftProtobuf (~> 1.0)
+  - share_plus (0.0.1):
+    - Flutter
   - shared_preferences_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -83,6 +85,7 @@ DEPENDENCIES:
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
   - reactive_ble_mobile (from `.symlinks/plugins/reactive_ble_mobile/darwin`)
+  - share_plus (from `.symlinks/plugins/share_plus/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - webview_flutter_wkwebview (from `.symlinks/plugins/webview_flutter_wkwebview/darwin`)
 
@@ -118,6 +121,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/permission_handler_apple/ios"
   reactive_ble_mobile:
     :path: ".symlinks/plugins/reactive_ble_mobile/darwin"
+  share_plus:
+    :path: ".symlinks/plugins/share_plus/ios"
   shared_preferences_foundation:
     :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
   webview_flutter_wkwebview:
@@ -144,6 +149,7 @@ SPEC CHECKSUMS:
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   Protobuf: 8d5596f7468be5400861a6bbfb2dfe9d0d1cde34
   reactive_ble_mobile: ea97709e18fa6f0b0592909725d7ae7e1c595b64
+  share_plus: 50da8cb520a8f0f65671c6c6a99b3617ed10a58a
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
   SwiftProtobuf: 3fafd1b2fb97e6d95ad9c8adb2215da9afec7c83
   webview_flutter_wkwebview: 8ebf4fded22593026f7dbff1fbff31ea98573c8d

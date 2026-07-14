@@ -14,6 +14,9 @@ uwhLife / 芜忧皖江 是一个面向芜湖学院校园生活场景的 Flutter 
   <a href="https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_unsigned.ipa" target="_blank">
     <img src="https://raw.githubusercontent.com/stikstore/altdirect/main/assets/png/Download_Blue.png" alt="Download .ipa" width="200">
   </a>
+  <a href="https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk" target="_blank">
+    <img src="https://img.shields.io/badge/Download-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Download Android APK" width="200">
+  </a>
 </div>
 
 ## 功能概览
@@ -26,6 +29,14 @@ uwhLife / 芜忧皖江 是一个面向芜湖学院校园生活场景的 Flutter 
 - 深链接：支持从系统链接进入开门、付款码、洗浴等目标页。
 - 本地状态：保存登录状态、门户用户信息和调试开关。
 - Android/iOS：包含原生平台桥接、iOS no-sign 打包脚本和 Android release 构建配置。
+
+## 更新日志
+
+### 1.3.0
+
+- 全新的课表系统：课表现在以应用原生界面显示，并支持查看更多课程隐藏信息。
+- 优化门锁响应体验，开门流程更顺畅好用。
+- 解决了一些已知问题。
 
 ## 项目结构
 
@@ -66,6 +77,13 @@ uwhLife / 芜忧皖江 是一个面向芜湖学院校园生活场景的 Flutter 
 - `flutter_lints`：推荐 lint 规则。
 - `package_info_plus_platform_interface`、`webview_flutter_platform_interface`：测试中的平台接口替身。
 
+## 致谢
+
+- [自在东湖](https://chilleast.soilzhu.su/)：为本项目提供了灵感。
+- [SleepIn 课程表](https://github.com/Kurosu-Ti01/SleepIn)：为本应用课表模块的界面设计提供了思路；本项目未参考或使用其相关代码。
+- [Flutter](https://flutter.dev/) 与 [Dart](https://dart.dev/)：提供跨平台应用框架与语言基础。
+- `webview_flutter`、`mobile_scanner`、`qr_flutter`、`flutter_reactive_ble`、`permission_handler`、`flutter_secure_storage`、`shared_preferences`、`share_plus` 等开源组件：为校园服务页面、扫码、蓝牙、权限、本地存储和文件分享能力提供支持。
+
 ## 本地开发
 
 准备 Flutter stable 环境后执行：
@@ -86,6 +104,12 @@ flutter run
 
 ```bash
 flutter build apk --release --split-per-abi
+```
+
+课表默认缓存 7 天。构建时可通过 `SCHEDULE_CACHE_TTL_DAYS` 修改失效天数，设为 `0` 可让每次进入课表时都重新请求：
+
+```bash
+flutter build apk --release --dart-define=SCHEDULE_CACHE_TTL_DAYS=3
 ```
 
 构建 iOS no-sign App：

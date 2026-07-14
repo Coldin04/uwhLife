@@ -289,11 +289,37 @@ class PayCodeApi {
     }
   }
 
-  static void reset() {
+  /// Stops the hidden payment-page runtime before dropping its controller.
+  ///
+  /// The payment H5 owns its own QR refresh timers. Clearing the Dart static
+  /// reference alone leaves that JavaScript page alive on some platforms.
+  static Future<void> dispose() async {
+    final controller = _webView;
     _webView = null;
     _ready = false;
     _userName = null;
     _lastResult = null;
+    if (controller == null) return;
+
+    try {
+      await controller.runJavaScript(r'''
+        try {
+          if (typeof vueObj !== 'undefined' && vueObj) {
+            if (typeof vueObj.clearTimeout === 'function') vueObj.clearTimeout();
+            if (typeof vueObj.$destroy === 'function') vueObj.$destroy();
+          }
+          if (typeof timerResult !== 'undefined' && timerResult) {
+            clearTimeout(timerResult);
+            timerResult = null;
+          }
+          window.stop();
+        } catch (_) {}
+      ''');
+    } catch (_) {}
+
+    try {
+      await controller.loadHtmlString('<!doctype html><html></html>');
+    } catch (_) {}
   }
 }
 

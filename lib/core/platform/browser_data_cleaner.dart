@@ -55,4 +55,14 @@ class BrowserDataCleaner {
       });
     } catch (_) {}
   }
+
+  static Future<String> getCookies({required String url}) async {
+    if (!Platform.isAndroid && !Platform.isIOS) return '';
+    try {
+      return await _channel.invokeMethod<String>('getCookies', {'url': url}) ??
+          '';
+    } catch (_) {
+      return '';
+    }
+  }
 }
