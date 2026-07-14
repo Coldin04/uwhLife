@@ -131,7 +131,11 @@ class _SchedulePageState extends State<SchedulePage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('添加到系统日历'),
-        content: Text('将向默认日历添加 ${events.length} 个课程日程。重复执行可能产生重复日程，是否继续？'),
+        content: Text(
+          '将创建或使用“芜忧皖江课表 ${schedule.term.name}”日历，并添加 '
+          '${events.length} 个课程日程。之后可在系统日历的日历列表中单独管理或删除该日历。'
+          '重复执行可能产生重复日程，是否继续？',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -146,7 +150,11 @@ class _SchedulePageState extends State<SchedulePage> {
     );
     if (confirmed != true || !mounted) return;
     try {
-      final count = await ScheduleCalendarBridge.addEvents(events);
+      final count = await ScheduleCalendarBridge.addEvents(
+        events,
+        calendarKey: schedule.term.code,
+        calendarTitle: '芜忧皖江课表 ${schedule.term.name}',
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,

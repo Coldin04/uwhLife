@@ -142,7 +142,36 @@ Release 流程会自动构建：
 - Android release APK：`UWHLife_android_armeabi-v7a.apk`、`UWHLife_android_arm64-v8a.apk`、`UWHLife_android_x86_64.apk`
 - iOS unsigned IPA：通过 `scripts/package_unsigned_ipa.sh` 打包 `UWHLife_unsigned.ipa`
 
-这些产物会上传到对应的 GitHub Release。发布流程还会自动更新 GitHub 仓库里的 `source.json` 和 `update.json`；如果要同步到 Gitee，将这两个 JSON 以及 APK/IPA 产物同步到 `uwhlife_source` 仓库即可。当前 Android release 使用项目中的 debug signing 配置，公开分发前建议替换为正式签名配置。
+这些产物会上传到对应的 GitHub Release。发布流程还会自动更新 GitHub 仓库里的 `source.json` 和 `update.json`；如果要同步到 Gitee，将这两个 JSON 以及 APK/IPA 产物同步到 `uwhlife_source` 仓库即可。
+
+### Android Release 签名
+
+Android 更新必须始终使用同一把 release keystore，否则系统会把新 APK 识别为不同签名，无法覆盖安装。请只生成一次 keystore，并妥善离线备份：
+
+```bash
+keytool -genkeypair -v \
+  -keystore uwhlife-release.keystore \
+  -alias uwhlife \
+  -keyalg RSA \
+  -keysize 4096 \
+  -validity 10000 \
+  -storetype PKCS12
+```
+
+本地构建时，将 `android/key.properties.example` 复制为 `android/key.properties` 后填入该 keystore 的路径与密码。`android/key.properties` 和 keystore 文件均已被 Git 忽略。
+
+GitHub Actions 发布前，需要在仓库 Actions secrets 中配置：
+
+- `ANDROID_KEYSTORE_BASE64`：`uwhlife-release.keystore` 的 Base64 单行内容。
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
+macOS 可使用以下命令生成 Base64 内容：
+
+```bash
+base64 -i uwhlife-release.keystore | tr -d '\n'
+```
 
 ## 未来 Web 页面
 

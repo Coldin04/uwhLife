@@ -115,9 +115,13 @@ import webview_flutter_wkwebview
     guard
       let args = call.arguments as? [String: Any],
       let rawEvents = args["events"] as? [[String: Any]],
+      let calendarKey = args["calendarKey"] as? String,
+      let calendarTitle = args["calendarTitle"] as? String,
+      !calendarKey.isEmpty,
+      !calendarTitle.isEmpty,
       !rawEvents.isEmpty
     else {
-      result(FlutterError(code: "bad_args", message: "Missing events", details: nil))
+      result(FlutterError(code: "bad_args", message: "Missing calendar events or target", details: nil))
       return
     }
 
@@ -136,9 +140,10 @@ import webview_flutter_wkwebview
         return
       }
       do {
-        guard let calendar = self.eventStore.defaultCalendarForNewEvents else {
-          throw CalendarExportError.noDefaultCalendar
-        }
+        let calendar = try self.scheduleCalendar(
+          key: calendarKey,
+          title: calendarTitle
+        )
         var savedCount = 0
         for rawEvent in rawEvents {
           guard
@@ -172,6 +177,31 @@ import webview_flutter_wkwebview
         }
       }
     }
+  }
+
+  private func scheduleCalendar(key: String, title: String) throws -> EKCalendar {
+    let preferenceKey = "uwhlife.scheduleCalendar.\(key)"
+    if
+      let identifier = UserDefaults.standard.string(forKey: preferenceKey),
+      let existingCalendar = eventStore.calendar(withIdentifier: identifier),
+      existingCalendar.allowsContentModifications
+    {
+      return existingCalendar
+    }
+
+    guard
+      let source = eventStore.sources.first(where: { $0.sourceType == .local })
+        ?? eventStore.defaultCalendarForNewEvents?.source
+    else {
+      throw CalendarExportError.noCalendarSource
+    }
+
+    let calendar = EKCalendar(for: .event, eventStore: eventStore)
+    calendar.title = title
+    calendar.source = source
+    try eventStore.saveCalendar(calendar, commit: true)
+    UserDefaults.standard.set(calendar.calendarIdentifier, forKey: preferenceKey)
+    return calendar
   }
 
   private func requestCalendarWriteAccess(
@@ -370,12 +400,12 @@ import webview_flutter_wkwebview
 }
 
 private enum CalendarExportError: LocalizedError {
-  case noDefaultCalendar
+  case noCalendarSource
 
   var errorDescription: String? {
     switch self {
-    case .noDefaultCalendar:
-      return "没有可写入的默认日历"
+    case .noCalendarSource:
+      return "没有可用于创建课表日历的账户"
     }
   }
 }
