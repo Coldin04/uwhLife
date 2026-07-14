@@ -2,43 +2,43 @@
   "schemaVersion": 1,
   "app": "uwhLife",
   "android": {
-    "versionName": "1.3.0",
-    "versionCode": 14,
+    "versionName": "1.3.1",
+    "versionCode": 15,
     "minSupportedVersionCode": 10,
     "mandatory": false,
-    "title": "v1.3.0 更新",
+    "title": "v1.3.1 更新",
     "notes": [
-      "全新的课表系统：现在，课表将以应用原生界面的方式显示，也可支持查看更多隐藏信息。",
-      "优化了门锁的响应体验，开门更顺畅好用。",
-      "解决了一些已知问题。"
+      "固定 Android release 签名，后续版本可正常覆盖更新。",
+      "优化 CI 的 Flutter、Dart、Gradle 与 CocoaPods 缓存。",
+      "将 iOS 课表导入独立日历，便于单独管理与删除。"
     ],
     "apkUrl": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
-    "fallbackApkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v1.3.0/UWHLife_android_arm64-v8a.apk",
+    "fallbackApkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v1.3.1/UWHLife_android_arm64-v8a.apk",
     "apkUrls": {
       "armeabi-v7a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_armeabi-v7a.apk",
       "arm64-v8a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
       "x86_64": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_x86_64.apk"
     },
     "fallbackApkUrls": {
-      "armeabi-v7a": "https://github.com/Coldin04/uwhLife/releases/download/v1.3.0/UWHLife_android_armeabi-v7a.apk",
-      "arm64-v8a": "https://github.com/Coldin04/uwhLife/releases/download/v1.3.0/UWHLife_android_arm64-v8a.apk",
-      "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v1.3.0/UWHLife_android_x86_64.apk"
+      "armeabi-v7a": "https://github.com/Coldin04/uwhLife/releases/download/v1.3.1/UWHLife_android_armeabi-v7a.apk",
+      "arm64-v8a": "https://github.com/Coldin04/uwhLife/releases/download/v1.3.1/UWHLife_android_arm64-v8a.apk",
+      "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v1.3.1/UWHLife_android_x86_64.apk"
     },
     "sha256ByAbi": {
-      "armeabi-v7a": "98d9ac9eba6fac44bfde4b7a65bf07f029aaef9f21bf81f7d48f6d4f1c68d707",
-      "arm64-v8a": "d3f2fc6451e153d629d965ddfc52a9ad0512e527a918ecca5acf97c5f767eb2b",
-      "x86_64": "36ec4333f6c37b9827907621b46a7a56e73bad09ae1c3d1d8cfe23d31129030a"
+      "armeabi-v7a": "8ddbb3afd00bd0b3e18c7bef67e855eb2b1cc004b5e98783c23365676f58e393",
+      "arm64-v8a": "4aad0e5dab6175cc619e9ea8ddafd9b42794c7878756c98ac4762311aaf53958",
+      "x86_64": "697fdd2bdb72cf73e0d81d6bdf3da6e724ee0bddc0766377d497a6f7c00a286e"
     },
-    "sha256": "d3f2fc6451e153d629d965ddfc52a9ad0512e527a918ecca5acf97c5f767eb2b"
+    "sha256": "4aad0e5dab6175cc619e9ea8ddafd9b42794c7878756c98ac4762311aaf53958"
   },
   "ios": {
-    "versionName": "1.3.0",
-    "buildVersion": "14",
-    "title": "v1.3.0 更新",
+    "versionName": "1.3.1",
+    "buildVersion": "15",
+    "title": "v1.3.1 更新",
     "notes": [
-      "全新的课表系统：现在，课表将以应用原生界面的方式显示，也可支持查看更多隐藏信息。",
-      "优化了门锁的响应体验，开门更顺畅好用。",
-      "解决了一些已知问题。"
+      "固定 Android release 签名，后续版本可正常覆盖更新。",
+      "优化 CI 的 Flutter、Dart、Gradle 与 CocoaPods 缓存。",
+      "将 iOS 课表导入独立日历，便于单独管理与删除。"
     ],
     "altSourceUrl": "https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/main/source.json"
   }
