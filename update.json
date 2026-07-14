@@ -2,43 +2,43 @@
   "schemaVersion": 1,
   "app": "uwhLife",
   "android": {
-    "versionName": "1.2.3",
-    "versionCode": 13,
+    "versionName": "1.3.0",
+    "versionCode": 14,
     "minSupportedVersionCode": 10,
     "mandatory": false,
-    "title": "v1.2.3 更新",
+    "title": "v1.3.0 更新",
     "notes": [
-      "修复 split APK 版本号显示与更新比较问题，关于页会显示逻辑版本号。",
-      "新增 Android 多 ABI 更新包选择，按设备架构下载对应 APK。",
-      "完善 release 自动清单生成，补充 armeabi-v7a、arm64-v8a 与 x86_64 下载信息。"
+      "全新的课表系统：现在，课表将以应用原生界面的方式显示，也可支持查看更多隐藏信息。",
+      "优化了门锁的响应体验，开门更顺畅好用。",
+      "解决了一些已知问题。"
     ],
     "apkUrl": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
-    "fallbackApkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v1.2.3/UWHLife_android_arm64-v8a.apk",
+    "fallbackApkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v1.3.0/UWHLife_android_arm64-v8a.apk",
     "apkUrls": {
       "armeabi-v7a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_armeabi-v7a.apk",
       "arm64-v8a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
       "x86_64": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_x86_64.apk"
     },
     "fallbackApkUrls": {
-      "armeabi-v7a": "https://github.com/Coldin04/uwhLife/releases/download/v1.2.3/UWHLife_android_armeabi-v7a.apk",
-      "arm64-v8a": "https://github.com/Coldin04/uwhLife/releases/download/v1.2.3/UWHLife_android_arm64-v8a.apk",
-      "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v1.2.3/UWHLife_android_x86_64.apk"
+      "armeabi-v7a": "https://github.com/Coldin04/uwhLife/releases/download/v1.3.0/UWHLife_android_armeabi-v7a.apk",
+      "arm64-v8a": "https://github.com/Coldin04/uwhLife/releases/download/v1.3.0/UWHLife_android_arm64-v8a.apk",
+      "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v1.3.0/UWHLife_android_x86_64.apk"
     },
     "sha256ByAbi": {
-      "armeabi-v7a": "b985e5fa6ce5391ca5f8e0523719f9d3a89beda7ba740e0a5f5f97c4e1f02949",
-      "arm64-v8a": "6fd5a7d8ba41f8e4f59cb34a0265bfdf7f5b481ac6d6c90dd4b821d8e859fc8a",
-      "x86_64": "117f99b79551375d46cb3ac4c39ffd1e72a8d56df1ee4104afca0497b254e21f"
+      "armeabi-v7a": "98d9ac9eba6fac44bfde4b7a65bf07f029aaef9f21bf81f7d48f6d4f1c68d707",
+      "arm64-v8a": "d3f2fc6451e153d629d965ddfc52a9ad0512e527a918ecca5acf97c5f767eb2b",
+      "x86_64": "36ec4333f6c37b9827907621b46a7a56e73bad09ae1c3d1d8cfe23d31129030a"
     },
-    "sha256": "6fd5a7d8ba41f8e4f59cb34a0265bfdf7f5b481ac6d6c90dd4b821d8e859fc8a"
+    "sha256": "d3f2fc6451e153d629d965ddfc52a9ad0512e527a918ecca5acf97c5f767eb2b"
   },
   "ios": {
-    "versionName": "1.2.3",
-    "buildVersion": "13",
-    "title": "v1.2.3 更新",
+    "versionName": "1.3.0",
+    "buildVersion": "14",
+    "title": "v1.3.0 更新",
     "notes": [
-      "修复 split APK 版本号显示与更新比较问题，关于页会显示逻辑版本号。",
-      "新增 Android 多 ABI 更新包选择，按设备架构下载对应 APK。",
-      "完善 release 自动清单生成，补充 armeabi-v7a、arm64-v8a 与 x86_64 下载信息。"
+      "全新的课表系统：现在，课表将以应用原生界面的方式显示，也可支持查看更多隐藏信息。",
+      "优化了门锁的响应体验，开门更顺畅好用。",
+      "解决了一些已知问题。"
     ],
     "altSourceUrl": "https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/main/source.json"
   }

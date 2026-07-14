@@ -34,6 +34,15 @@
       ],
       "versions": [
         {
+          "version": "1.3.0",
+          "buildVersion": "14",
+          "date": "2026-07-14",
+          "localizedDescription": "1. 全新的课表系统：现在，课表将以应用原生界面的方式显示，也可支持查看更多隐藏信息。\n2. 优化了门锁的响应体验，开门更顺畅好用。\n3. 解决了一些已知问题。",
+          "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_unsigned.ipa",
+          "size": 38963951,
+          "minOSVersion": "15.0"
+        },
+        {
           "version": "1.2.3",
           "buildVersion": "13",
           "date": "2026-07-09",
@@ -154,6 +163,15 @@
     }
   ],
   "news": [
+    {
+      "title": "v1.3.0 更新",
+      "identifier": "1.3.0",
+      "caption": "全新的课表系统：现在，课表将以应用原生界面的方式显示，也可支持查看更多隐藏信息。",
+      "date": "2026-07-14",
+      "tintColor": "#2196F3",
+      "notify": true,
+      "appID": "com.cold04.uwhlife"
+    },
     {
       "title": "v1.2.3 更新",
       "identifier": "1.2.3",
