@@ -1,10 +1,10 @@
 {
-  "title": "v1.3.0 更新",
+  "title": "v1.3.1 更新",
   "mandatory": false,
   "minSupportedVersionCode": 10,
   "notes": [
-    "全新的课表系统：现在，课表将以应用原生界面的方式显示，也可支持查看更多隐藏信息。",
-    "优化了门锁的响应体验，开门更顺畅好用。",
-    "解决了一些已知问题。"
+    "固定 Android release 签名，后续版本可正常覆盖更新。",
+    "优化 CI 的 Flutter、Dart、Gradle 与 CocoaPods 缓存。",
+    "将 iOS 课表导入独立日历，便于单独管理与删除。"
   ]
 }
