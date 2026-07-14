@@ -55,24 +55,18 @@ void main() {
     (item) => item['version']?.toString() == versionName,
     orElse: () => const {},
   );
-  final previousVersion = versions.whereType<Map>().cast<Map>().firstWhere(
-    (item) => item['version']?.toString() != versionName,
-    orElse: () => const {},
-  );
-  versions.removeWhere((item) {
-    return item is Map && item['version']?.toString() == versionName;
-  });
   final existingSize = _positiveInt(existingVersion['size']);
-  final previousSize = _positiveInt(previousVersion['size']);
-  versions.insert(0, {
-    'version': versionName,
-    'buildVersion': buildNumber,
-    'date': date,
-    'localizedDescription': numberedNotes,
-    'downloadURL': '$giteeLatest/UWHLife_unsigned.ipa',
-    'size': ipaSize ?? existingSize ?? previousSize ?? 0,
-    'minOSVersion': '15.0',
-  });
+  versions
+    ..clear()
+    ..add({
+      'version': versionName,
+      'buildVersion': buildNumber,
+      'date': date,
+      'localizedDescription': numberedNotes,
+      'downloadURL': '$giteeLatest/UWHLife_unsigned.ipa',
+      'size': ipaSize ?? existingSize ?? 0,
+      'minOSVersion': '15.0',
+    });
 
   final news = source['news'] as List;
   news.removeWhere((item) {

@@ -2,7 +2,7 @@
   "name": "芜忧皖江",
   "subtitle": "芜湖学院校园生活助手",
   "description": "芜湖学院校园APP第三方实现，提供一键开门、课表查看、校园活动等功能。",
-  "iconURL": "https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/main/icon.png",
+  "iconURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/icon.png",
   "website": "https://gitee.com/coldin04/uwhlife_source",
   "tintColor": "#2196F3",
   "apps": [
@@ -12,24 +12,29 @@
       "developerName": "coldin04",
       "subtitle": "芜湖学院校园生活助手",
       "localizedDescription": "芜湖学院校园APP第三方实现。\n\n功能特性：\n- 🚪 一键开门：蓝牙快速开门，无需等待\n- 📅 快速查看课表：清晰直观的课程安排\n- 🎉 快速加入校园活动：一键报名，不错过精彩\n- 🚿 开水洗浴：蓝牙控制热水设备\n- 📱 轻量快速：告别臃肿，极速启动",
-      "iconURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/assets/icon.png",
+      "iconURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/icon.png",
       "tintColor": "#2196F3",
       "category": "lifestyle",
       "screenshots": [
         {
-          "imageURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/assets/screenshot1.png",
-          "width": 750,
-          "height": 1334
+          "imageURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/web/img/homepage.jpeg",
+          "width": 1080,
+          "height": 2340
         },
         {
-          "imageURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/assets/screenshot2.png",
-          "width": 750,
-          "height": 1334
+          "imageURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/web/img/applist.jpeg",
+          "width": 1080,
+          "height": 2340
         },
         {
-          "imageURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/assets/screenshot3.png",
-          "width": 750,
-          "height": 1334
+          "imageURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/web/img/message.jpeg",
+          "width": 1080,
+          "height": 2340
+        },
+        {
+          "imageURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/web/img/qrcard.jpeg",
+          "width": 1080,
+          "height": 2340
         }
       ],
       "versions": [
@@ -40,114 +45,6 @@
           "localizedDescription": "1. 全新的课表系统：现在，课表将以应用原生界面的方式显示，也可支持查看更多隐藏信息。\n2. 优化了门锁的响应体验，开门更顺畅好用。\n3. 解决了一些已知问题。",
           "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_unsigned.ipa",
           "size": 38963951,
-          "minOSVersion": "15.0"
-        },
-        {
-          "version": "1.2.3",
-          "buildVersion": "13",
-          "date": "2026-07-09",
-          "localizedDescription": "1. 修复 split APK 版本号显示与更新比较问题，关于页会显示逻辑版本号。\n2. 新增 Android 多 ABI 更新包选择，按设备架构下载对应 APK。\n3. 完善 release 自动清单生成，补充 armeabi-v7a、arm64-v8a 与 x86_64 下载信息。",
-          "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_unsigned.ipa",
-          "size": 38303913,
-          "minOSVersion": "15.0"
-        },
-        {
-          "version": "1.2.2",
-          "buildVersion": "12",
-          "date": "2026-07-09",
-          "localizedDescription": "1. 修复 Android 与 iOS 更新弹窗交互问题，非强制更新可取消并进入 10 天冷却。\n2. 修复 Android 授权安装权限后返回 App 无法继续安装的问题。\n3. 优化 Android APK 更新包缓存复用与旧缓存清理，减少重复下载。",
-          "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_unsigned.ipa",
-          "size": 38306909,
-          "minOSVersion": "15.0"
-        },
-        {
-          "version": "1.2.1",
-          "buildVersion": "11",
-          "date": "2026-07-09",
-          "localizedDescription": "1. 新增 Android 应用内更新检测、APK 下载与系统安装引导。\n2. 新增 AltStore 源一键导入与稳定 IPA 下载入口。\n3. 整理 GitHub Release、source.json、update.json 的自动发布流程。",
-          "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_unsigned.ipa",
-          "size": 38304051,
-          "minOSVersion": "15.0"
-        },
-        {
-          "version": "1.2.0",
-          "buildVersion": "10",
-          "date": "2026-07-08",
-          "localizedDescription": "- 界面重构与体验优化\n- 修复消息拉取页加载失败的问题\n- 支持 uwhlife://paycode 和 uwhlife://bath 快速唤醒指定页面",
-          "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_unsigned.ipa",
-          "size": 38208973,
-          "minOSVersion": "15.0"
-        },
-        {
-          "version": "1.1.4",
-          "buildVersion": "9",
-          "date": "2026-06-25",
-          "localizedDescription": "✨ 更新内容\n\n- 现在，开水洗浴可以直接在主页进入\n",
-          "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/1.1.4/UWHLife_1.1.4_unsigned.ipa",
-          "size": 38168166,
-          "minOSVersion": "15.0"
-        },
-        {
-          "version": "1.1.3",
-          "buildVersion": "8",
-          "date": "2026-06-05",
-          "localizedDescription": "🔧 更新内容\n\n- 解决了一些已知问题。",
-          "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/1.1.3/UWHLife_1.1.3_unsigned.ipa",
-          "size": 38166146,
-          "minOSVersion": "15.0"
-        },
-        {
-          "version": "1.1.2",
-          "buildVersion": "7",
-          "date": "2026-06-05",
-          "localizedDescription": "🔧 更新内容\n\n- 修复消息拉取延迟的问题\n- 修复了支付成功后无弹窗提示的问题\n- 解决了一些已知问题",
-          "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/1.1.2/UWHLife_1.1.2_unsigned.ipa",
-          "size": 38162506,
-          "minOSVersion": "15.0"
-        },
-        {
-          "version": "1.1.0",
-          "buildVersion": "4",
-          "date": "2026-05-31",
-          "localizedDescription": "🔧 更新内容\n\n- 解决了一些已知问题。",
-          "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/1.1.0/UWHLife_1.1.0_unsigned.ipa",
-          "size": 38141604,
-          "minOSVersion": "15.0"
-        },
-        {
-          "version": "1.0.3",
-          "buildVersion": "4",
-          "date": "2026-05-05",
-          "localizedDescription": "🔧 更新内容\n\n- 修复了消息列表加载缓慢的问题\n- 优化了Android端登录状态保存",
-          "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/1.0.3/UWHLife_1.0.3_unsigned.ipa",
-          "size": 37614889,
-          "minOSVersion": "15.0"
-        },
-        {
-          "version": "1.0.2",
-          "buildVersion": "3",
-          "date": "2026-04-29",
-          "localizedDescription": "✨ 更新内容\n\n- 部分页面使用原生方式重做\n- 优化了动画实现",
-          "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/1.0.2/UWHLife_1.0.2_unsigned.ipa",
-          "size": 37608973,
-          "minOSVersion": "15.0"
-        },
-        {
-          "version": "1.0.1",
-          "buildVersion": "2",
-          "date": "2026-04-26",
-          "localizedDescription": "🔧 Bug 修复\n\n- 修复饮水机蓝牙通信问题",
-          "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/1.0.1/uwhlife-1.0.1.ipa",
-          "size": 37523065,
-          "minOSVersion": "15.0"
-        },
-        {
-          "version": "1.0.0",
-          "buildVersion": "1",
-          "date": "2026-04-25",
-          "localizedDescription": "🎉 首次发布！\n\n- 蓝牙一键开门\n- 课表查看\n- 校园活动加入\n- 开水洗浴控制\n- 扫码功能",
-          "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/beta-1.0.0/uwhlife-beta_1.0.0.ipa",
-          "size": 37503714,
           "minOSVersion": "15.0"
         }
       ],
