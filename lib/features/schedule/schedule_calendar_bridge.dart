@@ -20,4 +20,9 @@ class ScheduleCalendarBridge {
         });
     return count ?? 0;
   }
+
+  static Future<bool> requestFullAccess() async {
+    final granted = await _channel.invokeMethod<bool>('requestFullAccess');
+    return granted ?? false;
+  }
 }

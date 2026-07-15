@@ -1,10 +1,10 @@
 {
-  "title": "v1.3.1 更新",
+  "title": "v1.3.2 更新",
   "mandatory": false,
   "minSupportedVersionCode": 10,
   "notes": [
-    "固定 Android release 签名，后续版本可正常覆盖更新。",
-    "优化 CI 的 Flutter、Dart、Gradle 与 CocoaPods 缓存。",
-    "将 iOS 课表导入独立日历，便于单独管理与删除。"
+    "首页新增本节课与下一节课提示，可查看今天、明天的课程时间和地点并进入课程详情。",
+    "统一课表课程日期映射，提升首页课程提示与日历导出的准确性。",
+    "修复 iOS 仅添加日程权限下无法创建独立课表日历的问题，并增加完整访问授权与 ICS 导入引导。"
   ]
 }

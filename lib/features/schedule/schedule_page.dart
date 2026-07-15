@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'models/schedule_models.dart';
 import 'schedule_api.dart';
@@ -134,7 +135,7 @@ class _SchedulePageState extends State<SchedulePage> {
         content: Text(
           '将创建或使用“芜忧皖江课表 ${schedule.term.name}”日历，并添加 '
           '${events.length} 个课程日程。之后可在系统日历的日历列表中单独管理或删除该日历。'
-          '重复执行可能产生重复日程，是否继续？',
+          '不会写入已有日历。重复执行可能产生重复日程，是否继续？',
         ),
         actions: [
           TextButton(
@@ -149,6 +150,14 @@ class _SchedulePageState extends State<SchedulePage> {
       ),
     );
     if (confirmed != true || !mounted) return;
+    await _saveToDedicatedCalendar(schedule, events);
+  }
+
+  Future<void> _saveToDedicatedCalendar(
+    ScheduleData schedule,
+    List<ScheduleCalendarEvent> events, {
+    bool canRequestFullAccess = true,
+  }) async {
     try {
       final count = await ScheduleCalendarBridge.addEvents(
         events,
@@ -159,11 +168,103 @@ class _SchedulePageState extends State<SchedulePage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('已添加 $count 个课程日程')));
-    } catch (error) {
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      if (error.code == 'full_access_required' && canRequestFullAccess) {
+        await _handleFullAccessRequired(schedule, events);
+        return;
+      }
+      final message = switch (error.code) {
+        'permission_denied' => '尚未获得日历权限，无法创建独立课表日历。',
+        'calendar_save_failed' => '当前日历账户不允许创建独立日历。可以改用系统的 ICS 导入窗口。',
+        _ => '创建独立课表日历失败。可以改用系统的 ICS 导入窗口。',
+      };
+      await _offerIcsImport(schedule, message);
+    } catch (_) {
+      if (!mounted) return;
+      await _offerIcsImport(schedule, '创建独立课表日历失败。可以改用系统的 ICS 导入窗口。');
+    }
+  }
+
+  Future<void> _handleFullAccessRequired(
+    ScheduleData schedule,
+    List<ScheduleCalendarEvent> events,
+  ) async {
+    final grantAccess = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('需要完整日历访问'),
+        content: const Text(
+          '“仅添加日程”权限不能创建新的独立日历。为了确保课程不会写入你的已有日历，'
+          '需要授予完整访问权限来创建“芜忧皖江课表”日历。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('改用 ICS'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('授予完整访问'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (grantAccess != true) {
+      await _openIcsImportSheet(schedule);
+      return;
+    }
+
+    try {
+      final granted = await ScheduleCalendarBridge.requestFullAccess();
+      if (!mounted) return;
+      if (granted) {
+        await _saveToDedicatedCalendar(
+          schedule,
+          events,
+          canRequestFullAccess: false,
+        );
+      } else {
+        await _offerIcsImport(schedule, '未获得完整日历访问权限，无法创建独立课表日历。');
+      }
+    } on PlatformException {
+      if (!mounted) return;
+      await _offerIcsImport(schedule, '完整日历访问授权未完成，无法创建独立课表日历。');
+    }
+  }
+
+  Future<void> _offerIcsImport(ScheduleData schedule, String message) async {
+    final openImport = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('无法创建独立日历'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('打开 ICS 导入'),
+          ),
+        ],
+      ),
+    );
+    if (openImport == true && mounted) {
+      await _openIcsImportSheet(schedule);
+    }
+  }
+
+  Future<void> _openIcsImportSheet(ScheduleData schedule) async {
+    try {
+      await ScheduleIcsExporter.openImportSheet(context, schedule);
+    } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('添加到日历失败：$error')));
+      ).showSnackBar(const SnackBar(content: Text('无法打开 ICS 导入窗口')));
     }
   }
 
@@ -944,7 +1045,7 @@ class _CourseBlock extends StatelessWidget {
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (_) => _ScheduleCourseDetail(course: course),
+                  builder: (_) => ScheduleCourseDetailPage(course: course),
                 ),
               );
             },
@@ -1148,8 +1249,8 @@ class _EmptySchedule extends StatelessWidget {
   }
 }
 
-class _ScheduleCourseDetail extends StatelessWidget {
-  const _ScheduleCourseDetail({required this.course});
+class ScheduleCourseDetailPage extends StatelessWidget {
+  const ScheduleCourseDetailPage({super.key, required this.course});
 
   final ScheduleCourse course;
 

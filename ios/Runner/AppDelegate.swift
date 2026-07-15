@@ -108,6 +108,28 @@ import webview_flutter_wkwebview
   }
 
   private func handleCalendar(call: FlutterMethodCall, result: @escaping FlutterResult) {
+    if call.method == "requestFullAccess" {
+      requestCalendarFullAccess { [weak self] granted, error in
+        if granted {
+          self?.eventStore.reset()
+        }
+        DispatchQueue.main.async {
+          if let error {
+            result(
+              FlutterError(
+                code: "permission_failed",
+                message: error.localizedDescription,
+                details: nil
+              )
+            )
+          } else {
+            result(granted)
+          }
+        }
+      }
+      return
+    }
+
     guard call.method == "addEvents" else {
       result(FlutterMethodNotImplemented)
       return
@@ -173,7 +195,13 @@ import webview_flutter_wkwebview
       } catch {
         self.eventStore.reset()
         DispatchQueue.main.async {
-          result(FlutterError(code: "calendar_save_failed", message: error.localizedDescription, details: nil))
+          result(
+            FlutterError(
+              code: self.calendarSaveErrorCode(),
+              message: error.localizedDescription,
+              details: nil
+            )
+          )
         }
       }
     }
@@ -208,10 +236,37 @@ import webview_flutter_wkwebview
     completion: @escaping (Bool, Error?) -> Void
   ) {
     if #available(iOS 17.0, *) {
-      eventStore.requestWriteOnlyAccessToEvents(completion: completion)
+      if EKEventStore.authorizationStatus(for: .event) == .fullAccess {
+        completion(true, nil)
+      } else {
+        eventStore.requestWriteOnlyAccessToEvents(completion: completion)
+      }
     } else {
       eventStore.requestAccess(to: .event, completion: completion)
     }
+  }
+
+  private func requestCalendarFullAccess(
+    completion: @escaping (Bool, Error?) -> Void
+  ) {
+    if #available(iOS 17.0, *) {
+      if EKEventStore.authorizationStatus(for: .event) == .fullAccess {
+        completion(true, nil)
+      } else {
+        eventStore.requestFullAccessToEvents(completion: completion)
+      }
+    } else {
+      eventStore.requestAccess(to: .event, completion: completion)
+    }
+  }
+
+  private func calendarSaveErrorCode() -> String {
+    if #available(iOS 17.0, *) {
+      if EKEventStore.authorizationStatus(for: .event) != .fullAccess {
+        return "full_access_required"
+      }
+    }
+    return "calendar_save_failed"
   }
 
   private func topViewController() -> UIViewController? {

@@ -9,6 +9,10 @@ import '../../core/platform/browser_data_cleaner.dart';
 import '../../core/storage/login_state_store.dart';
 import '../../core/storage/portal_user_store.dart';
 import '../door/door_api.dart';
+import '../schedule/models/schedule_models.dart';
+import '../schedule/schedule_cache.dart';
+import '../schedule/schedule_occurrences.dart';
+import '../schedule/schedule_page.dart';
 import 'widgets/home_cards.dart';
 import 'widgets/status_indicator.dart';
 
@@ -44,6 +48,12 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   static const _defaultHitokoto = '读万卷书，行万里路';
   bool _loggedIn = false;
   String _hitokoto = _defaultHitokoto;
+  final ScheduleRepository _scheduleRepository = ScheduleRepository();
+  ScheduleCourseOccurrence? _scheduleHintCourse;
+  bool _scheduleHintIsCurrent = false;
+  bool _hasScheduleHintData = false;
+  bool _loadingScheduleHint = false;
+  Timer? _scheduleHintTimer;
   late final WebViewController _probeController;
   Completer<({String body, String url})>? _probeCompleter;
   bool _probing = false;
@@ -82,6 +92,7 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
       );
     _loadLoginState();
     _loadHitokoto();
+    unawaited(_refreshScheduleHint());
     _probeAndSync();
   }
 
@@ -89,6 +100,7 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _doorMessageTimer?.cancel();
+    _scheduleHintTimer?.cancel();
     super.dispose();
   }
 
@@ -96,6 +108,7 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _loadLoginState();
+      unawaited(_refreshScheduleHint());
       _probeAndSync();
     }
   }
@@ -105,7 +118,95 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Future<void> _loadLoginState() async {
     final loggedIn = await LoginStateStore.readLoggedIn();
     if (!mounted) return;
+    if (!loggedIn) _scheduleHintTimer?.cancel();
     setState(() => _loggedIn = loggedIn);
+    if (!loggedIn && _hasScheduleHintData) {
+      setState(() {
+        _hasScheduleHintData = false;
+        _scheduleHintCourse = null;
+        _scheduleHintIsCurrent = false;
+      });
+    }
+  }
+
+  Future<void> _refreshScheduleHint() async {
+    if (_loadingScheduleHint) return;
+    _loadingScheduleHint = true;
+    try {
+      if (!await LoginStateStore.readLoggedIn()) {
+        if (!mounted) return;
+        _scheduleHintTimer?.cancel();
+        if (_hasScheduleHintData) {
+          setState(() {
+            _hasScheduleHintData = false;
+            _scheduleHintCourse = null;
+            _scheduleHintIsCurrent = false;
+          });
+        }
+        return;
+      }
+      final now = DateTime.now();
+      final cached = await ScheduleCache.read(now: now);
+      ScheduleData? schedule;
+      if (cached?.schedule.isCurrentTerm == true) {
+        schedule = cached!.schedule;
+      } else {
+        try {
+          schedule = await _scheduleRepository.load(
+            forceRefresh: cached != null,
+          );
+          if (!schedule.isCurrentTerm) schedule = null;
+        } catch (_) {
+          schedule = null;
+        }
+      }
+      if (!mounted) return;
+      if (schedule == null) {
+        _scheduleHintTimer?.cancel();
+        if (_hasScheduleHintData) {
+          setState(() {
+            _hasScheduleHintData = false;
+            _scheduleHintCourse = null;
+            _scheduleHintIsCurrent = false;
+          });
+        }
+        return;
+      }
+      _applyScheduleHint(schedule);
+    } finally {
+      _loadingScheduleHint = false;
+    }
+  }
+
+  void _applyScheduleHint(ScheduleData schedule) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final windowEnd = today.add(const Duration(days: 2));
+    final current = ScheduleOccurrenceMapper.currentAt(schedule, now: now);
+    final next = current == null
+        ? ScheduleOccurrenceMapper.nextBefore(
+            schedule,
+            now: now,
+            endExclusive: windowEnd,
+          )
+        : null;
+    final displayedCourse = current ?? next;
+    if (mounted) {
+      setState(() {
+        _hasScheduleHintData = true;
+        _scheduleHintCourse = displayedCourse;
+        _scheduleHintIsCurrent = current != null;
+      });
+    }
+
+    _scheduleHintTimer?.cancel();
+    final boundary =
+        current?.end ?? next?.start ?? today.add(const Duration(days: 1));
+    final delay = boundary.difference(now) + const Duration(seconds: 1);
+    if (delay <= Duration.zero) return;
+    _scheduleHintTimer = Timer(delay, () {
+      if (mounted) _applyScheduleHint(schedule);
+    });
   }
 
   void _loadHitokoto() {
@@ -171,7 +272,10 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
       if (await PortalUserStore.saveFromLoginUserResponse(res.body)) {
         await LoginStateStore.markLoggedIn();
-        if (mounted) await _loadLoginState();
+        if (mounted) {
+          await _loadLoginState();
+          unawaited(_refreshScheduleHint());
+        }
       }
     } finally {
       _probing = false;
@@ -181,7 +285,13 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Future<void> _clearLoginState() async {
     await LoginStateStore.markLoggedOut();
     if (!mounted) return;
-    setState(() => _loggedIn = false);
+    _scheduleHintTimer?.cancel();
+    setState(() {
+      _loggedIn = false;
+      _hasScheduleHintData = false;
+      _scheduleHintCourse = null;
+      _scheduleHintIsCurrent = false;
+    });
   }
 
   Future<void> _openPortal() async {
@@ -201,8 +311,17 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Future<void> _openSchedule() async {
     await widget.onOpenSchedule?.call();
     if (!mounted) return;
+    await _refreshScheduleHint();
     await _loadLoginState();
     await _probeAndSync();
+  }
+
+  void _openCourseDetail(ScheduleCourse course) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ScheduleCourseDetailPage(course: course),
+      ),
+    );
   }
 
   Future<void> _openClassroom() async {
@@ -410,6 +529,30 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                           height: 1.35,
                                         ),
                                   ),
+                                  AnimatedSize(
+                                    duration: const Duration(milliseconds: 180),
+                                    curve: Curves.easeOutCubic,
+                                    alignment: Alignment.topLeft,
+                                    child: _hasScheduleHintData
+                                        ? Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 14,
+                                            ),
+                                            child: _UpcomingCourseQuote(
+                                              occurrence: _scheduleHintCourse,
+                                              isCurrent: _scheduleHintIsCurrent,
+                                              onTap: _scheduleHintCourse == null
+                                                  ? () => unawaited(
+                                                      _openSchedule(),
+                                                    )
+                                                  : () => _openCourseDetail(
+                                                      _scheduleHintCourse!
+                                                          .course,
+                                                    ),
+                                            ),
+                                          )
+                                        : const SizedBox.shrink(),
+                                  ),
                                 ],
                               ),
                             ),
@@ -498,5 +641,132 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
         ),
       ],
     );
+  }
+}
+
+class _UpcomingCourseQuote extends StatelessWidget {
+  const _UpcomingCourseQuote({
+    required this.occurrence,
+    required this.isCurrent,
+    required this.onTap,
+  });
+
+  final ScheduleCourseOccurrence? occurrence;
+  final bool isCurrent;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final occurrence = this.occurrence;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(4),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  width: 3,
+                  decoration: BoxDecoration(
+                    color: _homePageBrandGreen,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: occurrence == null
+                      ? Text(
+                          '今天的课上完了',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: scheme.onSurface.withValues(alpha: 0.76),
+                                fontWeight: FontWeight.w600,
+                              ),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: isCurrent ? '本节课 · ' : '下一节 · ',
+                                    style: const TextStyle(
+                                      color: _homePageBrandGreen,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: occurrence.course.name,
+                                    style: TextStyle(color: scheme.onSurface),
+                                  ),
+                                ],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              _courseDayAndLocation(occurrence),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: scheme.onSurface.withValues(
+                                      alpha: 0.58,
+                                    ),
+                                    height: 1.3,
+                                  ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              '${_clock(occurrence.start)}~${_clock(occurrence.end)}',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: scheme.onSurface.withValues(
+                                      alpha: 0.72,
+                                    ),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ],
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _courseDayAndLocation(ScheduleCourseOccurrence occurrence) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final startDay = DateTime(
+      occurrence.start.year,
+      occurrence.start.month,
+      occurrence.start.day,
+    );
+    final dayLabel = startDay == today ? '今天' : '明天';
+    final location = <String>[
+      occurrence.course.classroom,
+      occurrence.course.building,
+      occurrence.course.campus,
+    ].where((value) => value.trim().isNotEmpty).firstOrNull;
+    return <String>[dayLabel, ?location].join(' ');
+  }
+
+  String _clock(DateTime value) {
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
   }
 }

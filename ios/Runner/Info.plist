@@ -83,6 +83,8 @@
 	<string>用于将课程安排添加到系统日历。</string>
 	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
 	<string>用于将课程安排添加到系统日历。</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>用于创建独立的课表日历，并将课程安排添加到该日历。</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>用于连接开水洗浴等校园蓝牙设备并完成离线开阀</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>

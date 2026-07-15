@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import 'models/schedule_models.dart';
 import 'schedule_file_exporter.dart';
+import 'schedule_occurrences.dart';
 
 class ScheduleCalendarEvent {
   const ScheduleCalendarEvent({
@@ -49,67 +50,30 @@ class ScheduleIcsExporter {
   const ScheduleIcsExporter._();
 
   static List<ScheduleCalendarEvent> events(ScheduleData schedule) {
-    final termStart = schedule.term.startDate;
-    if (termStart == null) return const <ScheduleCalendarEvent>[];
-
     final result = <ScheduleCalendarEvent>[];
-    for (final course in schedule.courses) {
-      if (!_hasValidPlacement(course)) continue;
-      final startClock = _parseClock(
-        course.startTime,
-        fallback: schedule.lessonTimeForPeriod(course.startPeriod)?.startTime,
+    for (final occurrence in ScheduleOccurrenceMapper.map(schedule)) {
+      final course = occurrence.course;
+      final identity = <Object>[
+        schedule.term.code,
+        course.courseCode,
+        course.sectionCode,
+        course.name,
+        course.weekday,
+        course.startPeriod,
+        course.endPeriod,
+        occurrence.week,
+      ].join('|');
+      result.add(
+        ScheduleCalendarEvent(
+          uid: '${sha256.convert(utf8.encode(identity))}@uwhlife',
+          title: course.name,
+          start: occurrence.start,
+          end: occurrence.end,
+          location: course.classroom,
+          notes: _notes(course),
+        ),
       );
-      final endClock = _parseClock(
-        course.endTime,
-        fallback: schedule.lessonTimeForPeriod(course.endPeriod)?.endTime,
-      );
-      if (startClock == null || endClock == null) continue;
-
-      for (final week in course.teachingWeeks) {
-        final date = DateTime(
-          termStart.year,
-          termStart.month,
-          termStart.day,
-        ).add(Duration(days: (week - 1) * 7 + course.weekday - 1));
-        final start = DateTime(
-          date.year,
-          date.month,
-          date.day,
-          startClock.$1,
-          startClock.$2,
-        );
-        final end = DateTime(
-          date.year,
-          date.month,
-          date.day,
-          endClock.$1,
-          endClock.$2,
-        );
-        if (!end.isAfter(start)) continue;
-
-        final identity = <Object>[
-          schedule.term.code,
-          course.courseCode,
-          course.sectionCode,
-          course.name,
-          course.weekday,
-          course.startPeriod,
-          course.endPeriod,
-          week,
-        ].join('|');
-        result.add(
-          ScheduleCalendarEvent(
-            uid: '${sha256.convert(utf8.encode(identity))}@uwhlife',
-            title: course.name,
-            start: start,
-            end: end,
-            location: course.classroom,
-            notes: _notes(course),
-          ),
-        );
-      }
     }
-    result.sort((a, b) => a.start.compareTo(b.start));
     return result;
   }
 
@@ -170,20 +134,19 @@ class ScheduleIcsExporter {
     );
   }
 
-  static bool _hasValidPlacement(ScheduleCourse course) {
-    return course.weekday >= 1 &&
-        course.weekday <= 7 &&
-        course.startPeriod > 0 &&
-        course.endPeriod >= course.startPeriod &&
-        course.teachingWeeks.isNotEmpty;
-  }
-
-  static (int, int)? _parseClock(String value, {String? fallback}) {
-    final match = RegExp(
-      r'(^|\D)([01]?\d|2[0-3]):([0-5]\d)',
-    ).firstMatch(value.isNotEmpty ? value : fallback ?? '');
-    if (match == null) return null;
-    return (int.parse(match.group(2)!), int.parse(match.group(3)!));
+  static Future<void> openImportSheet(
+    BuildContext context,
+    ScheduleData schedule,
+  ) {
+    final fileName = '课表_${_safeFilePart(schedule.term.code)}.ics';
+    return ScheduleFileExporter.saveOrShare(
+      context,
+      bytes: Uint8List.fromList(utf8.encode(encode(schedule))),
+      fileName: fileName,
+      mimeType: 'text/calendar',
+      title: '导入 ICS 课表',
+      subject: schedule.term.name,
+    );
   }
 
   static String _notes(ScheduleCourse course) {
