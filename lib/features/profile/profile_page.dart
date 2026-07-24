@@ -537,6 +537,18 @@ class _AboutPageState extends State<_AboutPage> {
     );
   }
 
+  Future<void> _openLink({required String title, required String url}) async {
+    await Navigator.of(context).push(
+      createSlideFadeRoute(
+        PortalWebViewPage(
+          title: title,
+          icon: Icons.open_in_browser_rounded,
+          initialUrl: url,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -592,9 +604,88 @@ class _AboutPageState extends State<_AboutPage> {
                     ),
                   ),
                 ),
-                const Spacer(flex: 7),
+                const Spacer(flex: 5),
+                _AboutLinkRow(
+                  title: '官方网站',
+                  value: 'uwh.cold04.com',
+                  onTap: () =>
+                      _openLink(title: '官方网站', url: 'https://uwh.cold04.com'),
+                ),
+                _AboutLinkRow(
+                  title: 'GitHub',
+                  value: 'github.com/Coldin04/uwhLife',
+                  onTap: () => _openLink(
+                    title: 'GitHub',
+                    url: 'https://github.com/Coldin04/uwhLife',
+                  ),
+                ),
+                const SizedBox(height: 12),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AboutLinkRow extends StatelessWidget {
+  const _AboutLinkRow({
+    required this.title,
+    required this.value,
+    required this.onTap,
+  });
+
+  final String title;
+  final String value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = theme.colorScheme.onSurface;
+    final secondaryColor = isDark
+        ? const Color(0xFFB6C2BC)
+        : const Color(0xFF777777);
+    final dividerColor = isDark
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.black.withValues(alpha: 0.10);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: dividerColor)),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: primaryColor,
+                        fontWeight: wBold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      value,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: secondaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: secondaryColor),
+            ],
           ),
         ),
       ),

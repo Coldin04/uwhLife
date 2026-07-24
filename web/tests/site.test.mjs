@@ -17,6 +17,10 @@ test('landing page uses a split app hero and focuses on product features', async
   const css = [baseCss, heroCss, featuresCss].join('\n');
 
   assert.match(html, /<title>芜忧皖江/);
+  assert.match(html, /<meta name="keywords" content="[^"]*校芜优[^"]*芜湖学院[^"]*" \/>/);
+  assert.match(html, /<meta property="og:title" content="芜忧皖江｜芜湖学院校园生活客户端" \/>/);
+  assert.match(html, /<meta name="twitter:title" content="芜忧皖江｜芜湖学院校园生活客户端" \/>/);
+  assert.match(html, /"keywords": "[^"]*校芜优[^"]*芜湖学院/);
   assert.match(html, /<link rel="stylesheet" href="styles\/base\.css" \/>/);
   assert.match(html, /<link rel="stylesheet" href="styles\/hero\.css" \/>/);
   assert.match(html, /<link rel="stylesheet" href="styles\/features\.css" \/>/);

@@ -77,6 +77,19 @@ void main() {
     expect(find.text('测试与调试'), findsOneWidget);
   });
 
+  testWidgets('about page shows official website and GitHub links', (
+    tester,
+  ) async {
+    await _pumpProfile(tester);
+    await tester.tap(find.text('关于'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('官方网站'), findsOneWidget);
+    expect(find.text('uwh.cold04.com'), findsOneWidget);
+    expect(find.text('GitHub'), findsOneWidget);
+    expect(find.text('github.com/Coldin04/uwhLife'), findsOneWidget);
+  });
+
   testWidgets(
     'long pressing about resets defaults only while boundary debug is enabled',
     (tester) async {

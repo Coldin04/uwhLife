@@ -334,80 +334,87 @@ class _SchedulePageState extends State<SchedulePage> {
         ? _darkScheduleGradient
         : _lightScheduleGradient;
 
-    return FutureBuilder<ScheduleData>(
-      future: future,
-      builder: (context, snapshot) {
-        final schedule = snapshot.data;
-        final selectedWeek = schedule == null
-            ? null
-            : (_selectedWeek ?? schedule.currentWeek)
-                  .clamp(1, schedule.maxWeek)
-                  .toInt();
-        Widget body;
-        if (snapshot.connectionState != ConnectionState.done) {
-          body = const _ScheduleLoading();
-        } else if (snapshot.hasError) {
-          final error = snapshot.error;
-          final message = error is ScheduleApiException
-              ? error.message
-              : '课表加载失败';
-          body = _ScheduleError(
-            message: message,
-            onRetry: () => _load(termCode: schedule?.term.code),
-          );
-        } else {
-          body = _ScheduleView(
-            schedule: schedule!,
-            selectedWeek: selectedWeek!,
-            onChangeWeek: (week) => _changeWeek(week, schedule),
-          );
-        }
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+      ),
+      child: FutureBuilder<ScheduleData>(
+        future: future,
+        builder: (context, snapshot) {
+          final schedule = snapshot.data;
+          final selectedWeek = schedule == null
+              ? null
+              : (_selectedWeek ?? schedule.currentWeek)
+                    .clamp(1, schedule.maxWeek)
+                    .toInt();
+          Widget body;
+          if (snapshot.connectionState != ConnectionState.done) {
+            body = const _ScheduleLoading();
+          } else if (snapshot.hasError) {
+            final error = snapshot.error;
+            final message = error is ScheduleApiException
+                ? error.message
+                : '课表加载失败';
+            body = _ScheduleError(
+              message: message,
+              onRetry: () => _load(termCode: schedule?.term.code),
+            );
+          } else {
+            body = _ScheduleView(
+              schedule: schedule!,
+              selectedWeek: selectedWeek!,
+              onChangeWeek: (week) => _changeWeek(week, schedule),
+            );
+          }
 
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: gradientColors,
-              stops: const [0, 0.15, 0.30],
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: gradientColors,
+                stops: const [0, 0.15, 0.30],
+              ),
             ),
-          ),
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            appBar: AppBar(
-              toolbarHeight: 64,
-              titleSpacing: 2,
+            child: Scaffold(
               backgroundColor: Colors.transparent,
-              surfaceTintColor: Colors.transparent,
-              title: schedule == null || selectedWeek == null
-                  ? const Text('我的课表')
-                  : _ScheduleAppBarTitle(
-                      schedule: schedule,
-                      onTap: () => _chooseTerm(schedule),
-                    ),
-              actions: [
-                _ScheduleActionsMenu(
-                  onRefresh: () => _load(termCode: schedule?.term.code),
-                  onOpenWeb: _openScheduleWebPage,
-                  onExportWakeUp: schedule == null
-                      ? null
-                      : () => unawaited(_exportCsv(schedule)),
-                  onExportIcs: schedule == null
-                      ? null
-                      : () => unawaited(_exportIcs(schedule)),
-                  onAddToCalendar:
-                      schedule != null &&
-                          defaultTargetPlatform == TargetPlatform.iOS
-                      ? () => unawaited(_addToCalendar(schedule))
-                      : null,
-                ),
-                const SizedBox(width: 4),
-              ],
+              appBar: AppBar(
+                toolbarHeight: 64,
+                titleSpacing: 2,
+                backgroundColor: Colors.transparent,
+                surfaceTintColor: Colors.transparent,
+                title: schedule == null || selectedWeek == null
+                    ? const Text('我的课表')
+                    : _ScheduleAppBarTitle(
+                        schedule: schedule,
+                        onTap: () => _chooseTerm(schedule),
+                      ),
+                actions: [
+                  _ScheduleActionsMenu(
+                    onRefresh: () => _load(termCode: schedule?.term.code),
+                    onOpenWeb: _openScheduleWebPage,
+                    onExportWakeUp: schedule == null
+                        ? null
+                        : () => unawaited(_exportCsv(schedule)),
+                    onExportIcs: schedule == null
+                        ? null
+                        : () => unawaited(_exportIcs(schedule)),
+                    onAddToCalendar:
+                        schedule != null &&
+                            defaultTargetPlatform == TargetPlatform.iOS
+                        ? () => unawaited(_addToCalendar(schedule))
+                        : null,
+                  ),
+                  const SizedBox(width: 4),
+                ],
+              ),
+              body: body,
             ),
-            body: body,
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }
