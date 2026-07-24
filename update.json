@@ -13,23 +13,23 @@
       "优化付款码与课表页面的状态栏显示，提升深色和浅色模式下的视觉一致性。"
     ],
     "apkUrl": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
-    "fallbackApkUrl": "https://github.com/coldin04/uwhLife/releases/download/v1.3.3/UWHLife_android_arm64-v8a.apk",
+    "fallbackApkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v1.3.3/UWHLife_android_arm64-v8a.apk",
     "apkUrls": {
       "armeabi-v7a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_armeabi-v7a.apk",
       "arm64-v8a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
       "x86_64": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_x86_64.apk"
     },
     "fallbackApkUrls": {
-      "armeabi-v7a": "https://github.com/coldin04/uwhLife/releases/download/v1.3.3/UWHLife_android_armeabi-v7a.apk",
-      "arm64-v8a": "https://github.com/coldin04/uwhLife/releases/download/v1.3.3/UWHLife_android_arm64-v8a.apk",
-      "x86_64": "https://github.com/coldin04/uwhLife/releases/download/v1.3.3/UWHLife_android_x86_64.apk"
+      "armeabi-v7a": "https://github.com/Coldin04/uwhLife/releases/download/v1.3.3/UWHLife_android_armeabi-v7a.apk",
+      "arm64-v8a": "https://github.com/Coldin04/uwhLife/releases/download/v1.3.3/UWHLife_android_arm64-v8a.apk",
+      "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v1.3.3/UWHLife_android_x86_64.apk"
     },
     "sha256ByAbi": {
-      "armeabi-v7a": "",
-      "arm64-v8a": "",
-      "x86_64": ""
+      "armeabi-v7a": "9eb12be7b872b4812a5f3598b1fbdfa4a671e575d6d501ee15e1b6bbc3b0b1c6",
+      "arm64-v8a": "594bce5922966917af0e245876b51fa9db16742f9818edc7d6205964d7ff6498",
+      "x86_64": "8fbd33588db7166d5870199f0bd416ca4f197b8f05c36e8d978b42a38f1aa166"
     },
-    "sha256": ""
+    "sha256": "594bce5922966917af0e245876b51fa9db16742f9818edc7d6205964d7ff6498"
   },
   "ios": {
     "versionName": "1.3.3",

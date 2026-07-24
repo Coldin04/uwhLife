@@ -44,7 +44,7 @@
           "date": "2026-07-24",
           "localizedDescription": "1. 关于页面新增官方网站与 GitHub 项目地址，方便查看项目主页和源码。\n2. 优化项目官网的搜索关键词、结构化数据和分享标题。\n3. 优化付款码与课表页面的状态栏显示，提升深色和浅色模式下的视觉一致性。",
           "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_unsigned.ipa",
-          "size": 0,
+          "size": 39027324,
           "minOSVersion": "15.0"
         }
       ],
