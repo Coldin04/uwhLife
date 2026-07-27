@@ -2,27 +2,25 @@
   "schemaVersion": 1,
   "app": "uwhLife",
   "android": {
-    "versionName": "1.3.3",
-    "versionCode": 17,
+    "versionName": "1.3.4",
+    "versionCode": 18,
     "minSupportedVersionCode": 10,
     "mandatory": false,
-    "title": "v1.3.3 更新",
+    "title": "v1.3.4 更新",
     "notes": [
-      "关于页面新增官方网站与 GitHub 项目地址，方便查看项目主页和源码。",
-      "优化项目官网的搜索关键词、结构化数据和分享标题。",
-      "优化付款码与课表页面的状态栏显示，提升深色和浅色模式下的视觉一致性。"
+      "修复了部分界面通知栏可见性问题"
     ],
     "apkUrl": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
-    "fallbackApkUrl": "https://github.com/coldin04/uwhLife/releases/download/v1.3.3/UWHLife_android_arm64-v8a.apk",
+    "fallbackApkUrl": "https://github.com/coldin04/uwhLife/releases/download/v1.3.4/UWHLife_android_arm64-v8a.apk",
     "apkUrls": {
       "armeabi-v7a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_armeabi-v7a.apk",
       "arm64-v8a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
       "x86_64": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_x86_64.apk"
     },
     "fallbackApkUrls": {
-      "armeabi-v7a": "https://github.com/coldin04/uwhLife/releases/download/v1.3.3/UWHLife_android_armeabi-v7a.apk",
-      "arm64-v8a": "https://github.com/coldin04/uwhLife/releases/download/v1.3.3/UWHLife_android_arm64-v8a.apk",
-      "x86_64": "https://github.com/coldin04/uwhLife/releases/download/v1.3.3/UWHLife_android_x86_64.apk"
+      "armeabi-v7a": "https://github.com/coldin04/uwhLife/releases/download/v1.3.4/UWHLife_android_armeabi-v7a.apk",
+      "arm64-v8a": "https://github.com/coldin04/uwhLife/releases/download/v1.3.4/UWHLife_android_arm64-v8a.apk",
+      "x86_64": "https://github.com/coldin04/uwhLife/releases/download/v1.3.4/UWHLife_android_x86_64.apk"
     },
     "sha256ByAbi": {
       "armeabi-v7a": "",
@@ -32,13 +30,11 @@
     "sha256": ""
   },
   "ios": {
-    "versionName": "1.3.3",
-    "buildVersion": "17",
-    "title": "v1.3.3 更新",
+    "versionName": "1.3.4",
+    "buildVersion": "18",
+    "title": "v1.3.4 更新",
     "notes": [
-      "关于页面新增官方网站与 GitHub 项目地址，方便查看项目主页和源码。",
-      "优化项目官网的搜索关键词、结构化数据和分享标题。",
-      "优化付款码与课表页面的状态栏显示，提升深色和浅色模式下的视觉一致性。"
+      "修复了部分界面通知栏可见性问题"
     ],
     "altSourceUrl": "https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/main/source.json"
   }

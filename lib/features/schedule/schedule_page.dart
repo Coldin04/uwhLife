@@ -379,12 +379,23 @@ class _SchedulePageState extends State<SchedulePage> {
               ),
             ),
             child: Scaffold(
+              extendBodyBehindAppBar: true,
               backgroundColor: Colors.transparent,
               appBar: AppBar(
                 toolbarHeight: 64,
                 titleSpacing: 2,
                 backgroundColor: Colors.transparent,
                 surfaceTintColor: Colors.transparent,
+                forceMaterialTransparency: true,
+                systemOverlayStyle: SystemUiOverlayStyle(
+                  statusBarColor: Colors.transparent,
+                  statusBarIconBrightness: isDark
+                      ? Brightness.light
+                      : Brightness.dark,
+                  statusBarBrightness: isDark
+                      ? Brightness.dark
+                      : Brightness.light,
+                ),
                 title: schedule == null || selectedWeek == null
                     ? const Text('我的课表')
                     : _ScheduleAppBarTitle(
@@ -410,7 +421,12 @@ class _SchedulePageState extends State<SchedulePage> {
                   const SizedBox(width: 4),
                 ],
               ),
-              body: body,
+              body: Padding(
+                padding: EdgeInsets.only(
+                  top: MediaQuery.paddingOf(context).top + 64,
+                ),
+                child: body,
+              ),
             ),
           );
         },

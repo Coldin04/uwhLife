@@ -28,10 +28,10 @@ test('landing page uses a split app hero and focuses on product features', async
   assert.match(html, /<script src="script\.js\?v=theme-screenshots-2" defer><\/script>/);
   assert.match(html, /bootstrap-icons/);
   assert.match(html, /<p class="hero-tagline">更易用的芜湖学院客户端<\/p>/);
-  assert.match(html, /<footer class="site-footer">[\s\S]*?非官方项目，与校芜忧应用并非同一产品/);
+  assert.match(html, /<footer class="site-footer">[\s\S]*?非官方项目，与校芜优应用并非同一产品/);
   assert.match(html, /<link rel="canonical" href="https:\/\/uwh\.cold04\.com\/" \/>/);
   assert.match(html, /<meta property="og:url" content="https:\/\/uwh\.cold04\.com\/" \/>/);
-  assert.match(html, /"disambiguatingDescription": "芜忧皖江与官方校芜忧应用并非同一产品。"/);
+  assert.match(html, /"disambiguatingDescription": "芜忧皖江与官方校芜优应用并非同一产品。"/);
   assert.match(html, /"applicationCategory": "EducationalApplication"/);
   assert.match(robots, /^User-agent: \*\nAllow: \/\n\nSitemap: https:\/\/uwh\.cold04\.com\/sitemap\.xml\n$/);
   assert.match(sitemap, /<loc>https:\/\/uwh\.cold04\.com\/<\/loc>/);
