@@ -23,11 +23,11 @@
       "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v1.3.4/UWHLife_android_x86_64.apk"
     },
     "sha256ByAbi": {
-      "armeabi-v7a": "",
-      "arm64-v8a": "",
-      "x86_64": ""
+      "armeabi-v7a": "149f1b8f7bb3b766c919bd1cd8ee1815654c3db22fcac5fa41972361f3b00493",
+      "arm64-v8a": "47fb41d162d22d66af07e35eb499b2e6834471feee174e84c9a97bbded19c245",
+      "x86_64": "508ece0337f45719265744b4be5a97ca6669550ce3e62a5f831c2d38b4927867"
     },
-    "sha256": ""
+    "sha256": "47fb41d162d22d66af07e35eb499b2e6834471feee174e84c9a97bbded19c245"
   },
   "ios": {
     "versionName": "1.3.4",
