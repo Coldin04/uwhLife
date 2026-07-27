@@ -11,16 +11,16 @@
       "修复了部分界面通知栏可见性问题"
     ],
     "apkUrl": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
-    "fallbackApkUrl": "https://github.com/coldin04/uwhLife/releases/download/v1.3.4/UWHLife_android_arm64-v8a.apk",
+    "fallbackApkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v1.3.4/UWHLife_android_arm64-v8a.apk",
     "apkUrls": {
       "armeabi-v7a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_armeabi-v7a.apk",
       "arm64-v8a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
       "x86_64": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_x86_64.apk"
     },
     "fallbackApkUrls": {
-      "armeabi-v7a": "https://github.com/coldin04/uwhLife/releases/download/v1.3.4/UWHLife_android_armeabi-v7a.apk",
-      "arm64-v8a": "https://github.com/coldin04/uwhLife/releases/download/v1.3.4/UWHLife_android_arm64-v8a.apk",
-      "x86_64": "https://github.com/coldin04/uwhLife/releases/download/v1.3.4/UWHLife_android_x86_64.apk"
+      "armeabi-v7a": "https://github.com/Coldin04/uwhLife/releases/download/v1.3.4/UWHLife_android_armeabi-v7a.apk",
+      "arm64-v8a": "https://github.com/Coldin04/uwhLife/releases/download/v1.3.4/UWHLife_android_arm64-v8a.apk",
+      "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v1.3.4/UWHLife_android_x86_64.apk"
     },
     "sha256ByAbi": {
       "armeabi-v7a": "",
