@@ -73,10 +73,15 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
   Timer? _launchOverlayDelayTimer;
   DateTime? _launchOverlayShownAt;
   HybridBleBridge? _bleBridge;
+  Timer? _statusBarResampleTimer;
+
+  /// 网页顶部区域的明暗，用来决定状态栏图标颜色；null 表示还没采样到。
+  Brightness? _pageTopBrightness;
 
   @override
   void dispose() {
     _launchOverlayDelayTimer?.cancel();
+    _statusBarResampleTimer?.cancel();
     final bleBridge = _bleBridge;
     if (bleBridge != null) {
       unawaited(bleBridge.dispose());
@@ -286,6 +291,13 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
           await _maybeInjectBoundaryDebug(url);
           await _trackLoginTransition(url);
           await _maybeAutofill(url);
+          await _syncStatusBarWithPage();
+          // 有些页面首屏之后才铺背景色，稍后再采样一次。
+          _statusBarResampleTimer?.cancel();
+          _statusBarResampleTimer = Timer(
+            const Duration(milliseconds: 700),
+            () => unawaited(_syncStatusBarWithPage()),
+          );
         },
         onWebResourceError: (error) {
           if (!mounted) return;
@@ -1893,6 +1905,90 @@ JSON.stringify({
 ''';
   }
 
+  /// 取状态栏正下方那块区域的实际背景色，返回 1（浅色）/ 0（深色）/ -1（取不到）。
+  /// 优先用命中的元素，其次 body / html，最后退回 `<meta name="theme-color">`。
+  static const String _pageBrightnessScript = '''
+(function(){
+  function parse(value){
+    if(!value) return null;
+    var m = value.match(/rgba?\\(([^)]+)\\)/);
+    if(m){
+      var p = m[1].split(',').map(function(x){ return parseFloat(x); });
+      if(p.length > 3 && p[3] === 0) return null;
+      return p;
+    }
+    if(value.charAt(0) === '#'){
+      var hex = value.slice(1);
+      if(hex.length === 3){
+        hex = hex.split('').map(function(c){ return c + c; }).join('');
+      }
+      if(hex.length < 6) return null;
+      return [
+        parseInt(hex.substr(0, 2), 16),
+        parseInt(hex.substr(2, 2), 16),
+        parseInt(hex.substr(4, 2), 16)
+      ];
+    }
+    return null;
+  }
+  function fromElement(el){
+    while(el){
+      var c = parse(getComputedStyle(el).backgroundColor);
+      if(c) return c;
+      el = el.parentElement;
+    }
+    return null;
+  }
+  var rgb = null;
+  try {
+    var x = Math.max(1, Math.floor(window.innerWidth / 2));
+    rgb = fromElement(document.elementFromPoint(x, 2));
+  } catch(e) {}
+  if(!rgb && document.body){
+    rgb = parse(getComputedStyle(document.body).backgroundColor);
+  }
+  if(!rgb && document.documentElement){
+    rgb = parse(getComputedStyle(document.documentElement).backgroundColor);
+  }
+  if(!rgb){
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if(meta) rgb = parse(meta.getAttribute('content'));
+  }
+  if(!rgb) return -1;
+  var lum = (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255;
+  return lum > 0.6 ? 1 : 0;
+})();
+''';
+
+  Future<void> _syncStatusBarWithPage() async {
+    // 顶部留白时状态栏压在 Scaffold 的白底上，不用看网页。
+    if (widget.topSafeArea) return;
+    try {
+      final raw = await _controller.runJavaScriptReturningResult(
+        _pageBrightnessScript,
+      );
+      final value = double.tryParse(raw.toString().replaceAll('"', ''));
+      if (value == null || value < 0) return;
+      final brightness = value >= 1 ? Brightness.light : Brightness.dark;
+      if (!mounted || _pageTopBrightness == brightness) return;
+      setState(() => _pageTopBrightness = brightness);
+    } catch (_) {
+      // 页面还没就绪或禁用了 JS，保持当前状态栏样式。
+    }
+  }
+
+  /// 网页背景浅色 → 深色图标；深色 → 浅色图标。采样不到时按浅色底处理，
+  /// 因为 Scaffold 本身是白底。
+  SystemUiOverlayStyle get _statusBarStyle {
+    final pageIsDark =
+        !widget.topSafeArea && _pageTopBrightness == Brightness.dark;
+    return SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: pageIsDark ? Brightness.light : Brightness.dark,
+      statusBarBrightness: pageIsDark ? Brightness.dark : Brightness.light,
+    );
+  }
+
   Future<void> _handleBack() async {
     if (await _controller.canGoBack()) {
       await _controller.goBack();
@@ -1925,121 +2021,127 @@ JSON.stringify({
         if (didPop) return;
         _handleBack();
       },
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        body: Stack(
-          children: [
-            Positioned.fill(
-              child: Padding(
-                padding: EdgeInsets.only(
-                  top: webviewTopPadding,
-                  bottom: webviewBottomPadding,
-                ),
-                child: WebViewWidget(controller: _controller),
-              ),
-            ),
-            if (_errorText != null)
-              Center(
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: _statusBarStyle,
+        child: Scaffold(
+          backgroundColor: Colors.white,
+          body: Stack(
+            children: [
+              Positioned.fill(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.error_outline_rounded,
-                        size: 32,
-                        color: Color(0xFF111111),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        '页面加载失败',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              color: const Color(0xFF111111),
-                              fontWeight: wBold,
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _errorText!,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFF777777),
-                          height: 1.4,
+                  padding: EdgeInsets.only(
+                    top: webviewTopPadding,
+                    bottom: webviewBottomPadding,
+                  ),
+                  child: WebViewWidget(controller: _controller),
+                ),
+              ),
+              if (_errorText != null)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.error_outline_rounded,
+                          size: 32,
+                          color: Color(0xFF111111),
                         ),
-                      ),
-                      const SizedBox(height: 14),
-                      FilledButton(
-                        onPressed: () {
-                          setState(() {
-                            _isLoading = true;
-                            _errorText = null;
-                          });
-                          _scheduleLaunchOverlay();
-                          _controller.loadRequest(Uri.parse(widget.initialUrl));
-                        },
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF111111),
+                        const SizedBox(height: 12),
+                        Text(
+                          '页面加载失败',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: const Color(0xFF111111),
+                                fontWeight: wBold,
+                              ),
                         ),
-                        child: const Text('重新加载'),
-                      ),
-                    ],
+                        const SizedBox(height: 8),
+                        Text(
+                          _errorText!,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: const Color(0xFF777777),
+                                height: 1.4,
+                              ),
+                        ),
+                        const SizedBox(height: 14),
+                        FilledButton(
+                          onPressed: () {
+                            setState(() {
+                              _isLoading = true;
+                              _errorText = null;
+                            });
+                            _scheduleLaunchOverlay();
+                            _controller.loadRequest(
+                              Uri.parse(widget.initialUrl),
+                            );
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF111111),
+                          ),
+                          child: const Text('重新加载'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              if (_isLoading)
+                Positioned(
+                  top: topInset,
+                  left: 0,
+                  right: 0,
+                  child: const LinearProgressIndicator(
+                    minHeight: 2,
+                    color: Color(0xFF111111),
+                    backgroundColor: Color(0xFFE8E8E5),
+                  ),
+                ),
+              Positioned.fill(
+                child: IgnorePointer(
+                  ignoring: !_showLaunchLoading,
+                  child: AnimatedOpacity(
+                    opacity: _showLaunchLoading ? 1 : 0,
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    child: MiniProgramLaunchView(
+                      icon: widget.icon,
+                      title: widget.title,
+                      accentColor: widget.accentColor,
+                    ),
                   ),
                 ),
               ),
-            if (_isLoading)
+              // 左上：返回（先回退 WebView 历史，无可退则关闭页面）
               Positioned(
-                top: topInset,
-                left: 0,
-                right: 0,
-                child: const LinearProgressIndicator(
-                  minHeight: 2,
-                  color: Color(0xFF111111),
-                  backgroundColor: Color(0xFFE8E8E5),
+                top: topInset + 8,
+                left: 12,
+                child: FloatingNavButton(
+                  icon: Icons.arrow_back_ios_new_rounded,
+                  onTap: _handleBack,
+                  semanticLabel: '返回',
                 ),
               ),
-            Positioned.fill(
-              child: IgnorePointer(
-                ignoring: !_showLaunchLoading,
-                child: AnimatedOpacity(
-                  opacity: _showLaunchLoading ? 1 : 0,
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOutCubic,
-                  child: MiniProgramLaunchView(
-                    icon: widget.icon,
-                    title: widget.title,
-                    accentColor: widget.accentColor,
-                  ),
+              // 右上：微信小程序风格胶囊（刷新 | 关闭）
+              Positioned(
+                top: topInset + 8,
+                right: 12,
+                child: MiniProgramCapsule(
+                  onRefresh: () {
+                    setState(() {
+                      _isLoading = true;
+                      _errorText = null;
+                    });
+                    _scheduleLaunchOverlay();
+                    _controller.reload();
+                  },
+                  onClose: _handleClose,
                 ),
               ),
-            ),
-            // 左上：返回（先回退 WebView 历史，无可退则关闭页面）
-            Positioned(
-              top: topInset + 8,
-              left: 12,
-              child: FloatingNavButton(
-                icon: Icons.arrow_back_ios_new_rounded,
-                onTap: _handleBack,
-                semanticLabel: '返回',
-              ),
-            ),
-            // 右上：微信小程序风格胶囊（刷新 | 关闭）
-            Positioned(
-              top: topInset + 8,
-              right: 12,
-              child: MiniProgramCapsule(
-                onRefresh: () {
-                  setState(() {
-                    _isLoading = true;
-                    _errorText = null;
-                  });
-                  _scheduleLaunchOverlay();
-                  _controller.reload();
-                },
-                onClose: _handleClose,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -25,6 +25,33 @@ const _darkScheduleGradient = <Color>[
   Color(0xFF020503),
 ];
 const _weekdayLabels = <String>['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+
+/// 课表相关页面都是浅色渐变背景，状态栏图标必须跟着主题走，
+/// 否则浅色模式下会保持白色图标，几乎看不见。
+SystemUiOverlayStyle _scheduleOverlayStyle(bool isDark) {
+  return SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+    statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+  );
+}
+
+AppBar _scheduleDetailAppBar(BuildContext context, String title) {
+  final theme = Theme.of(context);
+  return AppBar(
+    title: Text(title),
+    titleTextStyle: theme.textTheme.titleLarge?.copyWith(
+      color: theme.colorScheme.onSurface,
+      fontSize: 18,
+    ),
+    backgroundColor: Colors.transparent,
+    surfaceTintColor: Colors.transparent,
+    systemOverlayStyle: _scheduleOverlayStyle(
+      theme.brightness == Brightness.dark,
+    ),
+  );
+}
+
 const _scheduleWebUrl =
     'http://ehall.uwh.edu.cn/jwmobile/auth/index?serviceKey=PK.WDKB';
 
@@ -324,11 +351,7 @@ class _SchedulePageState extends State<SchedulePage> {
         : _lightScheduleGradient;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
-      ),
+      value: _scheduleOverlayStyle(isDark),
       child: FutureBuilder<ScheduleData>(
         future: future,
         builder: (context, snapshot) {
@@ -376,15 +399,7 @@ class _SchedulePageState extends State<SchedulePage> {
                 backgroundColor: Colors.transparent,
                 surfaceTintColor: Colors.transparent,
                 forceMaterialTransparency: true,
-                systemOverlayStyle: SystemUiOverlayStyle(
-                  statusBarColor: Colors.transparent,
-                  statusBarIconBrightness: isDark
-                      ? Brightness.light
-                      : Brightness.dark,
-                  statusBarBrightness: isDark
-                      ? Brightness.dark
-                      : Brightness.light,
-                ),
+                systemOverlayStyle: _scheduleOverlayStyle(isDark),
                 title: schedule == null || selectedWeek == null
                     ? const Text('我的课表')
                     : _ScheduleAppBarTitle(
@@ -1357,11 +1372,7 @@ class ScheduleCourseDetailPage extends StatelessWidget {
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: const Text('课程详情'),
-          backgroundColor: Colors.transparent,
-          surfaceTintColor: Colors.transparent,
-        ),
+        appBar: _scheduleDetailAppBar(context, '课程详情'),
         body: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
@@ -1450,11 +1461,7 @@ class _UnscheduledCourseDetailPage extends StatelessWidget {
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: const Text('未排课课程详情'),
-          backgroundColor: Colors.transparent,
-          surfaceTintColor: Colors.transparent,
-        ),
+        appBar: _scheduleDetailAppBar(context, '未排课课程详情'),
         body: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
