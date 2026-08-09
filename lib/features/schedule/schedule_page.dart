@@ -71,18 +71,7 @@ class _SchedulePageState extends State<SchedulePage> {
     setState(() => _selectedWeek = week);
   }
 
-  void _openScheduleWebPage() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const PortalWebViewPage(
-          title: '课表网页',
-          icon: Icons.calendar_month_rounded,
-          initialUrl: _scheduleWebUrl,
-          accentColor: _scheduleGreen,
-        ),
-      ),
-    );
-  }
+  void _openScheduleWebPage() => _pushScheduleWebPage(context);
 
   Future<void> _exportCsv(ScheduleData schedule) async {
     final count = ScheduleCsvExporter.exportableCourseCount(schedule);
@@ -406,14 +395,15 @@ class _SchedulePageState extends State<SchedulePage> {
                   _ScheduleActionsMenu(
                     onRefresh: () => _load(termCode: schedule?.term.code),
                     onOpenWeb: _openScheduleWebPage,
-                    onExportWakeUp: schedule == null
+                    onExportWakeUp: schedule == null || !schedule.hasCourseTable
                         ? null
                         : () => unawaited(_exportCsv(schedule)),
-                    onExportIcs: schedule == null
+                    onExportIcs: schedule == null || !schedule.hasCourseTable
                         ? null
                         : () => unawaited(_exportIcs(schedule)),
                     onAddToCalendar:
                         schedule != null &&
+                            schedule.hasCourseTable &&
                             defaultTargetPlatform == TargetPlatform.iOS
                         ? () => unawaited(_addToCalendar(schedule))
                         : null,
@@ -633,34 +623,41 @@ class _ScheduleViewState extends State<_ScheduleView> {
 
   @override
   Widget build(BuildContext context) {
+    final notice = widget.schedule.courseTableNotice;
     return ListView(
       padding: const EdgeInsets.fromLTRB(10, 0, 10, 32),
       children: [
-        _ScheduleHeader(
-          schedule: widget.schedule,
-          selectedWeek: widget.selectedWeek,
-          onChangeWeek: _selectWeek,
-        ),
-        const SizedBox(height: 6),
-        SizedBox(
-          height: _ScheduleGrid.heightFor(widget.schedule),
-          child: PageView.builder(
-            controller: _pageController,
-            physics: const ClampingScrollPhysics(),
-            itemCount: widget.schedule.maxWeek,
-            onPageChanged: (index) => widget.onChangeWeek(index + 1),
-            itemBuilder: (context, index) {
-              return _ScheduleGrid(
-                key: ValueKey<int>(index + 1),
-                schedule: widget.schedule,
-                week: index + 1,
-              );
-            },
+        // 课表未发布/未返回有效数据时不渲染日历，只给提示，
+        // 未排课课程等其它模块照常展示。
+        if (notice != null)
+          _CourseTableNotice(message: notice)
+        else ...[
+          _ScheduleHeader(
+            schedule: widget.schedule,
+            selectedWeek: widget.selectedWeek,
+            onChangeWeek: _selectWeek,
           ),
-        ),
-        if (widget.schedule.onlineCourses.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          SizedBox(
+            height: _ScheduleGrid.heightFor(widget.schedule),
+            child: PageView.builder(
+              controller: _pageController,
+              physics: const ClampingScrollPhysics(),
+              itemCount: widget.schedule.maxWeek,
+              onPageChanged: (index) => widget.onChangeWeek(index + 1),
+              itemBuilder: (context, index) {
+                return _ScheduleGrid(
+                  key: ValueKey<int>(index + 1),
+                  schedule: widget.schedule,
+                  week: index + 1,
+                );
+              },
+            ),
+          ),
+        ],
+        if (widget.schedule.unscheduledCourses.isNotEmpty) ...[
           const SizedBox(height: 20),
-          _OnlineCourses(courses: widget.schedule.onlineCourses),
+          _UnscheduledCourses(courses: widget.schedule.unscheduledCourses),
         ],
       ],
     );
@@ -1145,10 +1142,10 @@ String _compactClassroom(String classroom) {
   return classroom.replaceAll('教学楼', '·');
 }
 
-class _OnlineCourses extends StatelessWidget {
-  const _OnlineCourses({required this.courses});
+class _UnscheduledCourses extends StatelessWidget {
+  const _UnscheduledCourses({required this.courses});
 
-  final List<ScheduleOnlineCourse> courses;
+  final List<ScheduleUnscheduledCourse> courses;
 
   @override
   Widget build(BuildContext context) {
@@ -1156,7 +1153,7 @@ class _OnlineCourses extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '网络课程',
+          '未排课课程',
           style: Theme.of(
             context,
           ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -1181,7 +1178,7 @@ class _OnlineCourses extends StatelessWidget {
                   Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) =>
-                          _ScheduleOnlineCourseDetail(course: course),
+                          _UnscheduledCourseDetailPage(course: course),
                     ),
                   );
                 },
@@ -1233,6 +1230,71 @@ class _OnlineCourses extends StatelessWidget {
           );
         }),
       ],
+    );
+  }
+}
+
+void _pushScheduleWebPage(BuildContext context) {
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => const PortalWebViewPage(
+        title: '课表网页',
+        icon: Icons.calendar_month_rounded,
+        initialUrl: _scheduleWebUrl,
+        accentColor: _scheduleGreen,
+      ),
+    ),
+  );
+}
+
+class _CourseTableNotice extends StatelessWidget {
+  const _CourseTableNotice({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.fromLTRB(20, 26, 20, 22),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF17251C) : const Color(0xFFEAF7EE),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.event_busy_outlined,
+            color: _scheduleGreen.withValues(alpha: 0.7),
+            size: 38,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '教务系统发布课表后，点击右上角“刷新缓存”即可加载。',
+            textAlign: TextAlign.center,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: _subtleText(context)),
+          ),
+          const SizedBox(height: 14),
+          TextButton.icon(
+            onPressed: () => _pushScheduleWebPage(context),
+            icon: const Icon(Icons.open_in_browser_rounded, size: 18),
+            label: const Text('打开课表网页'),
+            style: TextButton.styleFrom(foregroundColor: _scheduleGreen),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1365,10 +1427,10 @@ class ScheduleCourseDetailPage extends StatelessWidget {
   }
 }
 
-class _ScheduleOnlineCourseDetail extends StatelessWidget {
-  const _ScheduleOnlineCourseDetail({required this.course});
+class _UnscheduledCourseDetailPage extends StatelessWidget {
+  const _UnscheduledCourseDetailPage({required this.course});
 
-  final ScheduleOnlineCourse course;
+  final ScheduleUnscheduledCourse course;
 
   @override
   Widget build(BuildContext context) {
@@ -1389,14 +1451,14 @@ class _ScheduleOnlineCourseDetail extends StatelessWidget {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: const Text('网络课程详情'),
+          title: const Text('未排课课程详情'),
           backgroundColor: Colors.transparent,
           surfaceTintColor: Colors.transparent,
         ),
         body: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
-            _OnlineCourseDetailHero(course: course, palette: palette),
+            _UnscheduledCourseDetailHero(course: course, palette: palette),
             const SizedBox(height: 16),
             _DetailSection(
               icon: Icons.school_outlined,
@@ -1413,9 +1475,10 @@ class _ScheduleOnlineCourseDetail extends StatelessWidget {
             const SizedBox(height: 12),
             _DetailSection(
               icon: Icons.calendar_month_outlined,
-              title: '学习安排',
+              title: '开课安排',
               children: [
                 _DetailRow(label: '开课周次', value: course.weekDescription),
+                const _DetailRow(label: '上课时间', value: '教务系统未安排固定的上课时间地点'),
               ],
             ),
           ],
@@ -1425,10 +1488,13 @@ class _ScheduleOnlineCourseDetail extends StatelessWidget {
   }
 }
 
-class _OnlineCourseDetailHero extends StatelessWidget {
-  const _OnlineCourseDetailHero({required this.course, required this.palette});
+class _UnscheduledCourseDetailHero extends StatelessWidget {
+  const _UnscheduledCourseDetailHero({
+    required this.course,
+    required this.palette,
+  });
 
-  final ScheduleOnlineCourse course;
+  final ScheduleUnscheduledCourse course;
   final _CoursePalette palette;
 
   @override
@@ -1453,7 +1519,11 @@ class _OnlineCourseDetailHero extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.language_rounded, color: palette.foreground, size: 24),
+              Icon(
+                Icons.event_note_rounded,
+                color: palette.foreground,
+                size: 24,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(

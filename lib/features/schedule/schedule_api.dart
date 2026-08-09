@@ -47,10 +47,16 @@ class ScheduleApi {
     _host,
     '/jwapp/sys/wdkb/modules/xskcb/cxxszhxqkb.do',
   );
-  static final Uri _onlineCoursesUri = Uri.https(
+  static final Uri _unscheduledCoursesUri = Uri.https(
     _host,
     '/jwapp/sys/wdkb/modules/xskcb/xswpkc.do',
   );
+
+  /// 教务系统返回空课表时的兜底提示。真实原因（例如“查询学年学期的课表未发布”）
+  /// 由接口的 `extParams.msg` 给出，优先使用服务端文案。
+  static const String emptyCourseTableNotice = '本学期暂无可显示的课表数据';
+  static const String _failedCourseTableNotice = '课表数据获取失败，请稍后重试';
+  static const String _malformedCourseTableNotice = '课表数据解析失败，可前往课表网页查看';
 
   static Future<ScheduleData> fetchCurrentSchedule() {
     return fetchSchedule();
@@ -103,8 +109,14 @@ class ScheduleApi {
         currentTerm: currentTerm,
         availableTerms: availableTerms,
       );
+      // 校历、当前周、节次、课表、未排课课程都是可选数据：任意一项失败或未发布时
+      // 只降级对应模块，不能让整个课表界面加载不出来。
       final calendar = _parseTermCalendar(
-        await client.postJson(_termCalendarUri, _termCalendarForm(baseTerm)),
+        await _tryPostJson(
+          client,
+          _termCalendarUri,
+          _termCalendarForm(baseTerm),
+        ),
       );
       final term = baseTerm.copyWith(
         startDate: calendar.startDate,
@@ -113,7 +125,8 @@ class ScheduleApi {
       final currentWeek = baseTerm.code == currentTerm.code
           ? term.clampWeek(
               _parseCurrentWeek(
-                await client.postJson(
+                await _tryPostJson(
+                  client,
                   _currentWeekUri,
                   _currentWeekForm(baseTerm, DateTime.now()),
                 ),
@@ -121,17 +134,22 @@ class ScheduleApi {
             )
           : 1;
       final lessonTimes = _parseLessonTimes(
-        await client.postJson(_lessonTimeUri),
+        await _tryPostJson(client, _lessonTimeUri),
       );
-      final courses = _parseCourses(
-        await client.postJson(_scheduleUri, <String, String>{
+      final courseTable = _tableOf(
+        await _tryPostJson(client, _scheduleUri, <String, String>{
           'XNXQDM': term.code,
         }),
+        'cxxszhxqkb',
       );
-      final onlineCourses = _parseOnlineCourses(
-        await client.postJson(_onlineCoursesUri, <String, String>{
-          'XNXQDM': term.code,
-        }),
+      final courses = _parseCourses(courseTable?.rows);
+      final unscheduledCourses = _parseUnscheduledCourses(
+        _tableOf(
+          await _tryPostJson(client, _unscheduledCoursesUri, <String, String>{
+            'XNXQDM': term.code,
+          }),
+          'xswpkc',
+        )?.rows,
       );
 
       return ScheduleData(
@@ -139,9 +157,13 @@ class ScheduleApi {
         lessonTimes: lessonTimes,
         courses: courses,
         currentWeek: currentWeek,
-        onlineCourses: onlineCourses,
+        unscheduledCourses: unscheduledCourses,
         availableTerms: availableTerms,
         isCurrentTerm: baseTerm.code == currentTerm.code,
+        courseTableNotice: courseTableNotice(
+          table: courseTable,
+          parsedCourses: courses,
+        ),
       );
     } on SocketException {
       throw const ScheduleApiException('网络连接失败');
@@ -325,30 +347,30 @@ class ScheduleApi {
     };
   }
 
-  static int _parseCurrentWeek(Map<String, dynamic> response) {
-    final rows = _rows(response, 'dqzc');
-    if (rows.isEmpty) throw const FormatException('No current week');
+  static int _parseCurrentWeek(Map<String, dynamic>? response) {
+    final rows = _tableOf(response, 'dqzc')?.rows ?? const [];
+    if (rows.isEmpty) return 1;
     final currentWeek = _number(rows.first['ZC']);
-    if (currentWeek <= 0) throw const FormatException('Missing current week');
-    return currentWeek;
+    return currentWeek > 0 ? currentWeek : 1;
   }
 
-  static _TermCalendar _parseTermCalendar(Map<String, dynamic> response) {
-    final rows = _rows(response, 'cxxljc');
-    if (rows.isEmpty) throw const FormatException('No term calendar');
+  static _TermCalendar _parseTermCalendar(Map<String, dynamic>? response) {
+    final rows = _tableOf(response, 'cxxljc')?.rows ?? const [];
+    if (rows.isEmpty) {
+      return const _TermCalendar(startDate: null, totalWeeks: null);
+    }
     final row = rows.first;
     final totalWeeks = _number(row['ZZC']);
-    if (totalWeeks <= 0) throw const FormatException('Missing total weeks');
     return _TermCalendar(
       startDate: _date(row['XQKSRQ']),
-      totalWeeks: totalWeeks,
+      totalWeeks: totalWeeks > 0 ? totalWeeks : null,
     );
   }
 
   static List<ScheduleLessonTime> _parseLessonTimes(
-    Map<String, dynamic> response,
+    Map<String, dynamic>? response,
   ) {
-    final lessonTimes = _rows(response, 'jc')
+    final lessonTimes = (_tableOf(response, 'jc')?.rows ?? const [])
         .map(
           (row) => ScheduleLessonTime(
             period: _number(row['DM']),
@@ -362,8 +384,9 @@ class ScheduleApi {
     return lessonTimes;
   }
 
-  static List<ScheduleCourse> _parseCourses(Map<String, dynamic> response) {
-    return _rows(response, 'cxxszhxqkb')
+  static List<ScheduleCourse> _parseCourses(List<Map<String, dynamic>>? rows) {
+    if (rows == null) return const <ScheduleCourse>[];
+    return rows
         .map(ScheduleCourse.fromJson)
         .where(
           (course) =>
@@ -376,26 +399,75 @@ class ScheduleApi {
         .toList();
   }
 
-  static List<ScheduleOnlineCourse> _parseOnlineCourses(
-    Map<String, dynamic> response,
+  static List<ScheduleUnscheduledCourse> _parseUnscheduledCourses(
+    List<Map<String, dynamic>>? rows,
   ) {
-    return _rows(response, 'xswpkc')
-        .map(ScheduleOnlineCourse.fromJson)
+    if (rows == null) return const <ScheduleUnscheduledCourse>[];
+    return rows
+        .map(ScheduleUnscheduledCourse.fromJson)
         .where((course) => course.name.isNotEmpty)
         .toList();
+  }
+
+  /// 课表不可渲染时返回提示语，可渲染时返回 null。
+  /// `extParams.code` 为 1 表示查询成功，其余（例如 3 = 课表未发布）取服务端 msg。
+  @visibleForTesting
+  static String? courseTableNotice({
+    required ScheduleTable? table,
+    required List<ScheduleCourse> parsedCourses,
+  }) {
+    if (parsedCourses.isNotEmpty) return null;
+    if (table == null) return _failedCourseTableNotice;
+    if (table.rows.isNotEmpty) return _malformedCourseTableNotice;
+    final message = table.message;
+    if (table.code != 1 && message.isNotEmpty) return message;
+    return emptyCourseTableNotice;
+  }
+
+  static Future<Map<String, dynamic>?> _tryPostJson(
+    _ScheduleHttpClient client,
+    Uri uri, [
+    Map<String, String> form = const <String, String>{},
+  ]) async {
+    try {
+      return await client.postJson(uri, form);
+    } on HttpException catch (error) {
+      debugPrint('[ScheduleApi] optional ${uri.path} failed: ${error.message}');
+      return null;
+    } on FormatException catch (error) {
+      debugPrint('[ScheduleApi] optional ${uri.path} malformed: $error');
+      return null;
+    }
   }
 
   static List<Map<String, dynamic>> _rows(
     Map<String, dynamic> response,
     String key,
   ) {
+    final table = _tableOf(response, key);
+    if (table == null) throw FormatException('Missing $key rows');
+    return table.rows;
+  }
+
+  @visibleForTesting
+  static ScheduleTable? tableOf(Map<String, dynamic>? response, String key) {
+    return _tableOf(response, key);
+  }
+
+  static ScheduleTable? _tableOf(Map<String, dynamic>? response, String key) {
+    if (response == null) return null;
     final datas = response['datas'];
-    if (datas is! Map) throw const FormatException('Missing datas');
+    if (datas is! Map) return null;
     final table = datas[key];
-    if (table is! Map) throw FormatException('Missing $key');
+    if (table is! Map) return null;
     final rows = table['rows'];
-    if (rows is! List) throw FormatException('Missing $key rows');
-    return rows.whereType<Map>().map(_stringKeyedMap).toList();
+    if (rows is! List) return null;
+    final extParams = table['extParams'];
+    return ScheduleTable(
+      rows: rows.whereType<Map>().map(_stringKeyedMap).toList(),
+      code: extParams is Map ? int.tryParse(_text(extParams['code'])) : null,
+      message: extParams is Map ? _text(extParams['msg']) : '',
+    );
   }
 
   static Map<String, dynamic> _stringKeyedMap(Map map) {
@@ -636,7 +708,20 @@ class _TermCalendar {
   const _TermCalendar({required this.startDate, required this.totalWeeks});
 
   final DateTime? startDate;
-  final int totalWeeks;
+  final int? totalWeeks;
+}
+
+/// 教务系统 `datas.<key>` 表的通用结构：数据行 + extParams 状态。
+class ScheduleTable {
+  const ScheduleTable({
+    required this.rows,
+    required this.code,
+    required this.message,
+  });
+
+  final List<Map<String, dynamic>> rows;
+  final int? code;
+  final String message;
 }
 
 class _CookieJar {

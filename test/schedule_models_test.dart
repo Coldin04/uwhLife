@@ -204,7 +204,7 @@ void main() {
   });
 
   test('maps a network course response', () {
-    final course = ScheduleOnlineCourse.fromJson(<String, dynamic>{
+    final course = ScheduleUnscheduledCourse.fromJson(<String, dynamic>{
       'KCM': '网络课程',
       'KCH': 'course-code',
       'SKJS': '网络教师',

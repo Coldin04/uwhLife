@@ -4,18 +4,25 @@ class ScheduleData {
     required this.lessonTimes,
     required this.courses,
     this.currentWeek = 1,
-    this.onlineCourses = const <ScheduleOnlineCourse>[],
+    this.unscheduledCourses = const <ScheduleUnscheduledCourse>[],
     this.availableTerms = const <ScheduleTerm>[],
     this.isCurrentTerm = true,
+    this.courseTableNotice,
   });
 
   final ScheduleTerm term;
   final List<ScheduleLessonTime> lessonTimes;
   final List<ScheduleCourse> courses;
   final int currentWeek;
-  final List<ScheduleOnlineCourse> onlineCourses;
+  final List<ScheduleUnscheduledCourse> unscheduledCourses;
   final List<ScheduleTerm> availableTerms;
   final bool isCurrentTerm;
+
+  /// 教务系统未返回可用的周课表时的提示语（例如“查询学年学期的课表未发布”）。
+  /// 为 null 表示课表数据可用，可以渲染日历网格。
+  final String? courseTableNotice;
+
+  bool get hasCourseTable => courseTableNotice == null;
 
   factory ScheduleData.fromCacheJson(Map<String, dynamic> json) {
     return ScheduleData(
@@ -27,13 +34,14 @@ class ScheduleData {
         json['courses'],
       ).map(ScheduleCourse.fromCacheJson).toList(),
       currentWeek: _int(json['currentWeek'], fallback: 1),
-      onlineCourses: _maps(
-        json['onlineCourses'],
-      ).map(ScheduleOnlineCourse.fromCacheJson).toList(),
+      unscheduledCourses: _maps(
+        json['unscheduledCourses'],
+      ).map(ScheduleUnscheduledCourse.fromCacheJson).toList(),
       availableTerms: _maps(
         json['availableTerms'],
       ).map(ScheduleTerm.fromCacheJson).toList(),
       isCurrentTerm: json['isCurrentTerm'] != false,
+      courseTableNotice: _nullableString(json['courseTableNotice']),
     );
   }
 
@@ -45,13 +53,14 @@ class ScheduleData {
           .toList(),
       'courses': courses.map((course) => course.toCacheJson()).toList(),
       'currentWeek': currentWeek,
-      'onlineCourses': onlineCourses
+      'unscheduledCourses': unscheduledCourses
           .map((course) => course.toCacheJson())
           .toList(),
       'availableTerms': availableTerms
           .map((term) => term.toCacheJson())
           .toList(),
       'isCurrentTerm': isCurrentTerm,
+      'courseTableNotice': courseTableNotice,
     };
   }
 
@@ -61,9 +70,10 @@ class ScheduleData {
       lessonTimes: lessonTimes,
       courses: courses,
       currentWeek: currentWeek ?? this.currentWeek,
-      onlineCourses: onlineCourses,
+      unscheduledCourses: unscheduledCourses,
       availableTerms: availableTerms,
       isCurrentTerm: isCurrentTerm,
+      courseTableNotice: courseTableNotice,
     );
   }
 
@@ -402,8 +412,10 @@ class ScheduleCourse {
   }
 }
 
-class ScheduleOnlineCourse {
-  const ScheduleOnlineCourse({
+/// 未排课课程（`xskcb/xswpkc.do`）：本学期已选、但教务系统没有安排固定
+/// 上课时间地点的课程，只能单独列出，无法放进周课表网格。
+class ScheduleUnscheduledCourse {
+  const ScheduleUnscheduledCourse({
     required this.name,
     required this.courseCode,
     required this.teacher,
@@ -415,9 +427,9 @@ class ScheduleOnlineCourse {
     this.termCode = '',
   });
 
-  factory ScheduleOnlineCourse.fromJson(Map<String, dynamic> json) {
-    return ScheduleOnlineCourse(
-      name: _text(json['KCM'], fallback: '未命名网络课程'),
+  factory ScheduleUnscheduledCourse.fromJson(Map<String, dynamic> json) {
+    return ScheduleUnscheduledCourse(
+      name: _text(json['KCM'], fallback: '未命名课程'),
       courseCode: _text(json['KCH']),
       teacher: _text(json['SKJS']),
       weekDescription: _text(json['SKZC']),
@@ -429,9 +441,9 @@ class ScheduleOnlineCourse {
     );
   }
 
-  factory ScheduleOnlineCourse.fromCacheJson(Map<String, dynamic> json) {
-    return ScheduleOnlineCourse(
-      name: _string(json['name'], fallback: '未命名网络课程'),
+  factory ScheduleUnscheduledCourse.fromCacheJson(Map<String, dynamic> json) {
+    return ScheduleUnscheduledCourse(
+      name: _string(json['name'], fallback: '未命名课程'),
       courseCode: _string(json['courseCode']),
       teacher: _string(json['teacher']),
       weekDescription: _string(json['weekDescription']),
@@ -496,6 +508,12 @@ Iterable<Map<String, dynamic>> _maps(Object? value) {
 String _string(Object? value, {String fallback = ''}) {
   final text = value?.toString() ?? '';
   return text.isEmpty ? fallback : text;
+}
+
+String? _nullableString(Object? value) {
+  if (value == null) return null;
+  final text = value.toString().trim();
+  return text.isEmpty ? null : text;
 }
 
 int _int(Object? value, {int fallback = 0}) {

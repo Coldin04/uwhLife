@@ -13,6 +13,7 @@ import '../../core/storage/boundary_debug_settings.dart';
 import '../../core/storage/login_state_store.dart';
 import '../../core/storage/portal_credentials.dart';
 import '../../core/theme/app_theme.dart';
+import '../auth/portal_auto_login.dart';
 import '../scanner/qr_scanner_page.dart';
 import 'bridges/hybrid_ble_bridge.dart';
 import 'webview_overlays.dart';
@@ -605,6 +606,7 @@ JSON.stringify({
 
     if (confirmed == true) {
       await PortalCredentials.save(username, password);
+      PortalAutoLogin.instance.reset();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(isUpdate ? '已更新保存的密码' : '已保存账号密码')),

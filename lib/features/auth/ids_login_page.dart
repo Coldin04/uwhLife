@@ -5,11 +5,12 @@ import '../../core/storage/portal_credentials.dart';
 import '../../core/storage/portal_user_sync.dart';
 import '../webview/portal_webview_page.dart';
 import 'ids_http_auth.dart';
+import 'portal_auto_login.dart';
 
 class IdsLoginPage extends StatefulWidget {
   const IdsLoginPage({super.key});
 
-  static final Uri serviceUri = Uri.parse('https://ehall.uwh.edu.cn/login');
+  static final Uri serviceUri = PortalAutoLogin.serviceUri;
 
   @override
   State<IdsLoginPage> createState() => _IdsLoginPageState();
@@ -65,6 +66,7 @@ class _IdsLoginPageState extends State<IdsLoginPage> {
           _usernameController.text.trim(),
           _passwordController.text,
         );
+        PortalAutoLogin.instance.reset();
         if (!mounted) return;
         Navigator.of(context).pop(true);
       case IdsLoginStatus.captchaRequired:

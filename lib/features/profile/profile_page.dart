@@ -112,7 +112,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
     if (confirmed != true) return;
 
     await BrowserDataCleaner.clear();
-    await LoginStateStore.markLoggedOut();
+    await LoginStateStore.markManualLogout();
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,

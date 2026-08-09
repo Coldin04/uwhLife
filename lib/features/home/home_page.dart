@@ -8,6 +8,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../../core/platform/browser_data_cleaner.dart';
 import '../../core/storage/login_state_store.dart';
 import '../../core/storage/portal_user_store.dart';
+import '../auth/portal_auto_login.dart';
 import '../door/door_api.dart';
 import '../schedule/models/schedule_models.dart';
 import '../schedule/schedule_cache.dart';
@@ -255,35 +256,48 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (_probing) return;
     _probing = true;
     try {
-      _probeCompleter = Completer<({String body, String url})>();
-      await _probeController.loadRequest(Uri.parse(_probeUrl));
-      final res = await _probeCompleter!.future.timeout(
-        const Duration(seconds: 6),
-        onTimeout: () => (body: '', url: ''),
-      );
-
-      final finalUri = Uri.tryParse(res.url);
-      final finalHost = finalUri?.host.toLowerCase() ?? '';
-      if (finalHost == 'ids.uwh.edu.cn') {
+      var res = await _runProbe();
+      if (_isLoggedOutProbe(res)) {
         await LoginStateStore.markLoggedOut();
         if (mounted) await _loadLoginState();
-        return;
+
+        // 状态异常且本机保存了账号、用户又没有主动退出过，
+        // 就用保存的账号密码静默重登一次，然后重新探测。
+        final outcome = await PortalAutoLogin.instance.restoreSession();
+        if (outcome != PortalAutoLoginOutcome.restored) return;
+        res = await _runProbe();
+        if (_isLoggedOutProbe(res)) return;
       }
 
       if (await PortalUserStore.saveFromLoginUserResponse(res.body)) {
         await LoginStateStore.markLoggedIn();
-        if (mounted) {
-          await _loadLoginState();
-          unawaited(_refreshScheduleHint());
-        }
+      } else if (!await LoginStateStore.readLoggedIn()) {
+        return;
+      }
+      if (mounted) {
+        await _loadLoginState();
+        unawaited(_refreshScheduleHint());
       }
     } finally {
       _probing = false;
     }
   }
 
+  Future<({String body, String url})> _runProbe() async {
+    _probeCompleter = Completer<({String body, String url})>();
+    await _probeController.loadRequest(Uri.parse(_probeUrl));
+    return _probeCompleter!.future.timeout(
+      const Duration(seconds: 6),
+      onTimeout: () => (body: '', url: ''),
+    );
+  }
+
+  bool _isLoggedOutProbe(({String body, String url}) result) {
+    return Uri.tryParse(result.url)?.host.toLowerCase() == 'ids.uwh.edu.cn';
+  }
+
   Future<void> _clearLoginState() async {
-    await LoginStateStore.markLoggedOut();
+    await LoginStateStore.markManualLogout();
     if (!mounted) return;
     _scheduleHintTimer?.cancel();
     setState(() {

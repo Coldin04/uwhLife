@@ -12,7 +12,8 @@ typedef ScheduleFetcher = Future<ScheduleData> Function({String? termCode});
 class ScheduleCache {
   const ScheduleCache._();
 
-  static const int schemaVersion = 2;
+  // v3：网络课程更名为未排课课程（xswpkc.do），缓存字段随之改名。
+  static const int schemaVersion = 3;
   static const int validityDays = int.fromEnvironment(
     'SCHEDULE_CACHE_TTL_DAYS',
     defaultValue: 7,

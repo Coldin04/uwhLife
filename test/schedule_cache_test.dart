@@ -12,7 +12,7 @@ void main() {
     await PortalUserStore.save(userAccount: 'student-1');
   });
 
-  test('round-trips physical and online courses through JSON cache', () async {
+  test('round-trips scheduled and unscheduled courses through cache', () async {
     await ScheduleCache.write(_schedule(), savedAt: now);
 
     final cached = await ScheduleCache.read(now: now);
@@ -21,12 +21,12 @@ void main() {
     expect(cached!.schedule.currentWeek, 3);
     expect(cached.schedule.courses.single.name, '操作系统');
     expect(cached.schedule.courses.single.classroom, '5栋教学楼B302');
-    expect(cached.schedule.onlineCourses.single.name, '海洋与人类文明');
+    expect(cached.schedule.unscheduledCourses.single.name, '海洋与人类文明');
     expect(
-      cached.schedule.onlineCourses.single.teachingClassId,
+      cached.schedule.unscheduledCourses.single.teachingClassId,
       'online-class-id',
     );
-    expect(cached.schedule.onlineCourses.single.termCode, '2025-2026-2');
+    expect(cached.schedule.unscheduledCourses.single.termCode, '2025-2026-2');
     expect(cached.schedule.availableTerms.length, 2);
   });
 
@@ -127,7 +127,7 @@ void main() {
     final schedule = await repository.load();
 
     expect(schedule.courses.single.name, '操作系统');
-    expect(schedule.onlineCourses.single.name, '海洋与人类文明');
+    expect(schedule.unscheduledCourses.single.name, '海洋与人类文明');
   });
 
   test('does not expose cached schedule to another account', () async {
@@ -198,8 +198,8 @@ ScheduleData _schedule({
     ],
     currentWeek: currentWeek,
     isCurrentTerm: termCode == '2025-2026-2',
-    onlineCourses: <ScheduleOnlineCourse>[
-      ScheduleOnlineCourse(
+    unscheduledCourses: <ScheduleUnscheduledCourse>[
+      ScheduleUnscheduledCourse(
         name: '海洋与人类文明',
         courseCode: '01000076',
         teacher: '网络教师',
