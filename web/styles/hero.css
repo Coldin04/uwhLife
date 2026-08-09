@@ -25,6 +25,8 @@ h1 span { display: block; background: linear-gradient(105deg, var(--brand), var(
   .hero { padding: 72px 24px 68px; }
   .hero-layout { grid-template-columns: 1fr; gap: 46px; justify-items: center; text-align: center; }
   .hero-copy { padding: 0; display: flex; flex-direction: column; align-items: center; }
+  /* 按钮换行后容器会撑满可用宽度，不居中就会整体贴左 */
+  .download-actions { width: 100%; justify-content: center; }
   .hero-device { order: 2; }
   .phone-shell { width: min(260px, 74vw); }
 }

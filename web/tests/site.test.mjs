@@ -92,6 +92,7 @@ test('landing page uses a split app hero and focuses on product features', async
   assert.match(css, /@media \(max-width:\s*880px\) \{[\s\S]*\.hero \{[^}]*padding:\s*72px\s+24px\s+68px;/);
   assert.match(css, /@media \(max-width:\s*880px\) \{[\s\S]*\.hero-layout \{[^}]*grid-template-columns:\s*1fr;[^}]*justify-items:\s*center;[^}]*text-align:\s*center;/);
   assert.match(css, /@media \(max-width:\s*880px\) \{[\s\S]*\.hero-copy \{[^}]*display:\s*flex;[^}]*align-items:\s*center;/);
+  assert.match(css, /@media \(max-width:\s*880px\) \{[\s\S]*\.download-actions \{[^}]*width:\s*100%;[^}]*justify-content:\s*center;/);
   assert.match(css, /@media \(max-width:\s*880px\) \{[\s\S]*\.hero-device \{[^}]*order:\s*2;/);
   assert.match(css, /@media \(max-height:\s*700px\) and \(min-width:\s*881px\) \{[\s\S]*\.hero \{[^}]*padding-block:\s*20px;/);
   assert.match(css, /@media \(max-height:\s*700px\) and \(min-width:\s*881px\) \{[\s\S]*\.download-button \{[^}]*min-height:\s*46px;/);
