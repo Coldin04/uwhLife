@@ -44,7 +44,7 @@
           "date": "2026-08-09",
           "localizedDescription": "本次更新:\n1. 现在，小程序页面被重新设计，深色模式体验更佳\n2. 现在，增加了生活服务，方便快速打开第三方服务\n3. 现在，付款码页面支持自动高亮，刷码更方便，同时，使用体验得到优化\n4. 小程序列表已更新，现在可使用更多功能\n5. 小程序网页支持通过浏览器打开了\n6. 优化了课程表页面排版\n7. 优化了部分页面的使用体验\n8. 解决了部分小程序关闭后仍在运行的问题\n9. 解决了部分小程序页面无法返回的问题\n10. 解决了通知栏在部分页面下可见性问题\n11. 解决了一些已知问题",
           "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_unsigned.ipa",
-          "size": 0,
+          "size": 39176418,
           "minOSVersion": "15.0"
         }
       ],

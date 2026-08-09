@@ -21,23 +21,23 @@
       "解决了一些已知问题"
     ],
     "apkUrl": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
-    "fallbackApkUrl": "https://github.com/coldin04/uwhLife/releases/download/v1.5.0/UWHLife_android_arm64-v8a.apk",
+    "fallbackApkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v1.5.0/UWHLife_android_arm64-v8a.apk",
     "apkUrls": {
       "armeabi-v7a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_armeabi-v7a.apk",
       "arm64-v8a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
       "x86_64": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_x86_64.apk"
     },
     "fallbackApkUrls": {
-      "armeabi-v7a": "https://github.com/coldin04/uwhLife/releases/download/v1.5.0/UWHLife_android_armeabi-v7a.apk",
-      "arm64-v8a": "https://github.com/coldin04/uwhLife/releases/download/v1.5.0/UWHLife_android_arm64-v8a.apk",
-      "x86_64": "https://github.com/coldin04/uwhLife/releases/download/v1.5.0/UWHLife_android_x86_64.apk"
+      "armeabi-v7a": "https://github.com/Coldin04/uwhLife/releases/download/v1.5.0/UWHLife_android_armeabi-v7a.apk",
+      "arm64-v8a": "https://github.com/Coldin04/uwhLife/releases/download/v1.5.0/UWHLife_android_arm64-v8a.apk",
+      "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v1.5.0/UWHLife_android_x86_64.apk"
     },
     "sha256ByAbi": {
-      "armeabi-v7a": "",
-      "arm64-v8a": "",
-      "x86_64": ""
+      "armeabi-v7a": "4225af5737253c3c722e0b34cb52baea9c18ab9e839a7932a299af4c3e51eaeb",
+      "arm64-v8a": "7a9a779b1961904ca2d9279f56fa124067136358aa9f29c77619e7966aeeee7c",
+      "x86_64": "b2e77e543ab88b8cd95fca6e156e440a968aa0519139585c8d678dd564e01394"
     },
-    "sha256": ""
+    "sha256": "7a9a779b1961904ca2d9279f56fa124067136358aa9f29c77619e7966aeeee7c"
   },
   "ios": {
     "versionName": "1.5.0",
