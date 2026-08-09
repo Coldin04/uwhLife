@@ -13,6 +13,7 @@ import '../../core/storage/boundary_debug_settings.dart';
 import '../../core/storage/login_state_store.dart';
 import '../../core/storage/portal_credentials.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/external_link.dart';
 import '../auth/portal_auto_login.dart';
 import '../scanner/qr_scanner_page.dart';
 import 'bridges/hybrid_ble_bridge.dart';
@@ -86,7 +87,41 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
     if (bleBridge != null) {
       unawaited(bleBridge.dispose());
     }
+    unawaited(_shutdownWebView());
     super.dispose();
+  }
+
+  /// 关闭页面并不会自动结束网页里的 JS：一码通那类页面会一直跑 60 秒倒计时
+  /// 和订单轮询。这里显式收尾——摘掉回调和 JS 通道，再导航到空白页把
+  /// 当前 document（连同它的定时器、XHR）整个丢掉。
+  Future<void> _shutdownWebView() async {
+    // 每步都独立兜底，前面的清理失败也不能挡住最后的 about:blank。
+    Future<void> quietly(String step, Future<void> Function() action) async {
+      try {
+        await action();
+      } catch (e) {
+        debugPrint('[PortalWebView] shutdown $step failed: $e');
+      }
+    }
+
+    await quietly(
+      'delegate',
+      () => _controller.setNavigationDelegate(NavigationDelegate()),
+    );
+    await quietly(
+      'HuBridge',
+      () => _controller.removeJavaScriptChannel('HuBridge'),
+    );
+    if (widget.credentialAutofillHost != null) {
+      await quietly(
+        'FlutterCreds',
+        () => _controller.removeJavaScriptChannel('FlutterCreds'),
+      );
+    }
+    await quietly(
+      'blank',
+      () => _controller.loadRequest(Uri.parse('about:blank')),
+    );
   }
 
   /// 处理 Android WebView 的 `<input type="file">` 触发：
@@ -270,28 +305,35 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
         onNavigationRequest: (request) {
           return _handleNavigationRequest(request);
         },
+        onUrlChange: (change) {
+          final url = change.url;
+          if (url == null || url.isEmpty) return;
+          // hash 路由的二级菜单只会走到这里，onPageFinished 不会再触发。
+          _lastUrl = url;
+        },
         onPageStarted: (url) {
           if (!mounted) return;
+          _lastUrl = url;
           setState(() {
             _isLoading = true;
             _errorText = null;
-            _lastUrl = url;
           });
           _scheduleLaunchOverlay();
         },
         onPageFinished: (url) async {
           if (!mounted) return;
+          _lastUrl = url;
           setState(() {
             _isLoading = false;
-            _lastUrl = url;
           });
+          // 先取色再收启动遮罩，否则遮罩撤走的瞬间胶囊会闪一下浅色。
+          await _syncStatusBarWithPage();
           await _hideLaunchOverlay();
           await _injectHybridBridge();
           await _debugHybridBridgeState('pageFinished');
           await _maybeInjectBoundaryDebug(url);
           await _trackLoginTransition(url);
           await _maybeAutofill(url);
-          await _syncStatusBarWithPage();
           // 有些页面首屏之后才铺背景色，稍后再采样一次。
           _statusBarResampleTimer?.cancel();
           _statusBarResampleTimer = Timer(
@@ -394,7 +436,56 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
     } catch (e) {
       debugPrint('[HuBridge.inject] runtime injection failed: $e');
     }
+    await _injectPopupPatch();
   }
+
+  Future<void> _injectPopupPatch() async {
+    try {
+      await _controller.runJavaScript(_popupToSameTabScript);
+    } catch (e) {
+      debugPrint('[Popup.inject] failed: $e');
+    }
+  }
+
+  /// 把 `window.open` / `target="_blank"` 改写成当前页导航。
+  ///
+  /// iOS 上弹窗会走 WKUIDelegate 的 `createWebViewWith`，插件把请求 load 回
+  /// 同一个 WebView（webkit_webview_controller.dart:199），这条路径和 SPA 的
+  /// hash 路由配合时会让 back-forward list 和页面 router 状态对不上，返回就卡住。
+  /// 统一改成 `location.assign` 后两端都是普通的同页跳转，历史记录正常。
+  static const String _popupToSameTabScript = r'''
+(function(){
+  if (window.__huPopupPatched) return;
+  window.__huPopupPatched = true;
+  try { console.log('[Popup.inject] window.open patched'); } catch (_) {}
+
+  var nativeOpen = window.open;
+  window.open = function(url, name, features){
+    try {
+      if (url) {
+        location.assign(String(url));
+        return window;
+      }
+    } catch (_) {}
+    return nativeOpen ? nativeOpen.apply(window, arguments) : null;
+  };
+
+  document.addEventListener('click', function(event){
+    var el = event.target;
+    while (el && el.tagName !== 'A') el = el.parentElement;
+    if (!el || el.getAttribute('target') !== '_blank') return;
+    var href = el.getAttribute('href') || '';
+    if (!href || href.charAt(0) === '#') return;
+    if (href.toLowerCase().indexOf('javascript:') === 0) return;
+    event.preventDefault();
+    try { location.assign(el.href); } catch (_) {}
+  }, true);
+})();
+''';
+
+  /// document-start 一次性注入：桥 + 弹窗改写，都要赶在页面脚本之前生效。
+  static String get _documentStartScript =>
+      '$_cordovaStubScript\n$_popupToSameTabScript';
 
   Future<void> _injectHybridBridgeAtDocumentStart() async {
     final platform = _controller.platform;
@@ -402,7 +493,7 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
       try {
         await _wkInjectorChannel.invokeMethod('injectDocumentStartScript', {
           'webViewIdentifier': platform.webViewIdentifier,
-          'script': _cordovaStubScript,
+          'script': _documentStartScript,
         });
         debugPrint(
           '[HuBridge.inject] iOS document-start injection installed '
@@ -435,7 +526,7 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
         await _androidInjectorChannel
             .invokeMethod('injectDocumentStartScript', {
               'webViewIdentifier': platform.webViewIdentifier,
-              'script': _cordovaStubScript,
+              'script': _documentStartScript,
             });
         debugPrint(
           '[HuBridge.inject] Android document-start injection installed '
@@ -450,8 +541,8 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
   }
 
   Future<void> _injectBoundaryDebugAtDocumentStart() async {
-    final settings = await BoundaryDebugSettings.read();
-    if (!settings.enabled) return;
+    final saved = await BoundaryDebugSettings.read();
+    final settings = saved.enabled ? saved : BoundaryDebugSettings.defaults;
     final script = _buildBoundaryDebugScript(settings);
     final platform = _controller.platform;
     if (platform is WebKitWebViewController) {
@@ -483,12 +574,18 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
     }
   }
 
+  /// 签到页始终注入定位，否则页面拿不到坐标。边界测试开关只决定注入哪个
+  /// 地点：关闭时固定用默认的图书馆，打开后才用测试页里改过的坐标覆盖。
   Future<void> _maybeInjectBoundaryDebug(String url) async {
-    final settings = await BoundaryDebugSettings.read();
-    if (!settings.enabled || !_isBoundaryDebugUrl(url)) return;
+    if (!_isBoundaryDebugUrl(url)) return;
+    final saved = await BoundaryDebugSettings.read();
+    final settings = saved.enabled ? saved : BoundaryDebugSettings.defaults;
     try {
       await _controller.runJavaScript(_buildBoundaryDebugScript(settings));
-      debugPrint('[BoundaryDebug] runtime injection applied');
+      debugPrint(
+        '[BoundaryDebug] runtime injection applied '
+        '(${saved.enabled ? 'custom' : 'default'})',
+      );
     } catch (e) {
       debugPrint('[BoundaryDebug] runtime injection failed: $e');
     }
@@ -1977,25 +2074,84 @@ JSON.stringify({
     }
   }
 
-  /// 网页背景浅色 → 深色图标；深色 → 浅色图标。采样不到时按浅色底处理，
-  /// 因为 Scaffold 本身是白底。
-  SystemUiOverlayStyle get _statusBarStyle {
-    final pageIsDark =
-        !widget.topSafeArea && _pageTopBrightness == Brightness.dark;
+  /// 全屏页背景是否偏黑，决定状态栏图标和悬浮控件的配色。
+  /// 启动遮罩还盖着的时候看的是遮罩本身（跟 App 主题），等网页露出来
+  /// 再切到取色结果，避免深色模式下白胶囊在黑色加载页上闪一下。
+  bool _onDarkPage(BuildContext context) {
+    if (widget.topSafeArea) return false;
+    if (_showLaunchLoading) {
+      return Theme.of(context).brightness == Brightness.dark;
+    }
+    return _pageTopBrightness == Brightness.dark;
+  }
+
+  void _reloadPage() {
+    setState(() {
+      _isLoading = true;
+      _errorText = null;
+    });
+    _scheduleLaunchOverlay();
+    _controller.reload();
+  }
+
+  Future<void> _openCurrentPageInBrowser() async {
+    await openInExternalBrowser(context, _lastUrl ?? widget.initialUrl);
+  }
+
+  /// 全屏页跟着网页取色走（深色网页 → 浅色图标），取不到时按浅色底处理；
+  /// 非全屏页状态栏压在顶栏上，直接跟随 App 的深色模式，保持和顶栏一致。
+  SystemUiOverlayStyle _statusBarStyle(BuildContext context) {
+    final darkBackground = widget.topSafeArea
+        ? Theme.of(context).brightness == Brightness.dark
+        : _onDarkPage(context);
     return SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: pageIsDark ? Brightness.light : Brightness.dark,
-      statusBarBrightness: pageIsDark ? Brightness.dark : Brightness.light,
+      statusBarIconBrightness: darkBackground
+          ? Brightness.light
+          : Brightness.dark,
+      statusBarBrightness: darkBackground ? Brightness.dark : Brightness.light,
     );
   }
 
+  /// 返回：没有网页历史就直接关页面；有就退一步，并确认 URL 真的变了。
+  ///
+  /// 教务那类 hash 路由微前端，底座会在 popstate 之后把路由再推回来，
+  /// `goBack()` 看似执行了其实原地不动。这时不再折腾（试图恢复历史只会
+  /// 变成死循环），直接关掉页面，行为可预期。
   Future<void> _handleBack() async {
-    if (await _controller.canGoBack()) {
-      await _controller.goBack();
+    if (!await _controller.canGoBack()) {
+      _closePage();
       return;
     }
+
+    final before = await _currentUrl();
+    await _controller.goBack();
+    if (await _urlChangedFrom(before)) return;
+
+    _closePage();
+  }
+
+  void _closePage() {
     if (!mounted) return;
     Navigator.of(context).pop(_lastUrl);
+  }
+
+  Future<String?> _currentUrl() async {
+    try {
+      return await _controller.currentUrl();
+    } catch (_) {
+      return _lastUrl;
+    }
+  }
+
+  /// hash 路由的跳转不触发 onPageFinished，只能比对 URL。
+  /// 等一个固定窗口再比对（而不是一看到变化就返回），
+  /// 这样"退回去又被底座推回来"会被正确判定为没退成。
+  Future<bool> _urlChangedFrom(String? before) async {
+    await Future<void>.delayed(const Duration(milliseconds: 320));
+    if (!mounted) return true;
+    final now = await _currentUrl();
+    return now != null && now != before;
   }
 
   void _handleClose() {
@@ -2007,10 +2163,12 @@ JSON.stringify({
     final mq = MediaQuery.of(context);
     final topInset = mq.padding.top;
     // 悬浮按钮所占的纵向空间：顶部偏移 8 + 胶囊高 32 + 与内容的间距 8
-    const double floatingBarHeight = 8 + 32 + 8;
-    final double webviewTopPadding = widget.topSafeArea
-        ? topInset + floatingBarHeight
-        : 0;
+    // 全屏页（topSafeArea = false）网页顶到状态栏，用悬浮胶囊；
+    // 非全屏页留出传统顶栏，网页整体下移。
+    final bool fullscreen = !widget.topSafeArea;
+    final double webviewTopPadding = fullscreen
+        ? 0
+        : topInset + WebViewTopBar.toolbarHeight;
     final double webviewBottomPadding = widget.bottomSafeArea
         ? mq.padding.bottom
         : 0;
@@ -2022,7 +2180,7 @@ JSON.stringify({
         _handleBack();
       },
       child: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: _statusBarStyle,
+        value: _statusBarStyle(context),
         child: Scaffold(
           backgroundColor: Colors.white,
           body: Stack(
@@ -2090,7 +2248,8 @@ JSON.stringify({
                 ),
               if (_isLoading)
                 Positioned(
-                  top: topInset,
+                  // 非全屏时贴在顶栏下沿，别被顶栏盖住。
+                  top: fullscreen ? topInset : webviewTopPadding,
                   left: 0,
                   right: 0,
                   child: const LinearProgressIndicator(
@@ -2114,32 +2273,42 @@ JSON.stringify({
                   ),
                 ),
               ),
-              // 左上：返回（先回退 WebView 历史，无可退则关闭页面）
-              Positioned(
-                top: topInset + 8,
-                left: 12,
-                child: FloatingNavButton(
-                  icon: Icons.arrow_back_ios_new_rounded,
-                  onTap: _handleBack,
-                  semanticLabel: '返回',
+              if (fullscreen) ...[
+                // 左上：返回（先回退 WebView 历史，无可退则关闭页面）
+                Positioned(
+                  top: topInset + 8,
+                  left: 12,
+                  child: FloatingNavButton(
+                    icon: Icons.arrow_back_ios_new_rounded,
+                    onTap: _handleBack,
+                    semanticLabel: '返回',
+                    onDarkBackground: _onDarkPage(context),
+                  ),
                 ),
-              ),
-              // 右上：微信小程序风格胶囊（刷新 | 关闭）
-              Positioned(
-                top: topInset + 8,
-                right: 12,
-                child: MiniProgramCapsule(
-                  onRefresh: () {
-                    setState(() {
-                      _isLoading = true;
-                      _errorText = null;
-                    });
-                    _scheduleLaunchOverlay();
-                    _controller.reload();
-                  },
-                  onClose: _handleClose,
+                // 右上：微信小程序风格胶囊（更多 | 关闭）
+                Positioned(
+                  top: topInset + 8,
+                  right: 12,
+                  child: MiniProgramCapsule(
+                    onRefresh: _reloadPage,
+                    onOpenInBrowser: _openCurrentPageInBrowser,
+                    onClose: _handleClose,
+                    onDarkBackground: _onDarkPage(context),
+                  ),
                 ),
-              ),
+              ] else
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: WebViewTopBar(
+                    topInset: topInset,
+                    onBack: _handleBack,
+                    onRefresh: _reloadPage,
+                    onOpenInBrowser: _openCurrentPageInBrowser,
+                    onClose: _handleClose,
+                  ),
+                ),
             ],
           ),
         ),

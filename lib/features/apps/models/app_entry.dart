@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum AppNativeDestination { schedule }
+enum AppNativeDestination { schedule, payCode }
 
 const Map<String, IconData> iconRegistry = <String, IconData>{
   'receipt_long_rounded': Icons.receipt_long_rounded,
@@ -54,6 +54,15 @@ const Map<String, IconData> iconRegistry = <String, IconData>{
   'map_rounded': Icons.map_rounded,
   'vpn_key_rounded': Icons.vpn_key_rounded,
   'headset_mic_rounded': Icons.headset_mic_rounded,
+  'qr_code_scanner_rounded': Icons.qr_code_scanner_rounded,
+  'qr_code_rounded': Icons.qr_code_rounded,
+  'pedal_bike_rounded': Icons.pedal_bike_rounded,
+  'inventory_2_rounded': Icons.inventory_2_rounded,
+  'qr_code_2_rounded': Icons.qr_code_2_rounded,
+  'diversity_3_rounded': Icons.diversity_3_rounded,
+  'cast_for_education_rounded': Icons.cast_for_education_rounded,
+  'currency_exchange_rounded': Icons.currency_exchange_rounded,
+  'fact_check_rounded': Icons.fact_check_rounded,
   'apps_rounded': Icons.apps_rounded,
 };
 
@@ -67,6 +76,7 @@ class AppEntry {
     this.topSafeArea = true,
     this.bottomSafeArea = true,
     this.nativeDestination,
+    this.appScheme,
   }) : lightColor = color.withValues(alpha: 0.14);
 
   factory AppEntry.fromJson(Map<String, dynamic> j) {
@@ -80,8 +90,10 @@ class AppEntry {
       url: (j['url'] as String?) ?? '',
       topSafeArea: (j['topSafeArea'] as bool?) ?? true,
       bottomSafeArea: (j['bottomSafeArea'] as bool?) ?? true,
+      appScheme: (j['appScheme'] as String?)?.trim(),
       nativeDestination: switch (j['nativeDestination']) {
         'schedule' => AppNativeDestination.schedule,
+        'paycode' => AppNativeDestination.payCode,
         _ => null,
       },
     );
@@ -96,4 +108,8 @@ class AppEntry {
   final bool topSafeArea;
   final bool bottomSafeArea;
   final AppNativeDestination? nativeDestination;
+
+  /// 指向本机 App 的 URL scheme。设了它就先唤起 App，
+  /// 唤不起来再用 [url] 兜底（一般是下载页）。
+  final String? appScheme;
 }

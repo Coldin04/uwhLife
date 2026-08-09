@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../core/platform/screen_brightness_boost.dart';
+import '../../core/storage/paycode_brightness_settings.dart';
 import '../../core/utils/route_utils.dart';
 import '../webview/portal_webview_page.dart';
 import 'paycode_api.dart';
@@ -25,6 +27,8 @@ class _PayCodeScreenState extends State<PayCodeScreen>
   Timer? _refreshTimer;
   Timer? _statusTimer;
   bool _polling = false;
+  final ScreenBrightnessBoost _brightness = ScreenBrightnessBoost();
+  bool _isDarkMode = false;
 
   @override
   void initState() {
@@ -34,10 +38,21 @@ class _PayCodeScreenState extends State<PayCodeScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 主题（含系统深色模式切换）变了要重新判断增不增亮。
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    if (isDarkMode == _isDarkMode && _brightness.isApplied) return;
+    _isDarkMode = isDarkMode;
+    unawaited(_syncBrightness());
+  }
+
+  @override
   void dispose() {
     _refreshTimer?.cancel();
     _statusTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(_brightness.restore());
     unawaited(PayCodeApi.dispose());
     super.dispose();
   }
@@ -46,9 +61,25 @@ class _PayCodeScreenState extends State<PayCodeScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _load();
-    } else if (state == AppLifecycleState.paused) {
+      unawaited(_syncBrightness());
+      return;
+    }
+    // inactive/hidden/paused/detached：切出 App、锁屏、来电都要立刻还原亮度。
+    unawaited(_brightness.restore());
+    if (state == AppLifecycleState.paused) {
       _refreshTimer?.cancel();
       _statusTimer?.cancel();
+    }
+  }
+
+  /// 按设置决定拉亮还是还原；设置可能在「我的」里改过，每次都重读。
+  Future<void> _syncBrightness() async {
+    final settings = await PayCodeBrightnessSettings.read();
+    if (!mounted) return;
+    if (settings.shouldBoost(isDarkMode: _isDarkMode)) {
+      await _brightness.apply();
+    } else {
+      await _brightness.restore();
     }
   }
 
@@ -181,8 +212,11 @@ class _PayCodeScreenState extends State<PayCodeScreen>
     _load();
   }
 
-  void _openWebViewFallback() {
-    Navigator.of(context).push(
+  Future<void> _openWebViewFallback() async {
+    // 离开付款码去别的页面，先把亮度还原，回来再按设置恢复。
+    await _brightness.restore();
+    if (!mounted) return;
+    await Navigator.of(context).push(
       createSlideFadeRoute(
         const PortalWebViewPage(
           title: '付款码',
@@ -199,6 +233,8 @@ class _PayCodeScreenState extends State<PayCodeScreen>
         ),
       ),
     );
+    if (!mounted) return;
+    await _syncBrightness();
   }
 
   @override
@@ -215,7 +251,8 @@ class _PayCodeScreenState extends State<PayCodeScreen>
       child: DecoratedBox(
         decoration: BoxDecoration(color: pageBackground),
         child: Scaffold(
-          extendBodyBehindAppBar: true,
+          // 不用 extendBodyBehindAppBar：让 body 自然从 AppBar 下沿开始，
+          // 免得再手算 kToolbarHeight 偏移（算不准就会留出一条空白）。
           backgroundColor: Colors.transparent,
           appBar: AppBar(
             backgroundColor: Colors.transparent,
@@ -242,138 +279,134 @@ class _PayCodeScreenState extends State<PayCodeScreen>
                   color: isDark ? Colors.white70 : Colors.black87,
                 ),
                 tooltip: '网页版',
-                onPressed: _openWebViewFallback,
+                onPressed: () => unawaited(_openWebViewFallback()),
               ),
             ],
           ),
           body: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.only(top: kToolbarHeight),
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 10),
-                      // Blue card
-                      Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1677FF),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Column(
-                          children: [
-                            // Card header
-                            Padding(
-                              padding: const EdgeInsets.all(20),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.white,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.credit_card,
-                                      size: 16,
-                                      color: Color(0xFF1677FF),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    PayCodeApi.userName != null
-                                        ? '一码通 · ${PayCodeApi.userName}'
-                                        : '一码通',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 20),
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  '向商家付款',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            // QR code
-                            Center(
-                              child: GestureDetector(
-                                onTap: _isLoading ? null : _refresh,
-                                child: Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: SizedBox(
-                                    width: 180,
-                                    height: 180,
-                                    child: _buildQrContent(),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            // Countdown + refresh
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              mainAxisSize: MainAxisSize.min,
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  children: [
+                    // Blue card：紧贴 AppBar 下沿，中间不留空隙。
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1677FF),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Column(
+                        children: [
+                          // Card header
+                          Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Row(
                               children: [
-                                if (_qrData != null)
-                                  Text(
-                                    '${_countdown}s 后自动刷新',
-                                    style: const TextStyle(
-                                      color: Colors.white54,
-                                      fontSize: 12,
-                                    ),
+                                Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
                                   ),
-                                if (_qrData != null && !_isLoading)
-                                  GestureDetector(
-                                    onTap: _refresh,
-                                    child: const Padding(
-                                      padding: EdgeInsets.only(left: 8),
-                                      child: Icon(
-                                        Icons.refresh_rounded,
-                                        color: Colors.white54,
-                                        size: 16,
-                                      ),
-                                    ),
+                                  child: const Icon(
+                                    Icons.credit_card,
+                                    size: 16,
+                                    color: Color(0xFF1677FF),
                                   ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  PayCodeApi.userName != null
+                                      ? '一码通 · ${PayCodeApi.userName}'
+                                      : '一码通',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                               ],
                             ),
-                            const SizedBox(height: 24),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      // Hint
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          '请在支持扫码的机具上使用，点击二维码可刷新',
-                          style: TextStyle(
-                            color: isDark ? Colors.white38 : Colors.black54,
-                            fontSize: 13,
                           ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 20),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                '向商家付款',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          // QR code
+                          Center(
+                            child: GestureDetector(
+                              onTap: _isLoading ? null : _refresh,
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: SizedBox(
+                                  width: 180,
+                                  height: 180,
+                                  child: _buildQrContent(),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          // Countdown + refresh
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (_qrData != null)
+                                Text(
+                                  '${_countdown}s 后自动刷新',
+                                  style: const TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              if (_qrData != null && !_isLoading)
+                                GestureDetector(
+                                  onTap: _refresh,
+                                  child: const Padding(
+                                    padding: EdgeInsets.only(left: 8),
+                                    child: Icon(
+                                      Icons.refresh_rounded,
+                                      color: Colors.white54,
+                                      size: 16,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    // Hint
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '请在支持扫码的机具上使用，点击二维码可刷新',
+                        style: TextStyle(
+                          color: isDark ? Colors.white38 : Colors.black54,
+                          fontSize: 13,
                         ),
                       ),
-                      const SizedBox(height: 40),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 40),
+                  ],
                 ),
               ),
             ),

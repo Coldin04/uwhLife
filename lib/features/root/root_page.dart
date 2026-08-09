@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../../core/deep_links/deep_link_destination.dart';
 import '../../core/storage/login_state_store.dart';
 import '../../core/utils/route_utils.dart';
+import '../../core/utils/app_scheme_launcher.dart';
 import '../apps/app_list_page.dart';
 import '../apps/models/app_entry.dart';
 import '../auth/ids_login_page.dart';
@@ -134,10 +135,24 @@ class _RootPageState extends State<RootPage>
   }
 
   void _openAppEntry(AppEntry app) {
-    if (app.nativeDestination == AppNativeDestination.schedule) {
-      unawaited(_openSchedule());
+    switch (app.nativeDestination) {
+      case AppNativeDestination.schedule:
+        unawaited(_openSchedule());
+        return;
+      case AppNativeDestination.payCode:
+        unawaited(_openPayCode());
+        return;
+      case null:
+        break;
+    }
+
+    // 指向本机 App 的入口（学习通等）先唤起 App，失败再开 url 兜底。
+    final scheme = app.appScheme;
+    if (scheme != null && scheme.isNotEmpty) {
+      unawaited(launchAppScheme(context, scheme: scheme, fallbackUrl: app.url));
       return;
     }
+
     Navigator.of(context).push(
       createSlideFadeRoute(
         PortalWebViewPage(
@@ -206,6 +221,7 @@ class _RootPageState extends State<RootPage>
           icon: Icons.shower_rounded,
           initialUrl: 'http://ymtpt.uwh.edu.cn:27072/uwc_webapp',
           accentColor: Color(0xFF06B6D4),
+          topSafeArea: false,
         ),
       ),
     );

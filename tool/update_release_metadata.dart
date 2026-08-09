@@ -155,8 +155,13 @@ List<String> _readNotes(Object? value) {
   return notes;
 }
 
+/// 更新说明统一的排版：固定表头 + 编号列表，
+/// GitHub release 正文、AltStore 描述和 App 内的更新弹窗都用这一份。
+const String updateNotesHeader = '本次更新:';
+
 String _numberedNotes(List<String> notes) {
   return [
+    updateNotesHeader,
     for (var i = 0; i < notes.length; i += 1) '${i + 1}. ${notes[i]}',
   ].join('\n');
 }

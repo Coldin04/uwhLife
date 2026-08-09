@@ -193,9 +193,9 @@ class UpdateDialogs {
       await ApkInstaller.install(file.path);
     } catch (_) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('无法打开安装器，请稍后重试')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('无法打开安装器，请稍后重试')));
     }
   }
 }
@@ -252,9 +252,7 @@ class _InstallPermissionDialogState extends State<_InstallPermissionDialog>
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('允许安装应用'),
-      content: const Text(
-        'Android 需要先允许芜忧皖江安装未知来源应用，开启后回到 App 会继续安装已下载的更新包。',
-      ),
+      content: const Text('Android 需要先允许芜忧皖江安装未知来源应用，开启后回到 App 会继续安装已下载的更新包。'),
       actions: [
         TextButton(
           onPressed: _installing ? null : () => Navigator.of(context).pop(),
@@ -380,10 +378,20 @@ class _UpdateNotes extends StatelessWidget {
         ),
         if (notes.isNotEmpty) ...[
           const SizedBox(height: 12),
-          for (final note in notes)
+          // 与 GitHub release / AltStore 描述保持同一套排版：表头 + 编号列表。
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text(
+              '本次更新:',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          for (var i = 0; i < notes.length; i += 1)
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
-              child: Text('• $note'),
+              child: Text('${i + 1}. ${notes[i]}'),
             ),
         ],
       ],

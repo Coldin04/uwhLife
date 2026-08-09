@@ -74,6 +74,10 @@
         <!-- Android 11+：按包名查询 / 启动今日校园（校定制版优先，公共版兜底） -->
         <package android:name="com.wisedu.cpdaily.wju" />
         <package android:name="com.wisedu.cpdaily" />
+        <!-- 注：app_list.json 里 appScheme 的唤起走 startActivity(ACTION_VIEW)，
+             不受包可见性限制，所以这些 scheme 不需要在这里声明。
+             只有 canLaunchUrl / resolveActivity / getLaunchIntentForPackage
+             这类"查询"才需要 <queries>。 -->
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:mimeType="application/vnd.android.package-archive" />

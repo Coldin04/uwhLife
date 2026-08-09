@@ -4,9 +4,11 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/platform/browser_data_cleaner.dart';
 import '../../core/storage/boundary_debug_settings.dart';
 import '../../core/storage/login_state_store.dart';
+import '../../core/storage/paycode_brightness_settings.dart';
 import '../../core/storage/portal_credentials.dart';
 import '../../core/storage/portal_user_store.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/external_link.dart';
 import '../../core/utils/route_utils.dart';
 import '../auth/ids_login_page.dart';
 import '../update/android_version_code.dart';
@@ -28,6 +30,8 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
   bool _hasSavedPassword = false;
   bool _boundaryDebugEnabled = false;
   bool _testingPageVisible = false;
+  PayCodeBrightnessSettings _payCodeBrightness =
+      PayCodeBrightnessSettings.defaults;
 
   @override
   void initState() {
@@ -54,8 +58,10 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
     final user = await PortalUserStore.read();
     final creds = await PortalCredentials.read();
     final boundaryDebug = await BoundaryDebugSettings.read();
+    final payCodeBrightness = await PayCodeBrightnessSettings.read();
     if (!mounted) return;
     setState(() {
+      _payCodeBrightness = payCodeBrightness;
       _loggedIn = loggedIn;
       _userName = user.userName;
       _userAccount = user.userAccount ?? creds?.$1;
@@ -63,6 +69,25 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
       _boundaryDebugEnabled = boundaryDebug.enabled;
       _testingPageVisible = boundaryDebug.menuVisible;
     });
+  }
+
+  Future<void> _setPayCodeAutoBoost(bool value) async {
+    await _updatePayCodeBrightness(
+      _payCodeBrightness.copyWith(autoBoost: value),
+    );
+  }
+
+  Future<void> _setPayCodeBoostInDarkMode(bool value) async {
+    await _updatePayCodeBrightness(
+      _payCodeBrightness.copyWith(boostInDarkMode: value),
+    );
+  }
+
+  Future<void> _updatePayCodeBrightness(
+    PayCodeBrightnessSettings settings,
+  ) async {
+    setState(() => _payCodeBrightness = settings);
+    await settings.save();
   }
 
   Future<void> _openPortal() async {
@@ -327,6 +352,29 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
             const SizedBox(height: 10),
           ],
           _ProfileActionRow(
+            icon: Icons.brightness_high_rounded,
+            iconColor: subtitleColor,
+            title: '付款码自动增亮',
+            trailing: Switch.adaptive(
+              value: _payCodeBrightness.autoBoost,
+              onChanged: _setPayCodeAutoBoost,
+            ),
+          ),
+          _SectionDivider(color: dividerColor),
+          _ProfileActionRow(
+            icon: Icons.nightlight_round,
+            iconColor: subtitleColor,
+            title: '深色模式下增亮',
+            trailing: Switch.adaptive(
+              value: _payCodeBrightness.boostInDarkMode,
+              // 总开关关掉后这项没有意义，一并置灰。
+              onChanged: _payCodeBrightness.autoBoost
+                  ? _setPayCodeBoostInDarkMode
+                  : null,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _ProfileActionRow(
             icon: Icons.system_update_alt_rounded,
             iconColor: subtitleColor,
             title: '检查更新',
@@ -537,16 +585,8 @@ class _AboutPageState extends State<_AboutPage> {
     );
   }
 
-  Future<void> _openLink({required String title, required String url}) async {
-    await Navigator.of(context).push(
-      createSlideFadeRoute(
-        PortalWebViewPage(
-          title: title,
-          icon: Icons.open_in_browser_rounded,
-          initialUrl: url,
-        ),
-      ),
-    );
+  Future<void> _openLink(String url) async {
+    await openInExternalBrowser(context, url);
   }
 
   @override
@@ -608,16 +648,12 @@ class _AboutPageState extends State<_AboutPage> {
                 _AboutLinkRow(
                   title: '官方网站',
                   value: 'uwh.cold04.com',
-                  onTap: () =>
-                      _openLink(title: '官方网站', url: 'https://uwh.cold04.com'),
+                  onTap: () => _openLink('https://uwh.cold04.com'),
                 ),
                 _AboutLinkRow(
                   title: 'GitHub',
                   value: 'github.com/Coldin04/uwhLife',
-                  onTap: () => _openLink(
-                    title: 'GitHub',
-                    url: 'https://github.com/Coldin04/uwhLife',
-                  ),
+                  onTap: () => _openLink('https://github.com/Coldin04/uwhLife'),
                 ),
                 const SizedBox(height: 12),
               ],

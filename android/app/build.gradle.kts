@@ -17,6 +17,10 @@ fun releaseSigningValue(propertyName: String, environmentName: String): String? 
     return System.getenv(environmentName) ?: releaseSigningProperties.getProperty(propertyName)
 }
 
+// 本机（或 CI）配了签名才启用发布证书；没配置的贡献者继续用默认 debug keystore，
+// 直接 clone 下来也能构建。
+val hasReleaseSigning = releaseSigningValue("storeFile", "ANDROID_KEYSTORE_PATH") != null
+
 android {
     namespace = "com.cold04.uwhlife"
     compileSdk = flutter.compileSdkVersion
@@ -56,8 +60,18 @@ android {
     }
 
     buildTypes {
+        debug {
+            // 与 release 用同一证书，debug / release 之间切换不再需要卸载重装。
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

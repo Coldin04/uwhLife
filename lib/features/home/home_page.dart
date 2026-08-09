@@ -464,9 +464,10 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final smallCardColor = isDark
         ? const Color(0xFF151C18)
         : const Color(0xFFF0F8F2);
+    // 浅色模式下与其它小卡片同色，避免热水洗浴单独偏绿。
     final moreCardColor = isDark
         ? const Color(0xFF122018)
-        : const Color(0xFFE6F6EA);
+        : const Color(0xFFF0F8F2);
 
     return Stack(
       children: [
