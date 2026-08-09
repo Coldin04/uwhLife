@@ -44,7 +44,7 @@
           "date": "2026-08-09",
           "localizedDescription": "1. 课表未发布或获取失败时不再卡住整个课表页面，改为单独提示，其余模块照常显示\n2. 修正未排课课程的名称显示，此前被误标为网络课程\n3. 登录状态异常时，若本机已保存账号且没有主动退出登录，会自动尝试重新登录一次",
           "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_unsigned.ipa",
-          "size": 0,
+          "size": 39102930,
           "minOSVersion": "15.0"
         }
       ],
