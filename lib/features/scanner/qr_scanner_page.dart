@@ -69,15 +69,15 @@ class _QrScannerPageState extends State<QrScannerPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('这张图片里没有识别到二维码/条形码')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('这张图片里没有识别到二维码/条形码')));
       await _scanner.start();
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('打开相册失败，请重试')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('打开相册失败，请重试')));
       await _scanner.start();
     } finally {
       _pickingImage = false;
@@ -92,10 +92,7 @@ class _QrScannerPageState extends State<QrScannerPage> {
       body: Stack(
         children: [
           Positioned.fill(
-            child: MobileScanner(
-              controller: _scanner,
-              onDetect: _onDetect,
-            ),
+            child: MobileScanner(controller: _scanner, onDetect: _onDetect),
           ),
           Positioned.fill(
             child: IgnorePointer(
@@ -119,9 +116,7 @@ class _QrScannerPageState extends State<QrScannerPage> {
               builder: (_, state, _) {
                 final on = state.torchState == TorchState.on;
                 return _CircleActionButton(
-                  icon: on
-                      ? Icons.flash_on_rounded
-                      : Icons.flash_off_rounded,
+                  icon: on ? Icons.flash_on_rounded : Icons.flash_off_rounded,
                   onTap: () => _scanner.toggleTorch(),
                   semanticLabel: '手电',
                 );
@@ -205,7 +200,10 @@ class _ScannerOverlayPainter extends CustomPainter {
     final inner = Path()
       ..addRRect(RRect.fromRectAndRadius(rect, const Radius.circular(18)));
     final mask = Path.combine(PathOperation.difference, outer, inner);
-    canvas.drawPath(mask, Paint()..color = Colors.black.withValues(alpha: 0.55));
+    canvas.drawPath(
+      mask,
+      Paint()..color = Colors.black.withValues(alpha: 0.55),
+    );
 
     final corner = Paint()
       ..color = Colors.white
@@ -220,8 +218,16 @@ class _ScannerOverlayPainter extends CustomPainter {
     canvas.drawLine(r.topRight, r.topRight + const Offset(0, len), corner);
     canvas.drawLine(r.bottomLeft, r.bottomLeft + const Offset(len, 0), corner);
     canvas.drawLine(r.bottomLeft, r.bottomLeft + const Offset(0, -len), corner);
-    canvas.drawLine(r.bottomRight, r.bottomRight + const Offset(-len, 0), corner);
-    canvas.drawLine(r.bottomRight, r.bottomRight + const Offset(0, -len), corner);
+    canvas.drawLine(
+      r.bottomRight,
+      r.bottomRight + const Offset(-len, 0),
+      corner,
+    );
+    canvas.drawLine(
+      r.bottomRight,
+      r.bottomRight + const Offset(0, -len),
+      corner,
+    );
   }
 
   @override

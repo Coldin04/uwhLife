@@ -22,15 +22,16 @@ PortalAutoLogin _autoLogin(
     readLoggedIn: () async => loggedIn,
     readManualLogout: () async => manualLogout,
     readCredentials: () async => credentials,
-    login: ({
-      required String username,
-      required String password,
-      required Uri service,
-    }) async {
-      recorder.attempts += 1;
-      recorder.lastUsername = username;
-      return result;
-    },
+    login:
+        ({
+          required String username,
+          required String password,
+          required Uri service,
+        }) async {
+          recorder.attempts += 1;
+          recorder.lastUsername = username;
+          return result;
+        },
     markLoggedIn: () async => recorder.markedLoggedIn = true,
     syncCookies: (_) async => recorder.syncedCookies = true,
   );
@@ -47,10 +48,7 @@ void main() {
       final recorder = _Recorder();
       final autoLogin = _autoLogin(recorder, result: _authenticated);
 
-      expect(
-        await autoLogin.restoreSession(),
-        PortalAutoLoginOutcome.restored,
-      );
+      expect(await autoLogin.restoreSession(), PortalAutoLoginOutcome.restored);
       expect(recorder.attempts, 1);
       expect(recorder.lastUsername, 'student-1');
       expect(recorder.syncedCookies, isTrue);

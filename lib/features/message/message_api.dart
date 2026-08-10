@@ -58,9 +58,7 @@ class MessageApi {
   }
 
   static Future<String> _getNativeCookiesForUrl(String url) async {
-    final raw = await _channel.invokeMethod<String>('getCookies', {
-      'url': url,
-    });
+    final raw = await _channel.invokeMethod<String>('getCookies', {'url': url});
     return raw ?? '';
   }
 
@@ -98,7 +96,9 @@ class MessageApi {
       _initPage,
     ).timeout(_warmUpTimeout);
     final cookiesToStore = cookieHeadersForBrowserStore(setCookieHeaders);
-    debugPrint('[MessageApi] bootstrap set-cookie count: ${cookiesToStore.length}');
+    debugPrint(
+      '[MessageApi] bootstrap set-cookie count: ${cookiesToStore.length}',
+    );
     await BrowserDataCleaner.setCookiesForUrl(
       url: _calConfigUrl,
       cookies: cookiesToStore,
@@ -118,7 +118,9 @@ class MessageApi {
       for (var redirectCount = 0; redirectCount < 8; redirectCount += 1) {
         final requestUri = Uri.parse(url);
         final nativeCookies = await _getNativeCookiesForUrl(url);
-        final request = await client.getUrl(requestUri).timeout(_requestTimeout);
+        final request = await client
+            .getUrl(requestUri)
+            .timeout(_requestTimeout);
         request.followRedirects = false;
         final cookies = cookiesForRedirectRequest(
           nativeCookies: nativeCookies,

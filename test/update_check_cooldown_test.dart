@@ -5,30 +5,34 @@ import 'package:uwhlife/features/update/update_config.dart';
 
 void main() {
   group('UpdateCheckCooldown', () {
-    test('does not skip automatic checks when no cancel time is stored', () async {
-      SharedPreferences.setMockInitialValues(<String, Object>{});
+    test(
+      'does not skip automatic checks when no cancel time is stored',
+      () async {
+        SharedPreferences.setMockInitialValues(<String, Object>{});
 
-      final cooldown = UpdateCheckCooldown(
-        now: () => DateTime(2026, 7, 9),
-      );
+        final cooldown = UpdateCheckCooldown(now: () => DateTime(2026, 7, 9));
 
-      expect(await cooldown.shouldSkipAutomaticCheck(), isFalse);
-    });
+        expect(await cooldown.shouldSkipAutomaticCheck(), isFalse);
+      },
+    );
 
-    test('skips automatic checks for ten days after user cancellation', () async {
-      SharedPreferences.setMockInitialValues(<String, Object>{});
-      var currentTime = DateTime(2026, 7, 9, 12);
-      final cooldown = UpdateCheckCooldown(now: () => currentTime);
+    test(
+      'skips automatic checks for ten days after user cancellation',
+      () async {
+        SharedPreferences.setMockInitialValues(<String, Object>{});
+        var currentTime = DateTime(2026, 7, 9, 12);
+        final cooldown = UpdateCheckCooldown(now: () => currentTime);
 
-      await cooldown.recordUserCancelled();
+        await cooldown.recordUserCancelled();
 
-      currentTime = currentTime.add(
-        UpdateConfig.automaticCheckCooldown - const Duration(hours: 1),
-      );
-      expect(await cooldown.shouldSkipAutomaticCheck(), isTrue);
+        currentTime = currentTime.add(
+          UpdateConfig.automaticCheckCooldown - const Duration(hours: 1),
+        );
+        expect(await cooldown.shouldSkipAutomaticCheck(), isTrue);
 
-      currentTime = currentTime.add(const Duration(hours: 2));
-      expect(await cooldown.shouldSkipAutomaticCheck(), isFalse);
-    });
+        currentTime = currentTime.add(const Duration(hours: 2));
+        expect(await cooldown.shouldSkipAutomaticCheck(), isFalse);
+      },
+    );
   });
 }

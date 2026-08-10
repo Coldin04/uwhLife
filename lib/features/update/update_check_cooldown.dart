@@ -17,8 +17,7 @@ class UpdateCheckCooldown {
       prefs.getString(_cancelledAtKey) ?? '',
     );
     if (cancelledAt == null) return false;
-    return _now().difference(cancelledAt) <
-        UpdateConfig.automaticCheckCooldown;
+    return _now().difference(cancelledAt) < UpdateConfig.automaticCheckCooldown;
   }
 
   Future<void> recordUserCancelled() async {

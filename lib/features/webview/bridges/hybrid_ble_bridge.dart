@@ -81,7 +81,9 @@ class HybridBleBridge {
           return (
             ok: true,
             payload: bleOkPayload(<String, dynamic>{
-              'devices': _discoveredDevices.values.map(_mapDiscoveredDevice).toList(),
+              'devices': _discoveredDevices.values
+                  .map(_mapDiscoveredDevice)
+                  .toList(),
               'code': 0,
               'msg': 'SUCCESS',
             }),
@@ -270,7 +272,10 @@ class HybridBleBridge {
               'connected': connected,
             });
             await emitEvent('campus.onBLEConnectionStateChanged', eventPayload);
-            await emitEvent('JCpdaily.onBLEConnectionStateChanged', eventPayload);
+            await emitEvent(
+              'JCpdaily.onBLEConnectionStateChanged',
+              eventPayload,
+            );
 
             if (!completer.isCompleted &&
                 update.connectionState == DeviceConnectionState.connected) {
@@ -289,10 +294,7 @@ class HybridBleBridge {
 
     return completer.future.timeout(
       const Duration(seconds: 10),
-      onTimeout: () => (
-        ok: false,
-        payload: bleFailPayload(10004, '连接蓝牙设备超时'),
-      ),
+      onTimeout: () => (ok: false, payload: bleFailPayload(10004, '连接蓝牙设备超时')),
     );
   }
 
@@ -396,7 +398,9 @@ class HybridBleBridge {
     }
     final foundService = service;
     final charsList = foundService.characteristics
-        .map((item) => _mapCharacteristic(item, foundService.serviceId.toString()))
+        .map(
+          (item) => _mapCharacteristic(item, foundService.serviceId.toString()),
+        )
         .toList();
     debugPrint(
       '[BLE.chars] returning ${charsList.length} characteristics: '
@@ -404,9 +408,7 @@ class HybridBleBridge {
     );
     return (
       ok: true,
-      payload: bleOkPayload(<String, dynamic>{
-        'characteristics': charsList,
-      }),
+      payload: bleOkPayload(<String, dynamic>{'characteristics': charsList}),
     );
   }
 
@@ -464,7 +466,10 @@ class HybridBleBridge {
       characteristicId: Uuid.parse(_expandShortUuid(characteristicId)),
     );
     try {
-      await _ble.writeCharacteristicWithoutResponse(characteristic, value: value);
+      await _ble.writeCharacteristicWithoutResponse(
+        characteristic,
+        value: value,
+      );
     } catch (_) {
       await _ble.writeCharacteristicWithResponse(characteristic, value: value);
     }
@@ -488,16 +493,15 @@ class HybridBleBridge {
     final value = await _ble.readCharacteristic(characteristic);
     return (
       ok: true,
-      payload: bleOkPayload(<String, dynamic>{
-        'value': _bytesToHex(value),
-      }),
+      payload: bleOkPayload(<String, dynamic>{'value': _bytesToHex(value)}),
     );
   }
 
   Future<bool> _ensureBlePermissions() async {
     if (Platform.isIOS) {
       await _waitForBleReady();
-      if (_status == BleStatus.unauthorized || _status == BleStatus.unsupported) {
+      if (_status == BleStatus.unauthorized ||
+          _status == BleStatus.unsupported) {
         return false;
       }
       return true;
@@ -547,7 +551,9 @@ class HybridBleBridge {
   }
 
   static Map<String, dynamic> _mapDiscoveredDevice(DiscoveredDevice device) {
-    final displayName = device.name.trim().isNotEmpty ? device.name.trim() : device.id;
+    final displayName = device.name.trim().isNotEmpty
+        ? device.name.trim()
+        : device.id;
     final localName = _normalizeDeviceLocalName(displayName);
     return <String, dynamic>{
       'deviceId': device.id,
@@ -561,8 +567,9 @@ class HybridBleBridge {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return raw;
 
-    final exactMatch =
-        RegExp(r'^([A-Za-z]{2})[_-]?([A-Za-z0-9]{12})$').firstMatch(trimmed);
+    final exactMatch = RegExp(
+      r'^([A-Za-z]{2})[_-]?([A-Za-z0-9]{12})$',
+    ).firstMatch(trimmed);
     if (exactMatch != null) {
       return '${exactMatch.group(1)!.toUpperCase()}_${exactMatch.group(2)!}';
     }
@@ -585,8 +592,9 @@ class HybridBleBridge {
     if (RegExp(r'^[0-9a-f]{4}$').hasMatch(lower)) {
       return lower.toUpperCase();
     }
-    final m = RegExp(r'^0000([0-9a-f]{4})-0000-1000-8000-00805f9b34fb$')
-        .firstMatch(lower);
+    final m = RegExp(
+      r'^0000([0-9a-f]{4})-0000-1000-8000-00805f9b34fb$',
+    ).firstMatch(lower);
     if (m != null) return m.group(1)!.toUpperCase();
     return full;
   }
@@ -608,10 +616,7 @@ class HybridBleBridge {
   static Map<String, dynamic> _mapService(DiscoveredService service) {
     final fullUuid = service.serviceId.toString();
     final shortUuid = _toShortUuid(fullUuid);
-    return <String, dynamic>{
-      'serviceId': shortUuid,
-      'isPrimary': true,
-    };
+    return <String, dynamic>{'serviceId': shortUuid, 'isPrimary': true};
   }
 
   static Map<String, dynamic> _mapCharacteristic(
@@ -621,7 +626,8 @@ class HybridBleBridge {
     final fullUuid = characteristic.characteristicId.toString();
     final shortUuid = _toShortUuid(fullUuid);
     final shortServiceId = _toShortUuid(serviceId);
-    final isWritable = characteristic.isWritableWithResponse ||
+    final isWritable =
+        characteristic.isWritableWithResponse ||
         characteristic.isWritableWithoutResponse;
     return <String, dynamic>{
       'characteristicId': shortUuid,
@@ -638,7 +644,9 @@ class HybridBleBridge {
 
   static List<int> _normalizeWriteValue(Object? rawValue) {
     if (rawValue is List) {
-      return rawValue.map((item) => int.tryParse(item.toString()) ?? 0).toList();
+      return rawValue
+          .map((item) => int.tryParse(item.toString()) ?? 0)
+          .toList();
     }
     final text = rawValue?.toString() ?? '';
     final normalized = text.replaceAll(RegExp(r'[^0-9a-fA-F]'), '');
