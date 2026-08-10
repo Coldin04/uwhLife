@@ -256,13 +256,13 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
         : '未登录';
     final titleColor = scheme.onSurface;
     final subtitleColor = isDark
-        ? const Color(0xFFB6C2BC)
+        ? const Color(0xFFBEBEBE)
         : const Color(0xFF777777);
     // 头像不再是「绿色圆底 + 白色小人」两层，直接用 account_circle 这一个实心字形，
     // 和底部导航「我的」那个 tab 是同一个图标，只是尺寸大、颜色取灰。
     final avatarIconColor = isDark
-        ? const Color(0xFF4E5A53)
-        : const Color(0xFFC2CAC4);
+        ? const Color(0xFF565656)
+        : const Color(0xFFC7C7C7);
     final accountText = _loggedIn
         ? (hasUserName && hasUserAccount ? _userAccount!.trim() : null)
         : '点击进入统一门户登录';
@@ -427,7 +427,7 @@ class _TestingPageState extends State<_TestingPage> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final subtitleColor = isDark
-        ? const Color(0xFFB6C2BC)
+        ? const Color(0xFFBEBEBE)
         : const Color(0xFF777777);
 
     return Scaffold(
@@ -484,8 +484,8 @@ class _ProfileActionRow extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final titleColor = theme.colorScheme.onSurface;
     final chevronColor = isDark
-        ? const Color(0xFFB6C2BC)
-        : const Color(0xFF8A938B);
+        ? const Color(0xFFBEBEBE)
+        : const Color(0xFF8F8F8F);
 
     return Material(
       color: Colors.transparent,
@@ -570,7 +570,7 @@ class _AboutPageState extends State<_AboutPage> {
     final isDark = theme.brightness == Brightness.dark;
     final titleColor = theme.colorScheme.onSurface;
     final subtitleColor = isDark
-        ? const Color(0xFFB6C2BC)
+        ? const Color(0xFFBEBEBE)
         : const Color(0xFF777777);
 
     return Scaffold(
@@ -657,7 +657,7 @@ class _AboutLinkRow extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final primaryColor = theme.colorScheme.onSurface;
     final secondaryColor = isDark
-        ? const Color(0xFFB6C2BC)
+        ? const Color(0xFFBEBEBE)
         : const Color(0xFF777777);
     return InkWell(
       onTap: onTap,

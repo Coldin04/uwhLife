@@ -2257,7 +2257,7 @@ JSON.stringify({
                   child: const LinearProgressIndicator(
                     minHeight: 2,
                     color: Color(0xFF111111),
-                    backgroundColor: Color(0xFFE8E8E5),
+                    backgroundColor: Color(0xFFE7E7E7),
                   ),
                 ),
               Positioned.fill(

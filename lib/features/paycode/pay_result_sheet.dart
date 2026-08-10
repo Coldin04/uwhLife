@@ -53,12 +53,12 @@ class _PayResultSheetContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final sheetColor = isDark ? const Color(0xFF1A1F1C) : Colors.white;
+    final sheetColor = isDark ? const Color(0xFF1D1D1D) : Colors.white;
     final titleColor = isDark ? Colors.white : const Color(0xFF202124);
     final bodyColor = isDark ? Colors.white60 : const Color(0xFF5F6368);
     final dividerColor = isDark
-        ? const Color(0xFF2A2F2C)
-        : const Color(0xFFE8E8E5);
+        ? const Color(0xFF2D2D2D)
+        : const Color(0xFFE7E7E7);
     final accentColor = success
         ? const Color(0xFF16A34A)
         : const Color(0xFFD44848);

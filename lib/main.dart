@@ -32,6 +32,8 @@ class UwhLifeApp extends StatelessWidget {
         fontFamily: 'AlibabaPuHuiTi',
         colorScheme: buildColorScheme(Brightness.light),
         dialogTheme: buildDialogTheme(Brightness.light),
+        bottomSheetTheme: buildBottomSheetTheme(Brightness.light),
+        snackBarTheme: buildSnackBarTheme(Brightness.light),
         scaffoldBackgroundColor: Colors.white,
       ),
       darkTheme: ThemeData(
@@ -39,6 +41,8 @@ class UwhLifeApp extends StatelessWidget {
         fontFamily: 'AlibabaPuHuiTi',
         colorScheme: buildColorScheme(Brightness.dark),
         dialogTheme: buildDialogTheme(Brightness.dark),
+        bottomSheetTheme: buildBottomSheetTheme(Brightness.dark),
+        snackBarTheme: buildSnackBarTheme(Brightness.dark),
         scaffoldBackgroundColor: Colors.black,
       ),
       home: const RootPage(),

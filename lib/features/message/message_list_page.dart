@@ -107,7 +107,7 @@ class _MessageListPageState extends State<MessageListPage> {
     final isDark = theme.brightness == Brightness.dark;
     final titleColor = scheme.onSurface;
     final subtitleColor = isDark
-        ? const Color(0xFFB6C2BC)
+        ? const Color(0xFFBEBEBE)
         : const Color(0xFF777777);
 
     return SafeArea(
@@ -238,7 +238,7 @@ class _CategoryTile extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: isDark
-                              ? const Color(0xFF111513)
+                              ? const Color(0xFF141414)
                               : Colors.white,
                           width: 2,
                         ),

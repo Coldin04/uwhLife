@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/theme/app_theme.dart';
 import 'models/app_entry.dart';
 import 'widgets/app_tile.dart';
 
@@ -10,6 +11,11 @@ const FontWeight _appsBold = FontWeight.w500;
 const FontWeight _appsSemiBold = FontWeight.w400;
 const Color _appsBrandGreen = Color(0xFF22C55E);
 const double _appsFloatingNavClearance = 112;
+// 左右边距放在各子项上，分类切换的 PageView 才能整屏进出。
+const double _appsHorizontalPadding = 20;
+const EdgeInsets _appsContentPadding = EdgeInsets.symmetric(
+  horizontal: _appsHorizontalPadding,
+);
 
 class _DampedPageScrollPhysics extends PageScrollPhysics {
   const _DampedPageScrollPhysics({super.parent, this.dragFactor = 0.82});
@@ -141,17 +147,25 @@ class _AppListPageState extends State<AppListPage> {
     Key? key,
   }) {
     if (apps.isEmpty) {
-      return Center(
+      return Padding(
         key: key,
-        child: Text(
-          '没有匹配的应用',
-          style: TextStyle(color: hintColor, fontSize: 14),
+        padding: _appsContentPadding,
+        child: Center(
+          child: Text(
+            '没有匹配的应用',
+            style: TextStyle(color: hintColor, fontSize: 14),
+          ),
         ),
       );
     }
     return ListView.builder(
       key: key,
-      padding: const EdgeInsets.only(top: 4, bottom: _appsFloatingNavClearance),
+      padding: const EdgeInsets.fromLTRB(
+        _appsHorizontalPadding,
+        4,
+        _appsHorizontalPadding,
+        _appsFloatingNavClearance,
+      ),
       itemExtent: 64,
       itemCount: apps.length,
       itemBuilder: (context, i) {
@@ -171,43 +185,48 @@ class _AppListPageState extends State<AppListPage> {
     final isDark = theme.brightness == Brightness.dark;
     final titleColor = theme.colorScheme.onSurface;
     final inactiveColor = isDark
-        ? const Color(0xFFB6C2BC)
+        ? const Color(0xFFBEBEBE)
         : const Color(0xFF6B7280);
     final activeColor = isDark ? const Color(0xFF7EE2A3) : _appsBrandGreen;
     final labelColor = isDark
-        ? const Color(0xFFD8E2DA)
+        ? const Color(0xFFDEDEDE)
         : const Color(0xFF1F2937);
-    final searchBg = isDark ? const Color(0xFF15201A) : const Color(0xFFF1F5F2);
+    // 搜索框按 MD2 走：中性灰底 + 小圆角，不再是绿味胶囊。
+    final searchBg = md2SurfaceColor(theme.brightness);
     final searchBorder = isDark
-        ? const Color(0xFF1F2D25)
-        : const Color(0xFFE5EDE8);
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.06);
     final hintColor = isDark
-        ? const Color(0xFF8A9892)
-        : const Color(0xFF9AA3A0);
+        ? const Color(0xFF939393)
+        : const Color(0xFFA0A0A0);
     final searching = _search.isNotEmpty;
 
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+        padding: const EdgeInsets.only(top: 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '应用',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                color: titleColor,
-                fontWeight: _appsBold,
-                letterSpacing: -0.8,
+            Padding(
+              padding: _appsContentPadding,
+              child: Text(
+                '应用',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  color: titleColor,
+                  fontWeight: _appsBold,
+                  letterSpacing: -0.8,
+                ),
               ),
             ),
             const SizedBox(height: 16),
             Container(
               height: 48,
+              margin: _appsContentPadding,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
                 color: searchBg,
-                borderRadius: BorderRadius.circular(28),
+                borderRadius: BorderRadius.circular(md2Radius),
                 border: Border.all(color: searchBorder),
               ),
               child: Row(
@@ -258,6 +277,7 @@ class _AppListPageState extends State<AppListPage> {
                 child: ListView.separated(
                   controller: _categoryScrollController,
                   scrollDirection: Axis.horizontal,
+                  padding: _appsContentPadding,
                   itemCount: _categories.length,
                   separatorBuilder: (_, _) => const SizedBox(width: 18),
                   itemBuilder: (context, i) {

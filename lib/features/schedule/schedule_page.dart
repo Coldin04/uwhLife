@@ -14,8 +14,10 @@ import 'schedule_ics_exporter.dart';
 import '../webview/portal_webview_page.dart';
 
 const _scheduleGreen = Color(0xFF22C55E);
-const _scheduleGridLine = Color(0xFFE1ECE4);
+const _scheduleGridLine = Color(0xFFE8E8E8);
 const _weekdayLabels = <String>['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+// 内容左右边距放在每个子项上，让周切换的 PageView 能整屏进出。
+const _scheduleContentPadding = EdgeInsets.symmetric(horizontal: 10);
 
 /// 课表相关页面都是浅色渐变背景，状态栏图标必须跟着主题走，
 /// 否则浅色模式下会保持白色图标，几乎看不见。
@@ -285,7 +287,7 @@ class _SchedulePageState extends State<SchedulePage> {
     if (schedule.availableTerms.length < 2) return;
     final selectedCode = await showModalBottomSheet<String>(
       context: context,
-      showDragHandle: true,
+      // MD2 的弹层没有拖拽把手，标题直接顶到最上面。
       builder: (context) => SafeArea(
         child: ConstrainedBox(
           constraints: BoxConstraints(
@@ -296,12 +298,12 @@ class _SchedulePageState extends State<SchedulePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
                 child: Text(
                   '选择学期',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w500),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
               Flexible(
@@ -446,58 +448,43 @@ class _ScheduleActionsMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final scheme = Theme.of(context).colorScheme;
-    final menuBackground = isDark
-        ? const Color(0xFF13251A)
-        : const Color(0xFFF4FAF6);
-    final menuBorder = isDark
-        ? Colors.white.withValues(alpha: 0.10)
-        : _scheduleGreen.withValues(alpha: 0.16);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final dividerColor = scheme.onSurface.withValues(alpha: 0.12);
     return MenuAnchor(
       alignmentOffset: const Offset(-162, 4),
-      style: MenuStyle(
-        backgroundColor: WidgetStatePropertyAll(menuBackground),
-        surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
-        elevation: const WidgetStatePropertyAll(0),
-        shadowColor: const WidgetStatePropertyAll(Colors.transparent),
-        side: WidgetStatePropertyAll(BorderSide(color: menuBorder)),
-        shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-        padding: const WidgetStatePropertyAll(EdgeInsets.all(5)),
-      ),
+      style: buildMd2MenuStyle(theme.brightness),
       menuChildren: [
         MenuItemButton(
           onPressed: onRefresh,
           leadingIcon: const Icon(Icons.refresh_rounded, size: 19),
-          style: _menuItemStyle(scheme),
+          style: _menuItemStyle(theme.brightness),
           child: const Text('刷新缓存'),
         ),
         MenuItemButton(
           onPressed: onOpenWeb,
           leadingIcon: const Icon(Icons.open_in_browser_rounded, size: 19),
-          style: _menuItemStyle(scheme),
+          style: _menuItemStyle(theme.brightness),
           child: const Text('打开课表网页'),
         ),
-        Divider(height: 9, indent: 10, endIndent: 10, color: menuBorder),
+        Divider(height: 9, color: dividerColor),
         MenuItemButton(
           onPressed: onExportWakeUp,
           leadingIcon: const Icon(Icons.file_download_outlined, size: 19),
-          style: _menuItemStyle(scheme),
+          style: _menuItemStyle(theme.brightness),
           child: const Text('导出 WakeUp'),
         ),
         MenuItemButton(
           onPressed: onExportIcs,
           leadingIcon: const Icon(Icons.calendar_month_outlined, size: 19),
-          style: _menuItemStyle(scheme),
+          style: _menuItemStyle(theme.brightness),
           child: const Text('导出 ICS 日历'),
         ),
         if (onAddToCalendar != null)
           MenuItemButton(
             onPressed: onAddToCalendar,
             leadingIcon: const Icon(Icons.event_available_outlined, size: 19),
-            style: _menuItemStyle(scheme),
+            style: _menuItemStyle(theme.brightness),
             child: const Text('添加到系统日历'),
           ),
       ],
@@ -507,26 +494,16 @@ class _ScheduleActionsMenu extends StatelessWidget {
         icon: const Icon(Icons.more_vert_rounded),
         style: IconButton.styleFrom(
           backgroundColor: Colors.transparent,
-          hoverColor: _scheduleGreen.withValues(alpha: 0.08),
-          highlightColor: _scheduleGreen.withValues(alpha: 0.12),
-          foregroundColor: scheme.onSurface,
+          hoverColor: scheme.onSurface.withValues(alpha: 0.06),
+          highlightColor: scheme.onSurface.withValues(alpha: 0.10),
+          foregroundColor: md2MenuForeground(theme.brightness),
         ),
       ),
     );
   }
 
-  ButtonStyle _menuItemStyle(ColorScheme scheme) {
-    return MenuItemButton.styleFrom(
-      minimumSize: const Size(194, 42),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      foregroundColor: scheme.onSurface,
-      iconColor: _scheduleGreen,
-      disabledForegroundColor: scheme.onSurface.withValues(alpha: 0.30),
-      disabledIconColor: scheme.onSurface.withValues(alpha: 0.24),
-      backgroundColor: Colors.transparent,
-      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-    );
+  ButtonStyle _menuItemStyle(Brightness brightness) {
+    return buildMd2MenuItemStyle(brightness);
   }
 }
 
@@ -629,17 +606,23 @@ class _ScheduleViewState extends State<_ScheduleView> {
   Widget build(BuildContext context) {
     final notice = widget.schedule.courseTableNotice;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(10, 0, 10, 32),
+      padding: const EdgeInsets.only(bottom: 32),
       children: [
         // 课表未发布/未返回有效数据时不渲染日历，只给提示，
         // 未排课课程等其它模块照常展示。
         if (notice != null)
-          _CourseTableNotice(message: notice)
+          Padding(
+            padding: _scheduleContentPadding,
+            child: _CourseTableNotice(message: notice),
+          )
         else ...[
-          _ScheduleHeader(
-            schedule: widget.schedule,
-            selectedWeek: widget.selectedWeek,
-            onChangeWeek: _selectWeek,
+          Padding(
+            padding: _scheduleContentPadding,
+            child: _ScheduleHeader(
+              schedule: widget.schedule,
+              selectedWeek: widget.selectedWeek,
+              onChangeWeek: _selectWeek,
+            ),
           ),
           const SizedBox(height: 6),
           SizedBox(
@@ -650,10 +633,13 @@ class _ScheduleViewState extends State<_ScheduleView> {
               itemCount: widget.schedule.maxWeek,
               onPageChanged: (index) => widget.onChangeWeek(index + 1),
               itemBuilder: (context, index) {
-                return _ScheduleGrid(
-                  key: ValueKey<int>(index + 1),
-                  schedule: widget.schedule,
-                  week: index + 1,
+                return Padding(
+                  padding: _scheduleContentPadding,
+                  child: _ScheduleGrid(
+                    key: ValueKey<int>(index + 1),
+                    schedule: widget.schedule,
+                    week: index + 1,
+                  ),
                 );
               },
             ),
@@ -661,7 +647,12 @@ class _ScheduleViewState extends State<_ScheduleView> {
         ],
         if (widget.schedule.unscheduledCourses.isNotEmpty) ...[
           const SizedBox(height: 20),
-          _UnscheduledCourses(courses: widget.schedule.unscheduledCourses),
+          Padding(
+            padding: _scheduleContentPadding,
+            child: _UnscheduledCourses(
+              courses: widget.schedule.unscheduledCourses,
+            ),
+          ),
         ],
       ],
     );
@@ -773,7 +764,7 @@ class _ScheduleGrid extends StatelessWidget {
     final minPeriod = periods.first;
     final gridHeight = periods.length * _periodHeight;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final line = isDark ? const Color(0xFF2B3930) : _scheduleGridLine;
+    final line = isDark ? const Color(0xFF343434) : _scheduleGridLine;
     final weekStart = schedule.term.startDate?.add(
       Duration(days: (week - 1) * 7),
     );
@@ -1649,13 +1640,13 @@ class _DetailSection extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
       decoration: BoxDecoration(
         color: isDark
-            ? const Color(0xFF14251A).withValues(alpha: 0.88)
+            ? const Color(0xFF1F1F1F).withValues(alpha: 0.88)
             : Colors.white.withValues(alpha: 0.76),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: isDark
               ? Colors.white.withValues(alpha: 0.08)
-              : const Color(0xFFD9EBDF).withValues(alpha: 0.9),
+              : const Color(0xFFE4E4E4).withValues(alpha: 0.9),
         ),
       ),
       child: Column(

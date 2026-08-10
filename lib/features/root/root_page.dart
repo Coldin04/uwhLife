@@ -337,7 +337,7 @@ class _SlidingNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final inactiveColor = isDark
-        ? const Color(0xFFD8E2DA)
+        ? const Color(0xFFDEDEDE)
         : const Color(0xFF111827);
     final activeColor = isDark
         ? const Color(0xFF1B7F44)
@@ -377,9 +377,11 @@ class _SlidingNavBar extends StatelessWidget {
                 filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: (isDark ? Colors.black : Colors.white).withValues(
-                      alpha: isDark ? 0.16 : 0.36,
-                    ),
+                    // 深色下不再拿黑色当底：页面底色本来就接近纯黑，压黑之后胶囊
+                    // 整条看着像挖了个洞。换成中等灰、透明度高一点，抬起来一档。
+                    color: isDark
+                        ? const Color(0xFF4A4A4A).withValues(alpha: 0.62)
+                        : Colors.white.withValues(alpha: 0.36),
                     // 描边只去掉了原来的浅绿（0xFFBDEFCF），换成同透明度的中性色，
                     // 胶囊的形状和毛玻璃质感保持不变。
                     border: Border.all(

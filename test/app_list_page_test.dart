@@ -16,7 +16,8 @@ void main() {
     expect(find.text('座位预约'), findsOneWidget);
     expect(find.text('消费账单'), findsNothing);
 
-    await tester.drag(find.byType(PageView), const Offset(500, 0));
+    // 页面已占满屏宽，拖动距离要明确超过半页才会翻页。
+    await tester.drag(find.byType(PageView), const Offset(700, 0));
     await tester.pumpAndSettle();
 
     expect(find.text('消费账单'), findsOneWidget);

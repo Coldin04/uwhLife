@@ -135,14 +135,14 @@ class _MessageConversationPageState extends State<MessageConversationPage> {
         child: GestureDetector(
           onTap: () {},
           child: _MessageDetailSheet(
-          message: item,
-          avatarColor: _avatarColor,
-          avatarIcon: _avatarIcon,
-          appName: widget.appName,
-          parentContext: context,
+            message: item,
+            avatarColor: _avatarColor,
+            avatarIcon: _avatarIcon,
+            appName: widget.appName,
+            parentContext: context,
+          ),
         ),
       ),
-    ),
     );
   }
 
@@ -152,7 +152,7 @@ class _MessageConversationPageState extends State<MessageConversationPage> {
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     final titleColor = scheme.onSurface;
-    final bgColor = isDark ? const Color(0xFF111513) : const Color(0xFFF5F5F3);
+    final bgColor = isDark ? const Color(0xFF141414) : const Color(0xFFF5F5F5);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -166,64 +166,66 @@ class _MessageConversationPageState extends State<MessageConversationPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('加载失败', style: TextStyle(color: titleColor)),
-                      const SizedBox(height: 8),
-                      FilledButton(onPressed: _load, child: const Text('重试')),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('加载失败', style: TextStyle(color: titleColor)),
+                  const SizedBox(height: 8),
+                  FilledButton(onPressed: _load, child: const Text('重试')),
+                ],
+              ),
+            )
+          : _messages.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.notifications_none,
+                    size: 64,
+                    color: Colors.grey[400],
                   ),
-                )
-              : _messages.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.notifications_none,
-                              size: 64, color: Colors.grey[400]),
-                          const SizedBox(height: 16),
-                          Text('暂无消息',
-                              style: TextStyle(
-                                  color: Colors.grey[600], fontSize: 16)),
-                        ],
+                  const SizedBox(height: 16),
+                  Text(
+                    '暂无消息',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                  ),
+                ],
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView.builder(
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                addAutomaticKeepAlives: false,
+                addRepaintBoundaries: true,
+                itemCount: _messages.length + (_loadingMore ? 1 : 0),
+                itemBuilder: (context, index) {
+                  if (index == _messages.length) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: ListView.builder(
-                        controller: _scrollController,
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        addAutomaticKeepAlives: false,
-                        addRepaintBoundaries: true,
-                        itemCount:
-                            _messages.length + (_loadingMore ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          if (index == _messages.length) {
-                            return const Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Center(
-                                child: SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2),
-                                ),
-                              ),
-                            );
-                          }
-                          return _MessageCard(
-                            message: _messages[index],
-                            avatarColor: _avatarColor,
-                            avatarIcon: _avatarIcon,
-                            appName: widget.appName,
-                            onTap: () => _showMessageSheet(_messages[index]),
-                          );
-                        },
-                      ),
-                    ),
+                    );
+                  }
+                  return _MessageCard(
+                    message: _messages[index],
+                    avatarColor: _avatarColor,
+                    avatarIcon: _avatarIcon,
+                    appName: widget.appName,
+                    onTap: () => _showMessageSheet(_messages[index]),
+                  );
+                },
+              ),
+            ),
     );
   }
 
@@ -266,7 +268,7 @@ class _MessageCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF1A1F1C) : Colors.white;
+    final cardColor = isDark ? const Color(0xFF1D1D1D) : Colors.white;
     final titleColor = isDark ? Colors.white : const Color(0xFF202124);
     final bodyColor = isDark ? Colors.white70 : const Color(0xFF5F6368);
     final metaColor = isDark ? Colors.white38 : const Color(0xFF9AA0A6);
@@ -290,8 +292,7 @@ class _MessageCard extends StatelessWidget {
                     CircleAvatar(
                       radius: 18,
                       backgroundColor: avatarColor,
-                      child:
-                          Icon(avatarIcon, color: Colors.white, size: 18),
+                      child: Icon(avatarIcon, color: Colors.white, size: 18),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -308,8 +309,7 @@ class _MessageCard extends StatelessWidget {
                           ),
                           Text(
                             _formatTime(message.msgSendDate),
-                            style:
-                                TextStyle(fontSize: 12, color: metaColor),
+                            style: TextStyle(fontSize: 12, color: metaColor),
                           ),
                         ],
                       ),
@@ -428,12 +428,13 @@ class _MessageDetailSheetState extends State<_MessageDetailSheet> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final sheetColor = isDark ? const Color(0xFF1A1F1C) : Colors.white;
+    final sheetColor = isDark ? const Color(0xFF1D1D1D) : Colors.white;
     final titleColor = isDark ? Colors.white : const Color(0xFF202124);
     final bodyColor = isDark ? Colors.white70 : const Color(0xFF2C3E50);
     final metaColor = isDark ? Colors.white38 : const Color(0xFF9AA0A6);
-    final dividerColor =
-        isDark ? const Color(0xFF2A2F2C) : const Color(0xFFE8E8E5);
+    final dividerColor = isDark
+        ? const Color(0xFF2D2D2D)
+        : const Color(0xFFE7E7E7);
 
     final content = _detail?.msgContent ?? widget.message.msgContent;
     final title = _detail?.msgTitle ?? widget.message.msgTitle;
@@ -451,8 +452,7 @@ class _MessageDetailSheetState extends State<_MessageDetailSheet> {
         return Container(
           decoration: BoxDecoration(
             color: sheetColor,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: Column(
             children: [
@@ -480,8 +480,11 @@ class _MessageDetailSheetState extends State<_MessageDetailSheet> {
                         CircleAvatar(
                           radius: 20,
                           backgroundColor: widget.avatarColor,
-                          child: Icon(widget.avatarIcon,
-                              color: Colors.white, size: 20),
+                          child: Icon(
+                            widget.avatarIcon,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -500,7 +503,9 @@ class _MessageDetailSheetState extends State<_MessageDetailSheet> {
                                 _detail?.msgSendDate ??
                                     widget.message.msgSendDate,
                                 style: TextStyle(
-                                    fontSize: 13, color: metaColor),
+                                  fontSize: 13,
+                                  color: metaColor,
+                                ),
                               ),
                             ],
                           ),
@@ -549,8 +554,7 @@ class _MessageDetailSheetState extends State<_MessageDetailSheet> {
                     // Link button
                     if (linkUrl != null && linkUrl.isNotEmpty) ...[
                       const SizedBox(height: 24),
-                      Divider(
-                          height: 1, thickness: 0.5, color: dividerColor),
+                      Divider(height: 1, thickness: 0.5, color: dividerColor),
                       InkWell(
                         onTap: () => _openLink(linkUrl, title),
                         borderRadius: BorderRadius.circular(8),
@@ -567,8 +571,11 @@ class _MessageDetailSheetState extends State<_MessageDetailSheet> {
                                 ),
                               ),
                               const Spacer(),
-                              Icon(Icons.chevron_right_rounded,
-                                  size: 20, color: metaColor),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                size: 20,
+                                color: metaColor,
+                              ),
                             ],
                           ),
                         ),

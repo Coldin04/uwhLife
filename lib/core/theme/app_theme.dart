@@ -10,7 +10,7 @@ const Color brandGreen = Color(0xFF22C55E);
 /// 全局页面底色。所有页面（含首页）都不再铺绿色渐变，统一纯色。
 /// 取值就是原来那套渐变的末端色，所以内容区观感和 v1.5.0 一致。
 Color appBackground(Brightness brightness) =>
-    brightness == Brightness.dark ? const Color(0xFF020503) : Colors.white;
+    brightness == Brightness.dark ? const Color(0xFF040404) : Colors.white;
 
 // ---------------------------------------------------------------------------
 // MD2 风格弹窗
@@ -32,6 +32,91 @@ DialogThemeData buildDialogTheme(Brightness brightness) {
     surfaceTintColor: Colors.transparent,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.all(Radius.circular(8)),
+    ),
+  );
+}
+
+/// MD2 的小圆角。弹出菜单、搜索框这类浮层都用它，不再走 M3 的大圆角。
+const double md2Radius = 4;
+
+/// 浮层/输入框的灰底。页面本身保持纯白，靠这层灰分出层级，
+/// 也顺手甩掉 M3 那套带品牌色 tint 的 surface。
+Color md2SurfaceColor(Brightness brightness) => brightness == Brightness.dark
+    ? const Color(0xFF2A2A2A)
+    : const Color(0xFFEEEEEE);
+
+/// MD2 弹出菜单：灰底 + 小圆角 + 真实投影，无描边、无 tint。
+MenuStyle buildMd2MenuStyle(Brightness brightness) {
+  final isDark = brightness == Brightness.dark;
+  return MenuStyle(
+    backgroundColor: WidgetStatePropertyAll(md2SurfaceColor(brightness)),
+    surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+    elevation: const WidgetStatePropertyAll(8),
+    shadowColor: WidgetStatePropertyAll(
+      Colors.black.withValues(alpha: isDark ? 0.6 : 0.32),
+    ),
+    shape: const WidgetStatePropertyAll(
+      RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(md2Radius)),
+      ),
+    ),
+    // MD2 菜单只在上下留白，菜单项自己铺满整宽。
+    padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(vertical: 8)),
+  );
+}
+
+/// 菜单里的文字和图标都用这一个中性色，跟小程序的「更多」菜单一致：
+/// 深色下纯白，浅色下近黑，不带品牌绿。
+Color md2MenuForeground(Brightness brightness) =>
+    brightness == Brightness.dark ? Colors.white : const Color(0xFF111111);
+
+/// MD2 菜单项：铺满整宽的直角条目，高亮不带圆角。
+ButtonStyle buildMd2MenuItemStyle(
+  Brightness brightness, {
+  double minWidth = 194,
+}) {
+  final foreground = md2MenuForeground(brightness);
+  return MenuItemButton.styleFrom(
+    minimumSize: Size(minWidth, 48),
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    foregroundColor: foreground,
+    iconColor: foreground,
+    disabledForegroundColor: foreground.withValues(alpha: 0.34),
+    disabledIconColor: foreground.withValues(alpha: 0.28),
+    backgroundColor: Colors.transparent,
+    textStyle: const TextStyle(fontSize: 14, fontWeight: wMedium),
+    shape: const RoundedRectangleBorder(),
+  );
+}
+
+/// MD2 底部弹层：白底、顶部小圆角、无 tint，也不要 M3 的拖拽把手。
+BottomSheetThemeData buildBottomSheetTheme(Brightness brightness) {
+  final isDark = brightness == Brightness.dark;
+  return BottomSheetThemeData(
+    backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+    surfaceTintColor: Colors.transparent,
+    elevation: 8,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(md2Radius)),
+    ),
+  );
+}
+
+/// MD2 提示条（SnackBar / toast）。M3 默认拿 inverseSurface 当底，
+/// 深色下会翻成白底黑字；这里两种模式都用深灰底白字，深色也不压到纯黑。
+SnackBarThemeData buildSnackBarTheme(Brightness brightness) {
+  final isDark = brightness == Brightness.dark;
+  return SnackBarThemeData(
+    backgroundColor: isDark ? const Color(0xFF2E2E2E) : const Color(0xFF323232),
+    contentTextStyle: const TextStyle(
+      color: Colors.white,
+      fontSize: 14,
+      fontWeight: wMedium,
+    ),
+    actionTextColor: _dialogAccentDark,
+    elevation: 6,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.all(Radius.circular(md2Radius)),
     ),
   );
 }
@@ -59,13 +144,34 @@ ButtonStyle dialogQuietAction(BuildContext context) => TextButton.styleFrom(
 
 ColorScheme buildColorScheme(Brightness brightness) {
   final isDark = brightness == Brightness.dark;
+  // fromSeed 会把品牌绿揉进所有 surface / outline 色阶，深色下整块底就泛绿了。
+  // 这里把中性面全部改回真中性灰，只让 primary / secondary 保留绿。
   return ColorScheme.fromSeed(
     seedColor: brandGreen,
     brightness: brightness,
     primary: brandGreen,
     secondary: isDark ? const Color(0xFF7EE2A3) : const Color(0xFF57CF84),
-    surface: isDark ? const Color(0xFF111513) : Colors.white,
-    onSurface: isDark ? const Color(0xFFF2F5F2) : const Color(0xFF111827),
+    surface: isDark ? const Color(0xFF141414) : Colors.white,
+    onSurface: isDark ? const Color(0xFFF4F4F4) : const Color(0xFF111827),
+    surfaceTint: Colors.transparent,
+    surfaceContainerLowest: isDark ? const Color(0xFF0A0A0A) : Colors.white,
+    surfaceContainerLow: isDark
+        ? const Color(0xFF141414)
+        : const Color(0xFFF7F7F7),
+    surfaceContainer: isDark
+        ? const Color(0xFF1C1C1C)
+        : const Color(0xFFF2F2F2),
+    surfaceContainerHigh: isDark
+        ? const Color(0xFF232323)
+        : const Color(0xFFECECEC),
+    surfaceContainerHighest: isDark
+        ? const Color(0xFF2A2A2A)
+        : const Color(0xFFE6E6E6),
+    onSurfaceVariant: isDark
+        ? const Color(0xFFBEBEBE)
+        : const Color(0xFF5F5F5F),
+    outline: isDark ? const Color(0xFF6E6E6E) : const Color(0xFF9E9E9E),
+    outlineVariant: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFD6D6D6),
     error: const Color(0xFFD44848),
     onError: Colors.white,
   );
