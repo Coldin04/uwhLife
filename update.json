@@ -2,59 +2,47 @@
   "schemaVersion": 1,
   "app": "uwhLife",
   "android": {
-    "versionName": "1.5.0",
-    "versionCode": 21,
+    "versionName": "1.6.0",
+    "versionCode": 22,
     "minSupportedVersionCode": 10,
     "mandatory": false,
-    "title": "v1.5.0 更新",
+    "title": "v1.6.0 更新",
     "notes": [
-      "现在，小程序页面被重新设计，深色模式体验更佳",
-      "现在，增加了生活服务，方便快速打开第三方服务",
-      "现在，付款码页面支持自动高亮，刷码更方便，同时，使用体验得到优化",
-      "小程序列表已更新，现在可使用更多功能",
-      "小程序网页支持通过浏览器打开了",
-      "优化了课程表页面排版",
-      "优化了部分页面的使用体验",
-      "解决了部分小程序关闭后仍在运行的问题",
-      "解决了部分小程序页面无法返回的问题",
-      "解决了通知栏在部分页面下可见性问题",
-      "解决了一些已知问题"
+      "现在，界面整体设计更加简洁，视觉负担更低",
+      "现在，界面文字样式得到优化，排版更清爽",
+      "弹窗改为浅色样式，按钮更克制，操作重点更清楚",
+      "优化了多处视觉细节",
+      "解决了一些问题"
     ],
     "apkUrl": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
-    "fallbackApkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v1.5.0/UWHLife_android_arm64-v8a.apk",
+    "fallbackApkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v1.6.0/UWHLife_android_arm64-v8a.apk",
     "apkUrls": {
       "armeabi-v7a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_armeabi-v7a.apk",
       "arm64-v8a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
       "x86_64": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_x86_64.apk"
     },
     "fallbackApkUrls": {
-      "armeabi-v7a": "https://github.com/Coldin04/uwhLife/releases/download/v1.5.0/UWHLife_android_armeabi-v7a.apk",
-      "arm64-v8a": "https://github.com/Coldin04/uwhLife/releases/download/v1.5.0/UWHLife_android_arm64-v8a.apk",
-      "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v1.5.0/UWHLife_android_x86_64.apk"
+      "armeabi-v7a": "https://github.com/Coldin04/uwhLife/releases/download/v1.6.0/UWHLife_android_armeabi-v7a.apk",
+      "arm64-v8a": "https://github.com/Coldin04/uwhLife/releases/download/v1.6.0/UWHLife_android_arm64-v8a.apk",
+      "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v1.6.0/UWHLife_android_x86_64.apk"
     },
     "sha256ByAbi": {
-      "armeabi-v7a": "4225af5737253c3c722e0b34cb52baea9c18ab9e839a7932a299af4c3e51eaeb",
-      "arm64-v8a": "7a9a779b1961904ca2d9279f56fa124067136358aa9f29c77619e7966aeeee7c",
-      "x86_64": "b2e77e543ab88b8cd95fca6e156e440a968aa0519139585c8d678dd564e01394"
+      "armeabi-v7a": "1d23377043537b7222fe72ac2e3aa51b095a36972e44572005f3c33c8cae56eb",
+      "arm64-v8a": "645439baf42c7794d41f3b97523a9a2226fdceb373f9483ad52f6d40373261e2",
+      "x86_64": "68f6d827a692a64b4ae8cef5804f9b3b49644c21c5a52f3dd4b0cd1332acfd0f"
     },
-    "sha256": "7a9a779b1961904ca2d9279f56fa124067136358aa9f29c77619e7966aeeee7c"
+    "sha256": "645439baf42c7794d41f3b97523a9a2226fdceb373f9483ad52f6d40373261e2"
   },
   "ios": {
-    "versionName": "1.5.0",
-    "buildVersion": "21",
-    "title": "v1.5.0 更新",
+    "versionName": "1.6.0",
+    "buildVersion": "22",
+    "title": "v1.6.0 更新",
     "notes": [
-      "现在，小程序页面被重新设计，深色模式体验更佳",
-      "现在，增加了生活服务，方便快速打开第三方服务",
-      "现在，付款码页面支持自动高亮，刷码更方便，同时，使用体验得到优化",
-      "小程序列表已更新，现在可使用更多功能",
-      "小程序网页支持通过浏览器打开了",
-      "优化了课程表页面排版",
-      "优化了部分页面的使用体验",
-      "解决了部分小程序关闭后仍在运行的问题",
-      "解决了部分小程序页面无法返回的问题",
-      "解决了通知栏在部分页面下可见性问题",
-      "解决了一些已知问题"
+      "现在，界面整体设计更加简洁，视觉负担更低",
+      "现在，界面文字样式得到优化，排版更清爽",
+      "弹窗改为浅色样式，按钮更克制，操作重点更清楚",
+      "优化了多处视觉细节",
+      "解决了一些问题"
     ],
     "altSourceUrl": "https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/main/source.json"
   }
