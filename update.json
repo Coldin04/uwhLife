@@ -2,47 +2,41 @@
   "schemaVersion": 1,
   "app": "uwhLife",
   "android": {
-    "versionName": "1.6.0",
-    "versionCode": 22,
-    "minSupportedVersionCode": 10,
+    "versionName": "1.6.1",
+    "versionCode": 23,
+    "minSupportedVersionCode": 20,
     "mandatory": false,
-    "title": "v1.6.0 更新",
+    "title": "v1.6.1 更新",
     "notes": [
-      "现在，界面整体设计更加简洁，视觉负担更低",
-      "现在，界面文字样式得到优化，排版更清爽",
-      "弹窗改为浅色样式，按钮更克制，操作重点更清楚",
-      "优化了多处视觉细节",
-      "解决了一些问题"
+      "现在，界面设计进行了全面优化，深色模式体验更佳",
+      "优化了多处视觉细节"
     ],
     "apkUrl": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
-    "fallbackApkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v1.6.0/UWHLife_android_arm64-v8a.apk",
+    "fallbackApkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v1.6.1/UWHLife_android_arm64-v8a.apk",
     "apkUrls": {
       "armeabi-v7a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_armeabi-v7a.apk",
       "arm64-v8a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
       "x86_64": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_x86_64.apk"
     },
     "fallbackApkUrls": {
-      "armeabi-v7a": "https://github.com/Coldin04/uwhLife/releases/download/v1.6.0/UWHLife_android_armeabi-v7a.apk",
-      "arm64-v8a": "https://github.com/Coldin04/uwhLife/releases/download/v1.6.0/UWHLife_android_arm64-v8a.apk",
-      "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v1.6.0/UWHLife_android_x86_64.apk"
+      "armeabi-v7a": "https://github.com/Coldin04/uwhLife/releases/download/v1.6.1/UWHLife_android_armeabi-v7a.apk",
+      "arm64-v8a": "https://github.com/Coldin04/uwhLife/releases/download/v1.6.1/UWHLife_android_arm64-v8a.apk",
+      "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v1.6.1/UWHLife_android_x86_64.apk"
     },
     "sha256ByAbi": {
-      "armeabi-v7a": "1d23377043537b7222fe72ac2e3aa51b095a36972e44572005f3c33c8cae56eb",
-      "arm64-v8a": "645439baf42c7794d41f3b97523a9a2226fdceb373f9483ad52f6d40373261e2",
-      "x86_64": "68f6d827a692a64b4ae8cef5804f9b3b49644c21c5a52f3dd4b0cd1332acfd0f"
+      "armeabi-v7a": "371031a29f478925854d3cb8ce93343eff59b45275702b634d7ea92b561a658a",
+      "arm64-v8a": "62329387ea71186ee51c68607a5e37c14a3775070255b7a3edce9967cdca316c",
+      "x86_64": "18f14cd8d4f844eb5c81c221917370b6c62b02a061043733a96a0c42c272a244"
     },
-    "sha256": "645439baf42c7794d41f3b97523a9a2226fdceb373f9483ad52f6d40373261e2"
+    "sha256": "62329387ea71186ee51c68607a5e37c14a3775070255b7a3edce9967cdca316c"
   },
   "ios": {
-    "versionName": "1.6.0",
-    "buildVersion": "22",
-    "title": "v1.6.0 更新",
+    "versionName": "1.6.1",
+    "buildVersion": "23",
+    "title": "v1.6.1 更新",
     "notes": [
-      "现在，界面整体设计更加简洁，视觉负担更低",
-      "现在，界面文字样式得到优化，排版更清爽",
-      "弹窗改为浅色样式，按钮更克制，操作重点更清楚",
-      "优化了多处视觉细节",
-      "解决了一些问题"
+      "现在，界面设计进行了全面优化，深色模式体验更佳",
+      "优化了多处视觉细节"
     ],
     "altSourceUrl": "https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/main/source.json"
   }
