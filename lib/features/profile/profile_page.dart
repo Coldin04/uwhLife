@@ -124,10 +124,12 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
+              style: dialogQuietAction(context),
               child: const Text('取消'),
             ),
-            FilledButton(
+            TextButton(
               onPressed: () => Navigator.of(context).pop(true),
+              style: dialogPrimaryAction(context),
               child: const Text('清除'),
             ),
           ],
@@ -155,13 +157,12 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
+              style: dialogQuietAction(context),
               child: const Text('取消'),
             ),
-            FilledButton(
+            TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFD44848),
-              ),
+              style: dialogDangerAction(context),
               child: const Text('删除'),
             ),
           ],
@@ -257,13 +258,14 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
     final subtitleColor = isDark
         ? const Color(0xFFB6C2BC)
         : const Color(0xFF777777);
-    final avatarColor = isDark ? const Color(0xFF1B7F44) : brandGreen;
+    // 头像不再是「绿色圆底 + 白色小人」两层，直接用 account_circle 这一个实心字形，
+    // 和底部导航「我的」那个 tab 是同一个图标，只是尺寸大、颜色取灰。
+    final avatarIconColor = isDark
+        ? const Color(0xFF4E5A53)
+        : const Color(0xFFC2CAC4);
     final accountText = _loggedIn
         ? (hasUserName && hasUserAccount ? _userAccount!.trim() : null)
         : '点击进入统一门户登录';
-    final dividerColor = isDark
-        ? const Color(0xFF26312A)
-        : const Color(0xFFE2E8E2);
 
     return SafeArea(
       child: ListView(
@@ -271,7 +273,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
         children: [
           Text(
             '我的',
-            style: theme.textTheme.headlineMedium?.copyWith(
+            style: theme.textTheme.headlineSmall?.copyWith(
               color: titleColor,
               fontWeight: wBold,
               letterSpacing: -0.8,
@@ -288,14 +290,10 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: 30,
-                      backgroundColor: avatarColor,
-                      child: const Icon(
-                        Icons.person_rounded,
-                        color: Colors.white,
-                        size: 30,
-                      ),
+                    Icon(
+                      Icons.account_circle,
+                      size: 60,
+                      color: avatarIconColor,
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -340,8 +338,6 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
                 title: '退出登录',
                 onTap: _confirmClearLoginState,
               ),
-            if (_loggedIn && _hasSavedPassword)
-              _SectionDivider(color: dividerColor),
             if (_hasSavedPassword)
               _ProfileActionRow(
                 icon: Icons.lock_reset_rounded,
@@ -360,7 +356,6 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
               onChanged: _setPayCodeAutoBoost,
             ),
           ),
-          _SectionDivider(color: dividerColor),
           _ProfileActionRow(
             icon: Icons.nightlight_round,
             iconColor: subtitleColor,
@@ -380,7 +375,6 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
             title: '检查更新',
             onTap: () => UpdateDialogs.checkAndShow(context),
           ),
-          _SectionDivider(color: dividerColor),
           _ProfileActionRow(
             icon: Icons.info_outline_rounded,
             iconColor: subtitleColor,
@@ -389,7 +383,6 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
             onLongPress: _resetBoundaryDebugDefaultsIfVisible,
           ),
           if (_testingPageVisible) ...[
-            _SectionDivider(color: dividerColor),
             _ProfileActionRow(
               icon: Icons.science_outlined,
               iconColor: subtitleColor,
@@ -436,9 +429,6 @@ class _TestingPageState extends State<_TestingPage> {
     final subtitleColor = isDark
         ? const Color(0xFFB6C2BC)
         : const Color(0xFF777777);
-    final dividerColor = isDark
-        ? const Color(0xFF26312A)
-        : const Color(0xFFE2E8E2);
 
     return Scaffold(
       appBar: AppBar(title: const Text('测试与调试')),
@@ -458,7 +448,6 @@ class _TestingPageState extends State<_TestingPage> {
                 onChanged: _setBoundaryDebugEnabled,
               ),
             ),
-            _SectionDivider(color: dividerColor),
             _ProfileActionRow(
               icon: Icons.receipt_long_rounded,
               iconColor: subtitleColor,
@@ -513,8 +502,8 @@ class _ProfileActionRow extends StatelessWidget {
                 child: Text(
                   title,
                   style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: wBold,
+                    fontSize: 16,
+                    fontWeight: wMedium,
                     color: titleColor,
                   ),
                 ),
@@ -525,20 +514,6 @@ class _ProfileActionRow extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _SectionDivider extends StatelessWidget {
-  const _SectionDivider({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 38),
-      child: Divider(height: 1, thickness: 1, color: color),
     );
   }
 }
@@ -684,45 +659,36 @@ class _AboutLinkRow extends StatelessWidget {
     final secondaryColor = isDark
         ? const Color(0xFFB6C2BC)
         : const Color(0xFF777777);
-    final dividerColor = isDark
-        ? Colors.white.withValues(alpha: 0.12)
-        : Colors.black.withValues(alpha: 0.10);
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: dividerColor)),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 4),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        color: primaryColor,
-                        fontWeight: wBold,
-                      ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 4),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: primaryColor,
+                      fontWeight: wMedium,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      value,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: secondaryColor,
-                      ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    value,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: secondaryColor,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Icon(Icons.chevron_right_rounded, color: secondaryColor),
-            ],
-          ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: secondaryColor),
+          ],
         ),
       ),
     );
@@ -845,7 +811,8 @@ class _BoundaryDebugSettingsPageState
                     title: Text(
                       '启用边界测试',
                       style: TextStyle(
-                        fontWeight: wBold,
+                        fontSize: 16,
+                        fontWeight: wMedium,
                         color: scheme.onSurface,
                       ),
                     ),

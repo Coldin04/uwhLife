@@ -41,7 +41,7 @@ class AppTile extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 15,
                   color: labelColor,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
             ),

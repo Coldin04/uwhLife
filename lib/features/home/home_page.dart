@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../core/platform/browser_data_cleaner.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/storage/login_state_store.dart';
 import '../../core/storage/portal_user_store.dart';
 import '../auth/portal_auto_login.dart';
@@ -17,6 +18,7 @@ import '../schedule/schedule_page.dart';
 import 'widgets/home_cards.dart';
 import 'widgets/status_indicator.dart';
 
+// 只用在问候语上，比正文重一档（普惠体真实档位只有 400/500/700）。
 const FontWeight _homePageSemiBold = FontWeight.w500;
 const Color _homePageBrandGreen = Color(0xFF22C55E);
 
@@ -364,10 +366,12 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
+              style: dialogQuietAction(context),
               child: const Text('取消'),
             ),
-            FilledButton(
+            TextButton(
               onPressed: () => Navigator.of(context).pop(true),
+              style: dialogPrimaryAction(context),
               child: const Text('清除'),
             ),
           ],
@@ -461,38 +465,18 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final lockCardColor = isDark
         ? const Color(0xFF1B7F44)
         : _homePageBrandGreen;
+    // 小卡片走 MD2 的中性灰阶，不再用浅绿底 —— 绿色只保留在「门锁」大卡片上，
+    // 对比更清楚，也不会在白底页面上糊成一片淡绿。
     final smallCardColor = isDark
-        ? const Color(0xFF151C18)
-        : const Color(0xFFF0F8F2);
-    // 浅色模式下与其它小卡片同色，避免热水洗浴单独偏绿。
-    final moreCardColor = isDark
-        ? const Color(0xFF122018)
-        : const Color(0xFFF0F8F2);
+        ? const Color(0xFF1E1E1E)
+        : const Color(0xFFF5F5F5);
+    final smallCardBorderColor = isDark
+        ? const Color(0xFF2A2A2A)
+        : const Color(0xFFEEEEEE);
 
+    // 底色由 RootPage 统一铺，这里不再单独画一层背景。
     return Stack(
       children: [
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: isDark
-                    ? const [
-                        Color(0xFF123B24),
-                        Color(0xFF082413),
-                        Color(0xFF020503),
-                      ]
-                    : const [
-                        Color(0xFFC8F1D8),
-                        Color(0xFFEAF8EF),
-                        Colors.white,
-                      ],
-                stops: const [0, 0.48, 1],
-              ),
-            ),
-          ),
-        ),
         SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -607,24 +591,28 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                     SecondaryFeatureCard(
                                       icon: Icons.calendar_month_outlined,
                                       backgroundColor: smallCardColor,
+                                      borderColor: smallCardBorderColor,
                                       foregroundColor: headerColor,
                                       onTap: _openSchedule,
                                     ),
                                     SecondaryFeatureCard(
-                                      icon: Icons.qr_code_2_outlined,
+                                      icon: Icons.credit_card_rounded,
                                       backgroundColor: smallCardColor,
+                                      borderColor: smallCardBorderColor,
                                       foregroundColor: headerColor,
                                       onTap: _openPayCode,
                                     ),
                                     SecondaryFeatureCard(
                                       icon: Icons.school_outlined,
                                       backgroundColor: smallCardColor,
+                                      borderColor: smallCardBorderColor,
                                       foregroundColor: headerColor,
                                       onTap: _openClassroom,
                                     ),
                                     SecondaryFeatureCard(
-                                      icon: Icons.shower_rounded,
-                                      backgroundColor: moreCardColor,
+                                      icon: Icons.shower_outlined,
+                                      backgroundColor: smallCardColor,
+                                      borderColor: smallCardBorderColor,
                                       foregroundColor: headerColor,
                                       onTap: _openBath,
                                     ),
@@ -700,7 +688,7 @@ class _UpcomingCourseQuote extends StatelessWidget {
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(
                                 color: scheme.onSurface.withValues(alpha: 0.76),
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w500,
                               ),
                         )
                       : Column(
@@ -725,7 +713,7 @@ class _UpcomingCourseQuote extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(fontWeight: FontWeight.w700),
+                                  ?.copyWith(fontWeight: FontWeight.w500),
                             ),
                             const SizedBox(height: 3),
                             Text(
@@ -748,7 +736,7 @@ class _UpcomingCourseQuote extends StatelessWidget {
                                     color: scheme.onSurface.withValues(
                                       alpha: 0.72,
                                     ),
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w500,
                                   ),
                             ),
                           ],

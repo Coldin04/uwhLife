@@ -27,7 +27,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('门锁'), findsOneWidget);
-    expect(find.byIcon(Icons.shower_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.shower_outlined), findsOneWidget);
   });
 }
 

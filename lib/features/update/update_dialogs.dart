@@ -112,13 +112,15 @@ class UpdateDialogs {
                   if (!dialogContext.mounted) return;
                   Navigator.of(dialogContext).pop();
                 },
+                style: dialogQuietAction(context),
                 child: const Text('取消'),
               ),
-            FilledButton(
+            TextButton(
               onPressed: () async {
                 Navigator.of(dialogContext).pop();
                 await _downloadAndInstall(context, service, update);
               },
+              style: dialogPrimaryAction(context),
               child: const Text('立即更新'),
             ),
           ],
@@ -142,12 +144,13 @@ class UpdateDialogs {
             notes: update.notes,
           ),
           actions: [
-            FilledButton(
+            TextButton(
               onPressed: () async {
                 await cooldown.recordUserCancelled();
                 if (!dialogContext.mounted) return;
                 Navigator.of(dialogContext).pop();
               },
+              style: dialogPrimaryAction(context),
               child: const Text('我知道了'),
             ),
           ],
@@ -256,15 +259,17 @@ class _InstallPermissionDialogState extends State<_InstallPermissionDialog>
       actions: [
         TextButton(
           onPressed: _installing ? null : () => Navigator.of(context).pop(),
+          style: dialogQuietAction(context),
           child: const Text('取消'),
         ),
-        FilledButton(
+        TextButton(
           onPressed: _installing
               ? null
               : () async {
                   setState(() => _openingSettings = true);
                   await ApkInstaller.openInstallPermissionSettings();
                 },
+          style: dialogPrimaryAction(context),
           child: Text(_installing ? '正在打开' : '去设置'),
         ),
       ],
@@ -338,6 +343,7 @@ class _DownloadApkDialogState extends State<_DownloadApkDialog> {
         if (_error != null)
           TextButton(
             onPressed: () => Navigator.of(context).pop(null),
+            style: dialogPrimaryAction(context),
             child: const Text('关闭'),
           ),
       ],

@@ -109,7 +109,7 @@ class _PayResultSheetContent extends StatelessWidget {
               style: TextStyle(
                 color: titleColor,
                 fontSize: 20,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 16),
@@ -124,7 +124,7 @@ class _PayResultSheetContent extends StatelessWidget {
                     style: TextStyle(
                       color: titleColor,
                       fontSize: 26,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   Text(
@@ -132,7 +132,7 @@ class _PayResultSheetContent extends StatelessWidget {
                     style: TextStyle(
                       color: titleColor,
                       fontSize: 48,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w500,
                       height: 1.05,
                     ),
                   ),

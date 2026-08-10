@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/deep_links/deep_link_destination.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/storage/login_state_store.dart';
 import '../../core/utils/route_utils.dart';
 import '../../core/utils/app_scheme_launcher.dart';
@@ -218,7 +219,7 @@ class _RootPageState extends State<RootPage>
       createSlideFadeRoute(
         const PortalWebViewPage(
           title: '开水洗浴',
-          icon: Icons.shower_rounded,
+          icon: Icons.shower_outlined,
           initialUrl: 'http://ymtpt.uwh.edu.cn:27072/uwc_webapp',
           accentColor: Color(0xFF06B6D4),
           topSafeArea: false,
@@ -231,8 +232,6 @@ class _RootPageState extends State<RootPage>
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final shortHeaderBackground =
-        _currentIndex == 1 || _currentIndex == 2 || _currentIndex == 3;
     final pages = <Widget>[
       HomePage(
         key: _homeKey,
@@ -264,12 +263,7 @@ class _RootPageState extends State<RootPage>
         extendBody: true,
         body: Stack(
           children: [
-            Positioned.fill(
-              child: _RootPageBackground(
-                isDark: isDark,
-                shortHeader: shortHeaderBackground,
-              ),
-            ),
+            Positioned.fill(child: _RootPageBackground(isDark: isDark)),
             AnimatedBuilder(
               animation: _animController,
               builder: (context, child) {
@@ -297,25 +291,15 @@ class _RootPageState extends State<RootPage>
 }
 
 class _RootPageBackground extends StatelessWidget {
-  const _RootPageBackground({required this.isDark, required this.shortHeader});
+  const _RootPageBackground({required this.isDark});
 
   final bool isDark;
-  final bool shortHeader;
 
   @override
   Widget build(BuildContext context) {
-    final colors = isDark
-        ? const [Color(0xFF123B24), Color(0xFF082413), Color(0xFF020503)]
-        : const [Color(0xFFC8F1D8), Color(0xFFEAF8EF), Colors.white];
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: colors,
-          stops: shortHeader ? const [0, 0.15, 0.30] : const [0, 0.48, 1],
-        ),
-      ),
+    // 所有 tab（含首页）都是纯色底，绿色渐变已全部取消。
+    return ColoredBox(
+      color: appBackground(isDark ? Brightness.dark : Brightness.light),
     );
   }
 }
@@ -361,6 +345,10 @@ class _SlidingNavBar extends StatelessWidget {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final bottomOuterMargin = bottomPadding + 8;
 
+    // 悬浮胶囊（仿 iOS 26）：四周留外边距浮在内容之上，靠毛玻璃透出下层。
+    // 外边距 / 圆角 / 高度都不要动，动了就不悬浮了。
+    const radius = BorderRadius.all(Radius.circular(28));
+
     return Container(
       height: 72 + bottomPadding,
       padding: EdgeInsets.fromLTRB(16, 8, 16, bottomOuterMargin),
@@ -368,74 +356,85 @@ class _SlidingNavBar extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final tabWidth = constraints.maxWidth / _items.length;
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(28),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: (isDark ? Colors.black : Colors.white).withValues(
-                    alpha: isDark ? 0.16 : 0.36,
-                  ),
-                  border: Border.all(
-                    color: (isDark ? Colors.white : const Color(0xFFBDEFCF))
-                        .withValues(alpha: isDark ? 0.08 : 0.36),
-                    width: 1,
-                  ),
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: [
-                    BoxShadow(
-                      color: (isDark ? Colors.black : const Color(0xFF22C55E))
-                          .withValues(alpha: isDark ? 0.16 : 0.06),
-                      blurRadius: 22,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
+          // 投影必须画在 ClipRRect 外面。之前它挂在被裁剪的 DecoratedBox 上，
+          // 直接被裁掉了 —— 结果胶囊只有毛玻璃、没有落影，透出的背景反而让它
+          // 看着像陷在内容下层。这里在外层单独铺一层投影把它抬起来。
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: radius,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.44 : 0.16),
+                  blurRadius: 24,
+                  spreadRadius: -6,
+                  offset: const Offset(0, 8),
                 ),
-                child: Stack(
-                  children: [
-                    AnimatedPositioned(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeOutCubic,
-                      left: tabWidth * currentIndex + (tabWidth - 64) / 2,
-                      top: 12,
-                      child: Container(
-                        width: 64,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: activeColor,
-                          borderRadius: BorderRadius.circular(16),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: radius,
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: (isDark ? Colors.black : Colors.white).withValues(
+                      alpha: isDark ? 0.16 : 0.36,
+                    ),
+                    // 描边只去掉了原来的浅绿（0xFFBDEFCF），换成同透明度的中性色，
+                    // 胶囊的形状和毛玻璃质感保持不变。
+                    border: Border.all(
+                      color: (isDark ? Colors.white : Colors.black).withValues(
+                        alpha: isDark ? 0.08 : 0.10,
+                      ),
+                      width: 1,
+                    ),
+                    borderRadius: radius,
+                  ),
+                  child: Stack(
+                    children: [
+                      AnimatedPositioned(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
+                        left: tabWidth * currentIndex + (tabWidth - 64) / 2,
+                        top: 12,
+                        child: Container(
+                          width: 64,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: activeColor,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
                       ),
-                    ),
-                    Row(
-                      children: List.generate(_items.length, (i) {
-                        final selected = i == currentIndex;
-                        return Expanded(
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () => onTap(i),
-                            child: SizedBox(
-                              height: 56,
-                              child: Center(
-                                child: Icon(
-                                  selected
-                                      ? _items[i].activeIcon
-                                      : _items[i].icon,
-                                  color: selected
-                                      ? (isDark
-                                            ? const Color(0xFFBFF7D0)
-                                            : Colors.white)
-                                      : inactiveColor,
-                                  size: 24,
+                      Row(
+                        children: List.generate(_items.length, (i) {
+                          final selected = i == currentIndex;
+                          return Expanded(
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => onTap(i),
+                              child: SizedBox(
+                                height: 56,
+                                child: Center(
+                                  child: Icon(
+                                    selected
+                                        ? _items[i].activeIcon
+                                        : _items[i].icon,
+                                    color: selected
+                                        ? (isDark
+                                              ? const Color(0xFFBFF7D0)
+                                              : Colors.white)
+                                        : inactiveColor,
+                                    size: 24,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        );
-                      }),
-                    ),
-                  ],
+                          );
+                        }),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

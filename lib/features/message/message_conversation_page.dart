@@ -302,7 +302,7 @@ class _MessageCard extends StatelessWidget {
                             appName,
                             style: TextStyle(
                               fontSize: 15,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                               color: titleColor,
                             ),
                           ),
@@ -331,7 +331,7 @@ class _MessageCard extends StatelessWidget {
                   message.msgTitle,
                   style: TextStyle(
                     fontSize: 15,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w400,
                     color: titleColor,
                     height: 1.4,
                   ),
@@ -492,7 +492,7 @@ class _MessageDetailSheetState extends State<_MessageDetailSheet> {
                                 _detail?.appName ?? widget.appName,
                                 style: TextStyle(
                                   fontSize: 16,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w500,
                                   color: titleColor,
                                 ),
                               ),
@@ -513,7 +513,7 @@ class _MessageDetailSheetState extends State<_MessageDetailSheet> {
                       title,
                       style: TextStyle(
                         fontSize: 18,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w400,
                         color: titleColor,
                         height: 1.4,
                         letterSpacing: -0.2,
@@ -562,7 +562,7 @@ class _MessageDetailSheetState extends State<_MessageDetailSheet> {
                                 '查看详情',
                                 style: TextStyle(
                                   fontSize: 15,
-                                  fontWeight: FontWeight.w500,
+                                  fontWeight: FontWeight.w400,
                                   color: titleColor,
                                 ),
                               ),

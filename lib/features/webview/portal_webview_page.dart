@@ -701,10 +701,12 @@ JSON.stringify({
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
+              style: dialogQuietAction(context),
               child: const Text('不用了'),
             ),
-            FilledButton(
+            TextButton(
               onPressed: () => Navigator.of(ctx).pop(true),
+              style: dialogPrimaryAction(context),
               child: Text(isUpdate ? '更新' : '记住'),
             ),
           ],

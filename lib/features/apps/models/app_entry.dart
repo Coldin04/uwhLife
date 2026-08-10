@@ -8,7 +8,8 @@ const Map<String, IconData> iconRegistry = <String, IconData>{
   'account_balance_wallet_rounded': Icons.account_balance_wallet_rounded,
   'savings_rounded': Icons.savings_rounded,
   'bolt_rounded': Icons.bolt_rounded,
-  'shower_rounded': Icons.shower_rounded,
+  // 「开水洗浴」用空心花洒，实心那版淋浴头太糊成一团。JSON 里的 key 不变。
+  'shower_rounded': Icons.shower_outlined,
   'event_seat_rounded': Icons.event_seat_rounded,
   'record_voice_over_rounded': Icons.record_voice_over_rounded,
   'event_note_rounded': Icons.event_note_rounded,

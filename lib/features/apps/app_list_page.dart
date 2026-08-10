@@ -6,8 +6,8 @@ import 'package:flutter/services.dart';
 import 'models/app_entry.dart';
 import 'widgets/app_tile.dart';
 
-const FontWeight _appsBold = FontWeight.w700;
-const FontWeight _appsSemiBold = FontWeight.w500;
+const FontWeight _appsBold = FontWeight.w500;
+const FontWeight _appsSemiBold = FontWeight.w400;
 const Color _appsBrandGreen = Color(0xFF22C55E);
 const double _appsFloatingNavClearance = 112;
 
@@ -195,7 +195,7 @@ class _AppListPageState extends State<AppListPage> {
           children: [
             Text(
               '应用',
-              style: theme.textTheme.headlineMedium?.copyWith(
+              style: theme.textTheme.headlineSmall?.copyWith(
                 color: titleColor,
                 fontWeight: _appsBold,
                 letterSpacing: -0.8,

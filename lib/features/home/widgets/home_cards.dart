@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
-const FontWeight _homeBold = FontWeight.w700;
-const FontWeight _homeSemiBold = FontWeight.w500;
-const Color _homeBrandGreen = Color(0xFF22C55E);
+const FontWeight _homeBold = FontWeight.w500;
+const FontWeight _homeSemiBold = FontWeight.w400;
 
 class PrimaryFeatureCard extends StatelessWidget {
   const PrimaryFeatureCard({
@@ -67,6 +66,7 @@ class SecondaryFeatureCard extends StatelessWidget {
     required this.backgroundColor,
     required this.foregroundColor,
     required this.onTap,
+    this.borderColor,
   });
 
   final IconData icon;
@@ -74,87 +74,27 @@ class SecondaryFeatureCard extends StatelessWidget {
   final Color foregroundColor;
   final VoidCallback? onTap;
 
+  /// MD2 风格的 1px 描边。中性灰底和白底页面对比很弱，靠这条边界定卡片轮廓。
+  final Color? borderColor;
+
   @override
   Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(22);
+    final border = borderColor;
     return Material(
       color: backgroundColor,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: border == null ? radius : null,
+      shape: border == null
+          ? null
+          : RoundedRectangleBorder(
+              borderRadius: radius,
+              side: BorderSide(color: border),
+            ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: radius,
         onTap: onTap,
-        child: Center(
-          child: Icon(icon, color: foregroundColor, size: 28),
-        ),
+        child: Center(child: Icon(icon, color: foregroundColor, size: 28)),
       ),
     );
   }
-}
-
-class FeatureCard extends StatelessWidget {
-  const FeatureCard({super.key, required this.item});
-
-  final FeatureCardItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(22),
-      onTap: item.onTap,
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? const Color(0xFF151C18)
-              : const Color(0xFFF0F8F2),
-          borderRadius: BorderRadius.circular(22),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: _homeBrandGreen,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(item.icon, color: Colors.white, size: 22),
-            ),
-            const Spacer(),
-            Text(
-              item.title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontWeight: _homeBold,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              item.subtitle,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? const Color(0xFF9DAAA1)
-                    : const Color(0xFF728072),
-                height: 1.35,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class FeatureCardItem {
-  const FeatureCardItem({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    this.onTap,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final VoidCallback? onTap;
 }

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/theme/app_theme.dart';
 import 'models/schedule_models.dart';
 import 'schedule_api.dart';
 import 'schedule_cache.dart';
@@ -14,16 +15,6 @@ import '../webview/portal_webview_page.dart';
 
 const _scheduleGreen = Color(0xFF22C55E);
 const _scheduleGridLine = Color(0xFFE1ECE4);
-const _lightScheduleGradient = <Color>[
-  Color(0xFFC8F1D8),
-  Color(0xFFEAF8EF),
-  Colors.white,
-];
-const _darkScheduleGradient = <Color>[
-  Color(0xFF123B24),
-  Color(0xFF082413),
-  Color(0xFF020503),
-];
 const _weekdayLabels = <String>['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
 /// 课表相关页面都是浅色渐变背景，状态栏图标必须跟着主题走，
@@ -156,10 +147,12 @@ class _SchedulePageState extends State<SchedulePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
+            style: dialogQuietAction(context),
             child: const Text('取消'),
           ),
-          FilledButton(
+          TextButton(
             onPressed: () => Navigator.pop(context, true),
+            style: dialogPrimaryAction(context),
             child: const Text('添加'),
           ),
         ],
@@ -217,10 +210,12 @@ class _SchedulePageState extends State<SchedulePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
+            style: dialogQuietAction(context),
             child: const Text('改用 ICS'),
           ),
-          FilledButton(
+          TextButton(
             onPressed: () => Navigator.pop(context, true),
+            style: dialogPrimaryAction(context),
             child: const Text('授予完整访问'),
           ),
         ],
@@ -259,10 +254,12 @@ class _SchedulePageState extends State<SchedulePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
+            style: dialogQuietAction(context),
             child: const Text('取消'),
           ),
-          FilledButton(
+          TextButton(
             onPressed: () => Navigator.pop(context, true),
+            style: dialogPrimaryAction(context),
             child: const Text('打开 ICS 导入'),
           ),
         ],
@@ -304,7 +301,7 @@ class _SchedulePageState extends State<SchedulePage> {
                   '选择学期',
                   style: Theme.of(
                     context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w500),
                 ),
               ),
               Flexible(
@@ -346,9 +343,6 @@ class _SchedulePageState extends State<SchedulePage> {
     final future = _scheduleFuture;
     if (future == null) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final gradientColors = isDark
-        ? _darkScheduleGradient
-        : _lightScheduleGradient;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: _scheduleOverlayStyle(isDark),
@@ -383,12 +377,7 @@ class _SchedulePageState extends State<SchedulePage> {
 
           return DecoratedBox(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: gradientColors,
-                stops: const [0, 0.15, 0.30],
-              ),
+              color: appBackground(isDark ? Brightness.dark : Brightness.light),
             ),
             child: Scaffold(
               extendBodyBehindAppBar: true,
@@ -535,7 +524,7 @@ class _ScheduleActionsMenu extends StatelessWidget {
       disabledForegroundColor: scheme.onSurface.withValues(alpha: 0.30),
       disabledIconColor: scheme.onSurface.withValues(alpha: 0.24),
       backgroundColor: Colors.transparent,
-      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
     );
   }
@@ -565,7 +554,7 @@ class _ScheduleAppBarTitle extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: scheme.onSurface,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -710,7 +699,7 @@ class _ScheduleHeader extends StatelessWidget {
                 '第 $selectedWeek 周',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: _scheduleGreen,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -852,8 +841,8 @@ class _ScheduleGrid extends StatelessWidget {
                                             ? _scheduleGreen
                                             : _subtleText(context),
                                         fontWeight: hasCourse || isToday
-                                            ? FontWeight.w700
-                                            : FontWeight.w500,
+                                            ? FontWeight.w500
+                                            : FontWeight.w400,
                                       ),
                                 ),
                               ),
@@ -972,7 +961,7 @@ class _PeriodLabel extends StatelessWidget {
             period.toString(),
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
               color: _scheduleGreen,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w500,
             ),
           ),
           if (lessonTime != null) ...[
@@ -1096,7 +1085,7 @@ class _CourseBlock extends StatelessWidget {
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: palette.foreground,
                     fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                     height: 1.18,
                   ),
                 ),
@@ -1171,7 +1160,7 @@ class _UnscheduledCourses extends StatelessWidget {
           '未排课课程',
           style: Theme.of(
             context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 8),
         ...courses.map((course) {
@@ -1210,7 +1199,7 @@ class _UnscheduledCourses extends StatelessWidget {
                               style: Theme.of(context).textTheme.titleSmall
                                   ?.copyWith(
                                     color: palette.foreground,
-                                    fontWeight: FontWeight.w800,
+                                    fontWeight: FontWeight.w500,
                                   ),
                             ),
                             if (course.teacher.isNotEmpty ||
@@ -1274,7 +1263,8 @@ class _CourseTableNotice extends StatelessWidget {
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.fromLTRB(20, 26, 20, 22),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF17251C) : const Color(0xFFEAF7EE),
+        // 空课表/报错是中性信息，不该用品牌绿底强调。改成和首页小卡片同一套中性灰。
+        color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -1282,7 +1272,9 @@ class _CourseTableNotice extends StatelessWidget {
         children: [
           Icon(
             Icons.event_busy_outlined,
-            color: _scheduleGreen.withValues(alpha: 0.7),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.38),
             size: 38,
           ),
           const SizedBox(height: 12),
@@ -1291,7 +1283,7 @@ class _CourseTableNotice extends StatelessWidget {
             textAlign: TextAlign.center,
             style: Theme.of(
               context,
-            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 6),
           Text(
@@ -1323,9 +1315,10 @@ class _EmptySchedule extends StatelessWidget {
       height: 220,
       alignment: Alignment.center,
       decoration: BoxDecoration(
+        // 和 _CourseTableNotice 一致：空态是中性信息，用中性灰而不是品牌绿。
         color: Theme.of(context).brightness == Brightness.dark
-            ? const Color(0xFF17251C)
-            : const Color(0xFFEAF7EE),
+            ? const Color(0xFF1E1E1E)
+            : const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -1333,7 +1326,9 @@ class _EmptySchedule extends StatelessWidget {
         children: [
           Icon(
             Icons.event_available_outlined,
-            color: _scheduleGreen.withValues(alpha: 0.7),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.38),
             size: 36,
           ),
           const SizedBox(height: 10),
@@ -1357,19 +1352,9 @@ class ScheduleCourseDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    final gradientColors = brightness == Brightness.dark
-        ? _darkScheduleGradient
-        : _lightScheduleGradient;
     final palette = _courseColor(course.name, brightness);
     return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: gradientColors,
-          stops: const [0, 0.15, 0.30],
-        ),
-      ),
+      decoration: BoxDecoration(color: appBackground(brightness)),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: _scheduleDetailAppBar(context, '课程详情'),
@@ -1446,19 +1431,9 @@ class _UnscheduledCourseDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    final gradientColors = brightness == Brightness.dark
-        ? _darkScheduleGradient
-        : _lightScheduleGradient;
     final palette = _courseColor(course.name, brightness);
     return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: gradientColors,
-          stops: const [0, 0.15, 0.30],
-        ),
-      ),
+      decoration: BoxDecoration(color: appBackground(brightness)),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: _scheduleDetailAppBar(context, '未排课课程详情'),
@@ -1537,7 +1512,7 @@ class _UnscheduledCourseDetailHero extends StatelessWidget {
                   course.name,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     color: palette.foreground,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w500,
                     height: 1.22,
                   ),
                 ),
@@ -1597,7 +1572,7 @@ class _CourseDetailHero extends StatelessWidget {
             course.name,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               color: palette.foreground,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w500,
               height: 1.22,
             ),
           ),
@@ -1645,7 +1620,7 @@ class _DetailHeroLine extends StatelessWidget {
               value,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Colors.white,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
                 height: 1.28,
               ),
             ),
@@ -1694,7 +1669,7 @@ class _DetailSection extends StatelessWidget {
                 title,
                 style: Theme.of(
                   context,
-                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500),
               ),
             ],
           ),
@@ -1774,7 +1749,13 @@ class _ScheduleError extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.event_busy_outlined, size: 40),
+            Icon(
+              Icons.event_busy_outlined,
+              size: 40,
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.38),
+            ),
             const SizedBox(height: 14),
             Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 16),

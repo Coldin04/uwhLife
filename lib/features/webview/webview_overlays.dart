@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-const FontWeight _overlayBold = FontWeight.w700;
+const FontWeight _overlayBold = FontWeight.w500;
 const Color _overlayBrandGreen = Color(0xFF22C55E);
 
 /// 悬浮胶囊（仅全屏小程序页使用）。`onDarkBackground` 由网页取色决定：
@@ -161,7 +161,7 @@ class WebViewMoreMenu extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12),
       foregroundColor: foreground,
       backgroundColor: Colors.transparent,
-      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
     );
   }
@@ -266,9 +266,12 @@ class MiniProgramLaunchView extends StatelessWidget {
     final trackColor = accent.withValues(alpha: 0.16);
     final titleColor = scheme.onSurface;
     final mutedColor = scheme.onSurface.withValues(alpha: 0.55);
+    // 图标底色只取强调色的淡彩，图标本身也用强调色 —— 原来是「满饱和实底 + 白图标」，
+    // 在加载这种一闪而过的过渡界面上对比太硬。
+    final iconBgColor = accent.withValues(alpha: isDark ? 0.22 : 0.12);
 
     const ringSize = 88.0;
-    const iconBgSize = 64.0;
+    const iconBgSize = 52.0;
 
     return ColoredBox(
       color: scheme.surface,
@@ -297,14 +300,10 @@ class MiniProgramLaunchView extends StatelessWidget {
                     width: iconBgSize,
                     height: iconBgSize,
                     decoration: BoxDecoration(
-                      color: accent,
+                      color: iconBgColor,
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
-                      _filledVariant(icon),
-                      color: Colors.white,
-                      size: 34,
-                    ),
+                    child: Icon(_filledVariant(icon), color: accent, size: 26),
                   ),
                 ],
               ),

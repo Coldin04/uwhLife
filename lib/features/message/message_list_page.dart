@@ -118,7 +118,7 @@ class _MessageListPageState extends State<MessageListPage> {
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
             child: Text(
               '消息',
-              style: theme.textTheme.headlineMedium?.copyWith(
+              style: theme.textTheme.headlineSmall?.copyWith(
                 color: titleColor,
                 fontWeight: wBold,
                 letterSpacing: -0.8,
@@ -252,7 +252,7 @@ class _CategoryTile extends StatelessWidget {
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 10,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
@@ -272,8 +272,8 @@ class _CategoryTile extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: hasUnread
-                                ? FontWeight.bold
-                                : FontWeight.w500,
+                                ? FontWeight.w500
+                                : FontWeight.w400,
                             color: titleColor,
                           ),
                           maxLines: 1,
