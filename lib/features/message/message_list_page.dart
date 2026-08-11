@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -20,7 +21,9 @@ const List<Color> _avatarColors = [
 class MessageListPage extends StatefulWidget {
   const MessageListPage({super.key, required this.active});
 
-  final bool active;
+  /// 消息 tab 是否已经被打开过。RootPage 把页面只 new 一次挂在 IndexedStack 上，
+  /// 所以「首次进入才加载」这件事靠监听它、而不是靠 didUpdateWidget 比较。
+  final ValueListenable<bool> active;
 
   @override
   State<MessageListPage> createState() => _MessageListPageState();
@@ -34,16 +37,28 @@ class _MessageListPageState extends State<MessageListPage> {
   @override
   void initState() {
     super.initState();
-    if (!widget.active) return;
-    _loadFromCacheOrFetch();
+    widget.active.addListener(_handleActiveChanged);
+    if (widget.active.value) _loadFromCacheOrFetch();
   }
 
   @override
   void didUpdateWidget(covariant MessageListPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!oldWidget.active && widget.active && _categories == null) {
-      _loadFromCacheOrFetch();
-    }
+    if (oldWidget.active == widget.active) return;
+    oldWidget.active.removeListener(_handleActiveChanged);
+    widget.active.addListener(_handleActiveChanged);
+    _handleActiveChanged();
+  }
+
+  @override
+  void dispose() {
+    widget.active.removeListener(_handleActiveChanged);
+    super.dispose();
+  }
+
+  void _handleActiveChanged() {
+    if (!widget.active.value || _categories != null) return;
+    _loadFromCacheOrFetch();
   }
 
   Future<void> _loadFromCacheOrFetch() async {

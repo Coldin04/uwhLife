@@ -1,9 +1,9 @@
 {
-  "title": "v1.6.1 更新",
+  "title": "v1.6.2 更新",
   "mandatory": false,
-  "minSupportedVersionCode": 20,
+  "minSupportedVersionCode": 10,
   "notes": [
-    "现在，界面设计进行了全面优化，深色模式体验更佳",
-    "优化了多处视觉细节"
+    "修复了一些已知问题",
+    "优化了软件性能"
   ]
 }

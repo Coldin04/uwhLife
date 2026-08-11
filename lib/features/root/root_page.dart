@@ -37,7 +37,13 @@ class _RootPageState extends State<RootPage>
   );
 
   final _homeKey = GlobalKey<HomePageState>();
-  int _currentIndex = 0;
+  // 切 tab 只该动 IndexedStack 和底栏，不该重建 RootPage 整棵树 —— 四个页面
+  // 都挂在 IndexedStack 上，setState 一次就是四棵子树全部重建。
+  final ValueNotifier<int> _currentIndex = ValueNotifier<int>(0);
+  // 消息页是首次切过去才开始加载，用一个只会 false→true 的开关代替原来的
+  // `active: _currentIndex == 2`，这样页面本身可以只 new 一次。
+  final ValueNotifier<bool> _messageTabActive = ValueNotifier<bool>(false);
+  late final List<Widget> _pages;
   int _previousIndex = 0;
   late final AnimationController _animController;
   late Animation<Offset> _slideAnimation;
@@ -60,6 +66,22 @@ class _RootPageState extends State<RootPage>
       end: Offset.zero,
     ).animate(_fadeAnimation);
     _animController.value = 1.0;
+    // 页面只 new 一次：Element.updateChild 遇到同一个 widget 实例会整棵跳过，
+    // 切 tab 时这四棵子树就都不用重建了。
+    _pages = <Widget>[
+      HomePage(
+        key: _homeKey,
+        onOpenAppList: _openAppList,
+        onOpenPortal: _openPortal,
+        onOpenPayCode: _openPayCode,
+        onOpenSchedule: _openSchedule,
+        onOpenClassroom: _openClassroom,
+        onOpenBath: _openBath,
+      ),
+      AppListPage(onOpenApp: _openAppEntry),
+      MessageListPage(active: _messageTabActive),
+      const ProfilePage(),
+    ];
     _initDeepLinks();
     _scheduleAutomaticUpdateCheck();
   }
@@ -68,6 +90,8 @@ class _RootPageState extends State<RootPage>
   void dispose() {
     _deepLinkSub?.cancel();
     _animController.dispose();
+    _currentIndex.dispose();
+    _messageTabActive.dispose();
     super.dispose();
   }
 
@@ -116,9 +140,10 @@ class _RootPageState extends State<RootPage>
   }
 
   void _switchTab(int index) {
-    if (index == _currentIndex) return;
-    _previousIndex = _currentIndex;
-    setState(() => _currentIndex = index);
+    if (index == _currentIndex.value) return;
+    _previousIndex = _currentIndex.value;
+    _currentIndex.value = index;
+    if (index == 2) _messageTabActive.value = true;
     final goingRight = index > _previousIndex;
     _slideAnimation =
         Tween<Offset>(
@@ -131,7 +156,7 @@ class _RootPageState extends State<RootPage>
   }
 
   void _openAppList() {
-    if (_currentIndex == 1) return;
+    if (_currentIndex.value == 1) return;
     _switchTab(1);
   }
 
@@ -232,20 +257,6 @@ class _RootPageState extends State<RootPage>
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final pages = <Widget>[
-      HomePage(
-        key: _homeKey,
-        onOpenAppList: _openAppList,
-        onOpenPortal: _openPortal,
-        onOpenPayCode: _openPayCode,
-        onOpenSchedule: _openSchedule,
-        onOpenClassroom: _openClassroom,
-        onOpenBath: _openBath,
-      ),
-      AppListPage(onOpenApp: _openAppEntry),
-      MessageListPage(active: _currentIndex == 2),
-      const ProfilePage(),
-    ];
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
@@ -275,15 +286,28 @@ class _RootPageState extends State<RootPage>
                   ),
                 );
               },
-              child: IndexedStack(index: _currentIndex, children: pages),
+              // 页面内容单独成层：底栏那层毛玻璃每帧都要采样它下面的画面，
+              // 不切开的话内容重绘会连带整条底栏重绘。
+              child: RepaintBoundary(
+                child: ValueListenableBuilder<int>(
+                  valueListenable: _currentIndex,
+                  builder: (context, index, _) =>
+                      IndexedStack(index: index, children: _pages),
+                ),
+              ),
             ),
           ],
         ),
-        bottomNavigationBar: _SlidingNavBar(
-          currentIndex: _currentIndex,
-          onTap: _switchTab,
-          isDark: isDark,
-          scheme: scheme,
+        bottomNavigationBar: RepaintBoundary(
+          child: ValueListenableBuilder<int>(
+            valueListenable: _currentIndex,
+            builder: (context, index, _) => _SlidingNavBar(
+              currentIndex: index,
+              onTap: _switchTab,
+              isDark: isDark,
+              scheme: scheme,
+            ),
+          ),
         ),
       ),
     );

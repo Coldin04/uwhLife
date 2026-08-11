@@ -23,7 +23,11 @@ class _PayCodeScreenState extends State<PayCodeScreen>
   bool _isLoading = true;
   String? _error;
   String? _qrData;
-  int _countdown = 30;
+
+  /// 倒计时每秒都在跳，但页面上只有一行字跟着它变。走 ValueNotifier 而不是
+  /// setState，二维码那块就不用陪着每秒重建 —— QrImageView 每次 build 都会
+  /// 重跑一遍 QR 编码并重绘 180×180。
+  final ValueNotifier<int> _countdown = ValueNotifier<int>(30);
   Timer? _refreshTimer;
   Timer? _statusTimer;
   bool _polling = false;
@@ -51,6 +55,7 @@ class _PayCodeScreenState extends State<PayCodeScreen>
   void dispose() {
     _refreshTimer?.cancel();
     _statusTimer?.cancel();
+    _countdown.dispose();
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_brightness.restore());
     unawaited(PayCodeApi.dispose());
@@ -96,7 +101,7 @@ class _PayCodeScreenState extends State<PayCodeScreen>
       setState(() {
         _qrData = data;
         _isLoading = false;
-        _countdown = 30;
+        _countdown.value = 30;
         _error = null;
       });
       _startTimers();
@@ -127,7 +132,7 @@ class _PayCodeScreenState extends State<PayCodeScreen>
       setState(() {
         _qrData = data;
         _isLoading = false;
-        _countdown = 30;
+        _countdown.value = 30;
       });
       _startTimers();
     } catch (e) {
@@ -137,7 +142,7 @@ class _PayCodeScreenState extends State<PayCodeScreen>
       if (_qrData != null) {
         setState(() {
           _isLoading = false;
-          _countdown = 30;
+          _countdown.value = 30;
         });
         _startTimers();
       } else {
@@ -155,8 +160,8 @@ class _PayCodeScreenState extends State<PayCodeScreen>
 
     _refreshTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      if (_countdown > 0) {
-        setState(() => _countdown--);
+      if (_countdown.value > 0) {
+        _countdown.value--;
       } else if (!_isLoading) {
         _refresh();
       }
@@ -368,11 +373,14 @@ class _PayCodeScreenState extends State<PayCodeScreen>
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               if (_qrData != null)
-                                Text(
-                                  '${_countdown}s 后自动刷新',
-                                  style: const TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 12,
+                                ValueListenableBuilder<int>(
+                                  valueListenable: _countdown,
+                                  builder: (context, seconds, _) => Text(
+                                    '${seconds}s 后自动刷新',
+                                    style: const TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 12,
+                                    ),
                                   ),
                                 ),
                               if (_qrData != null && !_isLoading)
@@ -439,18 +447,21 @@ class _PayCodeScreenState extends State<PayCodeScreen>
       );
     }
     if (_qrData != null) {
-      return QrImageView(
-        data: _qrData!,
-        version: QrVersions.auto,
-        size: 180,
-        backgroundColor: Colors.white,
-        eyeStyle: const QrEyeStyle(
-          eyeShape: QrEyeShape.square,
-          color: Colors.black,
-        ),
-        dataModuleStyle: const QrDataModuleStyle(
-          dataModuleShape: QrDataModuleShape.square,
-          color: Colors.black,
+      // 单独一层：页面其它部分（倒计时、刷新态）重绘时不连带重画二维码。
+      return RepaintBoundary(
+        child: QrImageView(
+          data: _qrData!,
+          version: QrVersions.auto,
+          size: 180,
+          backgroundColor: Colors.white,
+          eyeStyle: const QrEyeStyle(
+            eyeShape: QrEyeShape.square,
+            color: Colors.black,
+          ),
+          dataModuleStyle: const QrDataModuleStyle(
+            dataModuleShape: QrDataModuleShape.square,
+            color: Colors.black,
+          ),
         ),
       );
     }

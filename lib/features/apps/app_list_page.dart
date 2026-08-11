@@ -48,6 +48,10 @@ class AppListPage extends StatefulWidget {
 class _AppListPageState extends State<AppListPage> {
   List<AppEntry> _allApps = const <AppEntry>[];
   List<String> _categories = const <String>['全部'];
+
+  /// 按分类分好的结果，下标和 _categories 对齐（0 是「全部」）。
+  /// 分类是加载时就定死的，没必要每帧在 PageView.builder 里重新过滤全表。
+  List<List<AppEntry>> _appsByCategory = const <List<AppEntry>>[<AppEntry>[]];
   int _selected = 0;
   bool _loading = true;
   final TextEditingController _searchCtrl = TextEditingController();
@@ -55,6 +59,8 @@ class _AppListPageState extends State<AppListPage> {
   final ScrollController _categoryScrollController = ScrollController();
   List<GlobalKey> _categoryKeys = <GlobalKey>[GlobalKey()];
   String _search = '';
+  // 搜索结果跟着输入变一次算一次，而不是每次 build 重新过滤 + toLowerCase。
+  List<AppEntry> _searchResults = const <AppEntry>[];
 
   @override
   void initState() {
@@ -62,7 +68,23 @@ class _AppListPageState extends State<AppListPage> {
     _loadApps();
     _searchCtrl.addListener(() {
       final v = _searchCtrl.text.trim();
-      if (v != _search) setState(() => _search = v);
+      if (v == _search) return;
+      final wasSearching = _search.isNotEmpty;
+      setState(() {
+        _search = v;
+        _searchResults = _matchingApps(v);
+      });
+      if (wasSearching && v.isEmpty) _restorePagingPosition();
+    });
+  }
+
+  /// 搜索时 PageView 整个被销毁，PageController 的位置会退回 initialPage（0）；
+  /// 清空搜索框后如果不管，内容跳回「全部」而下划线还停在原来那个分类。
+  void _restorePagingPosition() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_pageController.hasClients) return;
+      if (_pageController.page?.round() == _selected) return;
+      _pageController.jumpToPage(_selected);
     });
   }
 
@@ -110,18 +132,27 @@ class _AppListPageState extends State<AppListPage> {
           .where((e) => e.url.isNotEmpty)
           .toList();
       final cats = <String>['全部'];
+      final grouped = <String, List<AppEntry>>{};
       for (final a in list) {
         if (!cats.contains(a.category)) cats.add(a.category);
+        (grouped[a.category] ??= <AppEntry>[]).add(a);
       }
       if (!mounted) return;
       setState(() {
         _allApps = list;
         _categories = cats;
+        _appsByCategory = <List<AppEntry>>[
+          list,
+          for (final cat in cats.skip(1)) grouped[cat] ?? const <AppEntry>[],
+        ];
         _categoryKeys = List<GlobalKey>.generate(
           cats.length,
           (_) => GlobalKey(),
         );
         _loading = false;
+        _searchResults = _search.isEmpty
+            ? const <AppEntry>[]
+            : _matchingApps(_search);
       });
     } catch (_) {
       if (!mounted) return;
@@ -129,15 +160,16 @@ class _AppListPageState extends State<AppListPage> {
     }
   }
 
-  List<AppEntry> get _searchResults {
-    final q = _search.toLowerCase();
-    return _allApps.where((a) => a.name.toLowerCase().contains(q)).toList();
+  List<AppEntry> _matchingApps(String query) {
+    final q = query.toLowerCase();
+    return _allApps
+        .where((a) => a.name.toLowerCase().contains(q))
+        .toList(growable: false);
   }
 
   List<AppEntry> _appsForCategory(int i) {
-    if (i == 0) return _allApps;
-    final cat = _categories[i];
-    return _allApps.where((a) => a.category == cat).toList();
+    if (i < 0 || i >= _appsByCategory.length) return const <AppEntry>[];
+    return _appsByCategory[i];
   }
 
   Widget _buildAppList(

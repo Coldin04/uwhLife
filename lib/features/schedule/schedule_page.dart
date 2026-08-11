@@ -567,16 +567,21 @@ class _ScheduleView extends StatefulWidget {
 
 class _ScheduleViewState extends State<_ScheduleView> {
   late final PageController _pageController;
+  late _ScheduleLayout _layout;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: widget.selectedWeek - 1);
+    _layout = _ScheduleLayout(widget.schedule);
   }
 
   @override
   void didUpdateWidget(covariant _ScheduleView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.schedule != widget.schedule) {
+      _layout = _ScheduleLayout(widget.schedule);
+    }
     if (oldWidget.selectedWeek == widget.selectedWeek) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_pageController.hasClients) return;
@@ -593,7 +598,7 @@ class _ScheduleViewState extends State<_ScheduleView> {
   }
 
   void _selectWeek(int week) {
-    if (week < 1 || week > widget.schedule.maxWeek) return;
+    if (week < 1 || week > _layout.maxWeek) return;
     if (!_pageController.hasClients) return;
     _pageController.animateToPage(
       week - 1,
@@ -626,18 +631,18 @@ class _ScheduleViewState extends State<_ScheduleView> {
           ),
           const SizedBox(height: 6),
           SizedBox(
-            height: _ScheduleGrid.heightFor(widget.schedule),
+            height: _layout.gridTotalHeight,
             child: PageView.builder(
               controller: _pageController,
               physics: const ClampingScrollPhysics(),
-              itemCount: widget.schedule.maxWeek,
+              itemCount: _layout.maxWeek,
               onPageChanged: (index) => widget.onChangeWeek(index + 1),
               itemBuilder: (context, index) {
                 return Padding(
                   padding: _scheduleContentPadding,
                   child: _ScheduleGrid(
                     key: ValueKey<int>(index + 1),
-                    schedule: widget.schedule,
+                    layout: _layout,
                     week: index + 1,
                   ),
                 );
@@ -741,33 +746,80 @@ class _WeekArrowButton extends StatelessWidget {
   }
 }
 
-class _ScheduleGrid extends StatelessWidget {
-  const _ScheduleGrid({super.key, required this.schedule, required this.week});
+/// 一张课表里那些「每次 build 都在重算」的派生数据，改成随 ScheduleData 只算一次。
+///
+/// 原先 `_ScheduleGrid.build` 会为表头 7 个格子、网格体 7 列各调一次
+/// `coursesForWeekday`，每次都是全表过滤 + 一次 sort，也就是一帧 14 遍；
+/// `heightFor` 和 `_periodsFor` 还各自重扫一遍最大节次。
+class _ScheduleLayout {
+  _ScheduleLayout(this.schedule) : maxWeek = schedule.maxWeek {
+    var maxPeriod = 0;
+    for (final course in schedule.courses) {
+      if (course.endPeriod > maxPeriod) maxPeriod = course.endPeriod;
+      (_coursesByWeekday[course.weekday] ??= <ScheduleCourse>[]).add(course);
+    }
+    for (final lessonTime in schedule.lessonTimes) {
+      if (lessonTime.period > maxPeriod) maxPeriod = lessonTime.period;
+      _lessonTimeByPeriod[lessonTime.period] = lessonTime;
+    }
+    // 按节次排一次序就够了，后面按周筛不会改变顺序。
+    for (final courses in _coursesByWeekday.values) {
+      courses.sort((a, b) => a.startPeriod.compareTo(b.startPeriod));
+    }
+    periods = maxPeriod == 0
+        ? const <int>[]
+        : List<int>.generate(maxPeriod, (index) => index + 1, growable: false);
+  }
 
   final ScheduleData schedule;
+  final int maxWeek;
+  final Map<int, List<ScheduleCourse>> _coursesByWeekday =
+      <int, List<ScheduleCourse>>{};
+  final Map<int, ScheduleLessonTime> _lessonTimeByPeriod =
+      <int, ScheduleLessonTime>{};
+  late final List<int> periods;
+
+  double get gridTotalHeight => periods.isEmpty
+      ? 220
+      : _ScheduleGrid._headerHeight +
+            periods.length * _ScheduleGrid._periodHeight;
+
+  /// 只在当天那一列的课程里按位图筛周（`isHeldInWeek` 是 O(1)），不再全表扫。
+  List<ScheduleCourse> coursesFor({required int week, required int weekday}) {
+    final courses = _coursesByWeekday[weekday];
+    if (courses == null) return const <ScheduleCourse>[];
+    return courses
+        .where((course) => course.isHeldInWeek(week))
+        .toList(growable: false);
+  }
+
+  ScheduleLessonTime? lessonTimeFor(int period) => _lessonTimeByPeriod[period];
+}
+
+class _ScheduleGrid extends StatelessWidget {
+  const _ScheduleGrid({super.key, required this.layout, required this.week});
+
+  final _ScheduleLayout layout;
   final int week;
 
   static const _timeColumnWidth = 44.0;
   static const _headerHeight = 58.0;
   static const _periodHeight = 64.0;
 
-  static double heightFor(ScheduleData schedule) {
-    final maxPeriod = _maxPeriod(schedule);
-    return maxPeriod == 0 ? 220 : _headerHeight + maxPeriod * _periodHeight;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final periods = _periodsFor(schedule);
+    final periods = layout.periods;
     if (periods.isEmpty) return const _EmptySchedule();
 
     final minPeriod = periods.first;
     final gridHeight = periods.length * _periodHeight;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final line = isDark ? const Color(0xFF343434) : _scheduleGridLine;
-    final weekStart = schedule.term.startDate?.add(
+    final weekStart = layout.schedule.term.startDate?.add(
       Duration(days: (week - 1) * 7),
     );
+    // 表头 7 个格子原来各自调一次 DateTime.now()，取一次就够。
+    final today = DateTime.now();
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -793,13 +845,12 @@ class _ScheduleGrid extends StatelessWidget {
                     ),
                     ...List<Widget>.generate(_weekdayLabels.length, (index) {
                       final weekday = index + 1;
-                      final hasCourse = schedule
-                          .coursesForWeekday(week: week, weekday: weekday)
+                      final hasCourse = layout
+                          .coursesFor(week: week, weekday: weekday)
                           .isNotEmpty;
                       final date = weekStart?.add(Duration(days: index));
                       final isToday =
-                          date != null &&
-                          DateUtils.isSameDay(date, DateTime.now());
+                          date != null && DateUtils.isSameDay(date, today);
                       return SizedBox(
                         width: dayWidth,
                         child: Center(
@@ -859,9 +910,7 @@ class _ScheduleGrid extends StatelessWidget {
                                 height: _periodHeight,
                                 child: _PeriodLabel(
                                   period: period,
-                                  lessonTime: schedule.lessonTimeForPeriod(
-                                    period,
-                                  ),
+                                  lessonTime: layout.lessonTimeFor(period),
                                 ),
                               ),
                             )
@@ -888,8 +937,8 @@ class _ScheduleGrid extends StatelessWidget {
                             weekday <= _weekdayLabels.length;
                             weekday += 1
                           )
-                            ...schedule
-                                .coursesForWeekday(week: week, weekday: weekday)
+                            ...layout
+                                .coursesFor(week: week, weekday: weekday)
                                 .map(
                                   (course) => _CourseBlock(
                                     course: course,
@@ -914,25 +963,6 @@ class _ScheduleGrid extends StatelessWidget {
         );
       },
     );
-  }
-
-  List<int> _periodsFor(ScheduleData schedule) {
-    final maxPeriod = _maxPeriod(schedule);
-    if (maxPeriod == 0) return const <int>[];
-    return List<int>.generate(maxPeriod, (index) => index + 1);
-  }
-
-  static int _maxPeriod(ScheduleData schedule) {
-    var maxPeriod = 0;
-    for (final course in schedule.courses) {
-      if (course.endPeriod > maxPeriod) {
-        maxPeriod = course.endPeriod;
-      }
-    }
-    for (final lessonTime in schedule.lessonTimes) {
-      if (lessonTime.period > maxPeriod) maxPeriod = lessonTime.period;
-    }
-    return maxPeriod;
   }
 }
 
