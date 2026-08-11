@@ -39,12 +39,12 @@
       ],
       "versions": [
         {
-          "version": "1.6.1",
-          "buildVersion": "23",
-          "date": "2026-08-10",
-          "localizedDescription": "本次更新:\n1. 现在，界面设计进行了全面优化，深色模式体验更佳\n2. 优化了多处视觉细节",
+          "version": "1.6.2",
+          "buildVersion": "24",
+          "date": "2026-08-11",
+          "localizedDescription": "本次更新:\n1. 修复了一些已知问题\n2. 优化了软件性能",
           "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_unsigned.ipa",
-          "size": 39170814,
+          "size": 39178260,
           "minOSVersion": "15.0"
         }
       ],
@@ -60,6 +60,15 @@
     }
   ],
   "news": [
+    {
+      "title": "v1.6.2 更新",
+      "identifier": "1.6.2",
+      "caption": "修复了一些已知问题",
+      "date": "2026-08-11",
+      "tintColor": "#2196F3",
+      "notify": true,
+      "appID": "com.cold04.uwhlife"
+    },
     {
       "title": "v1.6.1 更新",
       "identifier": "1.6.1",
