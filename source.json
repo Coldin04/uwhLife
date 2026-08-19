@@ -1,5 +1,5 @@
 {
-  "name": "芜忧皖江",
+  "name": "芜忧芜院",
   "subtitle": "芜湖学院校园生活助手",
   "description": "芜湖学院校园APP第三方实现，提供一键开门、课表查看、校园活动等功能。",
   "iconURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/icon.png",
@@ -7,7 +7,7 @@
   "tintColor": "#2196F3",
   "apps": [
     {
-      "name": "芜忧皖江",
+      "name": "芜忧芜院",
       "bundleIdentifier": "com.cold04.uwhlife",
       "developerName": "coldin04",
       "subtitle": "芜湖学院校园生活助手",
@@ -259,7 +259,7 @@
       "appID": "com.cold04.uwhlife"
     },
     {
-      "title": "芜忧皖江 上线测试",
+      "title": "芜忧芜院 上线测试",
       "identifier": "beta-1.0.0",
       "caption": "芜湖学院校园生活助手，一键开门、查课表、加活动",
       "date": "2026-04-25",

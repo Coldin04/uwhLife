@@ -705,7 +705,7 @@ class _AboutPageState extends State<_AboutPage> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Text(
-                  '芜忧皖江',
+                  '芜忧芜院',
                   style: TextStyle(
                     color: titleColor,
                     fontWeight: wBold,

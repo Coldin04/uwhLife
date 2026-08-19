@@ -30,7 +30,7 @@ class OpenSourcePage extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         children: [
           Text(
-            '芜忧皖江基于 Flutter 与开源社区的优秀组件构建而成。我们尊重并感谢每一位开发者的贡献。',
+            '芜忧芜院基于 Flutter 与开源社区的优秀组件构建而成。我们尊重并感谢每一位开发者的贡献。',
             style: TextStyle(color: secondaryColor, fontSize: 15, height: 1.6),
           ),
           const SizedBox(height: 32),

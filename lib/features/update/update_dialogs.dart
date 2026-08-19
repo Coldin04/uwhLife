@@ -264,7 +264,7 @@ class _InstallPermissionDialogState extends State<_InstallPermissionDialog>
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('允许安装应用'),
-      content: const Text('Android 需要先允许芜忧皖江安装未知来源应用，开启后回到 App 会继续安装已下载的更新包。'),
+      content: const Text('Android 需要先允许芜忧芜院安装未知来源应用，开启后回到 App 会继续安装已下载的更新包。'),
       actions: [
         TextButton(
           onPressed: _installing ? null : () => Navigator.of(context).pop(),

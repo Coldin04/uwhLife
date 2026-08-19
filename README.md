@@ -1,10 +1,10 @@
-# uwhLife / 芜忧皖江
+# uwhLife / 芜忧芜院
 
 > 本项目使用 vibe coding 方式编写。
 
 本项目灵感来自 [自在东湖](https://chilleast.soilzhu.su/)
 
-uwhLife / 芜忧皖江 是一个面向芜湖学院校园生活场景的 Flutter 移动端应用。项目当前聚焦常用校园入口和移动端体验：统一门户、校园应用列表、付款码、开门、热水/洗浴、智慧课堂、消息与个人页等。
+uwhLife / 芜忧芜院 是一个面向芜湖学院校园生活场景的 Flutter 移动端应用。项目当前聚焦常用校园入口和移动端体验：统一门户、校园应用列表、付款码、开门、热水/洗浴、智慧课堂、消息与个人页等。
 
 
 <div align="center" style="display: flex; justify-content: center; align-items: center; gap: 16px; flex-wrap: wrap;">

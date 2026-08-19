@@ -234,7 +234,7 @@ class _FakePackageInfoPlatform extends PackageInfoPlatform {
   @override
   Future<PackageInfoData> getAll({String? baseUrl}) async {
     return PackageInfoData(
-      appName: '芜忧皖江',
+      appName: '芜忧芜院',
       packageName: 'com.cold04.uwhlife',
       version: '1.1.4',
       buildNumber: '9',

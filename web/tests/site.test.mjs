@@ -16,10 +16,10 @@ test('landing page uses a split app hero and focuses on product features', async
   ]);
   const css = [baseCss, heroCss, featuresCss].join('\n');
 
-  assert.match(html, /<title>芜忧皖江/);
+  assert.match(html, /<title>芜忧芜院/);
   assert.match(html, /<meta name="keywords" content="[^"]*校芜优[^"]*芜湖学院[^"]*" \/>/);
-  assert.match(html, /<meta property="og:title" content="芜忧皖江｜芜湖学院校园生活客户端" \/>/);
-  assert.match(html, /<meta name="twitter:title" content="芜忧皖江｜芜湖学院校园生活客户端" \/>/);
+  assert.match(html, /<meta property="og:title" content="芜忧芜院｜芜湖学院校园生活客户端" \/>/);
+  assert.match(html, /<meta name="twitter:title" content="芜忧芜院｜芜湖学院校园生活客户端" \/>/);
   assert.match(html, /"keywords": "[^"]*校芜优[^"]*芜湖学院/);
   assert.match(html, /<link rel="stylesheet" href="styles\/base\.css" \/>/);
   assert.match(html, /<link rel="stylesheet" href="styles\/hero\.css" \/>/);
@@ -31,14 +31,14 @@ test('landing page uses a split app hero and focuses on product features', async
   assert.match(html, /<footer class="site-footer">[\s\S]*?非官方项目，与校芜优应用并非同一产品/);
   assert.match(html, /<link rel="canonical" href="https:\/\/uwh\.cold04\.com\/" \/>/);
   assert.match(html, /<meta property="og:url" content="https:\/\/uwh\.cold04\.com\/" \/>/);
-  assert.match(html, /"disambiguatingDescription": "芜忧皖江与官方校芜优应用并非同一产品。"/);
+  assert.match(html, /"disambiguatingDescription": "芜忧芜院与官方校芜优应用并非同一产品。"/);
   assert.match(html, /"applicationCategory": "EducationalApplication"/);
   assert.match(robots, /^User-agent: \*\nAllow: \/\n\nSitemap: https:\/\/uwh\.cold04\.com\/sitemap\.xml\n$/);
   assert.match(sitemap, /<loc>https:\/\/uwh\.cold04\.com\/<\/loc>/);
   assert.equal((sitemap.match(/<url>/g) ?? []).length, 1);
   assert.match(html, /class="hero-layout"/);
   assert.match(html, /class="phone-shell"/);
-  assert.match(html, /<img class="phone-screenshot" src="img\/homepage_dark\.jpeg" data-dark-src="img\/homepage_dark\.jpeg" data-light-src="img\/homepage\.jpeg" width="1080" height="2340" alt="芜忧皖江应用截图" \/>/);
+  assert.match(html, /<img class="phone-screenshot" src="img\/homepage_dark\.jpeg" data-dark-src="img\/homepage_dark\.jpeg" data-light-src="img\/homepage\.jpeg" width="1080" height="2340" alt="芜忧芜院应用截图" \/>/);
   assert.doesNotMatch(html, /phone-speaker/);
   assert.match(html, /href="https:\/\/github\.com\/Coldin04\/uwhLife"/);
   assert.match(html, /href="https:\/\/gitee\.com\/coldin04\/uwhlife_source\/releases"/);

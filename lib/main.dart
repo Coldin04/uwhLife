@@ -24,7 +24,7 @@ class UwhLifeApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '芜忧皖江',
+      title: '芜忧芜院',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.system,
       theme: ThemeData(

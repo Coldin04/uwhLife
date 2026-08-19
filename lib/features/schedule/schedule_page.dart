@@ -170,7 +170,7 @@ class SchedulePageState extends State<SchedulePage> {
       builder: (context) => AlertDialog(
         title: const Text('添加到系统日历'),
         content: Text(
-          '将创建或使用“芜忧皖江课表 ${schedule.term.name}”日历，并添加 '
+          '将创建或使用“芜忧芜院课表 ${schedule.term.name}”日历，并添加 '
           '${events.length} 个课程日程。之后可在系统日历的日历列表中单独管理或删除该日历。'
           '不会写入已有日历。重复执行可能产生重复日程，是否继续？',
         ),
@@ -201,7 +201,7 @@ class SchedulePageState extends State<SchedulePage> {
       final count = await ScheduleCalendarBridge.addEvents(
         events,
         calendarKey: schedule.term.code,
-        calendarTitle: '芜忧皖江课表 ${schedule.term.name}',
+        calendarTitle: '芜忧芜院课表 ${schedule.term.name}',
       );
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -235,7 +235,7 @@ class SchedulePageState extends State<SchedulePage> {
         title: const Text('需要完整日历访问'),
         content: const Text(
           '“仅添加日程”权限不能创建新的独立日历。为了确保课程不会写入你的已有日历，'
-          '需要授予完整访问权限来创建“芜忧皖江课表”日历。',
+          '需要授予完整访问权限来创建“芜忧芜院课表”日历。',
         ),
         actions: [
           TextButton(
