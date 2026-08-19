@@ -2,41 +2,57 @@
   "schemaVersion": 1,
   "app": "uwhLife",
   "android": {
-    "versionName": "1.6.2",
-    "versionCode": 24,
+    "versionName": "2.0.0",
+    "versionCode": 30,
     "minSupportedVersionCode": 10,
     "mandatory": false,
-    "title": "v1.6.2 更新",
+    "title": "v2.0.0 更新",
     "notes": [
+      "现在，全新的视觉设计让界面焕然一新，让你能够更轻松地使用软件的各项功能",
+      "现在，全新的首页排布设计，让你一撇既可一目了然的获得信息",
+      "课表页现在在底栏独立，你可以更方便的查看课表信息",
+      "我的页面得到优化，设置页现在页更加清晰了",
+      "启动屏幕得到重新设计，避免白屏等待",
+      "优化了应用的性能体验，提升了软件的流畅度",
+      "重新设计了登录和认证流程，尽可能避免登录失效的bug情况",
+      "优化了门锁的使用体验，增强功能稳定性",
       "修复了一些已知问题",
-      "优化了软件性能"
+      "请注意，部分功能受限于测试，将在下一版本推出"
     ],
     "apkUrl": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
-    "fallbackApkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v1.6.2/UWHLife_android_arm64-v8a.apk",
+    "fallbackApkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v2.0.0/UWHLife_android_arm64-v8a.apk",
     "apkUrls": {
       "armeabi-v7a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_armeabi-v7a.apk",
       "arm64-v8a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
       "x86_64": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_x86_64.apk"
     },
     "fallbackApkUrls": {
-      "armeabi-v7a": "https://github.com/Coldin04/uwhLife/releases/download/v1.6.2/UWHLife_android_armeabi-v7a.apk",
-      "arm64-v8a": "https://github.com/Coldin04/uwhLife/releases/download/v1.6.2/UWHLife_android_arm64-v8a.apk",
-      "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v1.6.2/UWHLife_android_x86_64.apk"
+      "armeabi-v7a": "https://github.com/Coldin04/uwhLife/releases/download/v2.0.0/UWHLife_android_armeabi-v7a.apk",
+      "arm64-v8a": "https://github.com/Coldin04/uwhLife/releases/download/v2.0.0/UWHLife_android_arm64-v8a.apk",
+      "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v2.0.0/UWHLife_android_x86_64.apk"
     },
     "sha256ByAbi": {
-      "armeabi-v7a": "3582368a32c5e2e2e4275d6a7f5f4da352afe02398033d53ed98ae029ad5762e",
-      "arm64-v8a": "e20c4db4225a45fdc63596455f29afa2a2627602f9b749cf38264f6769fffebd",
-      "x86_64": "eb86c28cf3122fb0569a143713509552f696727eb2376d3450f6fdc767b827ee"
+      "armeabi-v7a": "3d576eca8b8085de51e1d0b0ebf19a681a83aaea566f3372ebc5eef7e318963c",
+      "arm64-v8a": "944a2248fd4cf4c77eb16f5803ef63f6b5c4d76b323c4544b6b060c0d453c1d2",
+      "x86_64": "b21eaab2b66446cb6b3d6426c3bb4a8d9e7fdf04a59c416835737bb928084c18"
     },
-    "sha256": "e20c4db4225a45fdc63596455f29afa2a2627602f9b749cf38264f6769fffebd"
+    "sha256": "944a2248fd4cf4c77eb16f5803ef63f6b5c4d76b323c4544b6b060c0d453c1d2"
   },
   "ios": {
-    "versionName": "1.6.2",
-    "buildVersion": "24",
-    "title": "v1.6.2 更新",
+    "versionName": "2.0.0",
+    "buildVersion": "30",
+    "title": "v2.0.0 更新",
     "notes": [
+      "现在，全新的视觉设计让界面焕然一新，让你能够更轻松地使用软件的各项功能",
+      "现在，全新的首页排布设计，让你一撇既可一目了然的获得信息",
+      "课表页现在在底栏独立，你可以更方便的查看课表信息",
+      "我的页面得到优化，设置页现在页更加清晰了",
+      "启动屏幕得到重新设计，避免白屏等待",
+      "优化了应用的性能体验，提升了软件的流畅度",
+      "重新设计了登录和认证流程，尽可能避免登录失效的bug情况",
+      "优化了门锁的使用体验，增强功能稳定性",
       "修复了一些已知问题",
-      "优化了软件性能"
+      "请注意，部分功能受限于测试，将在下一版本推出"
     ],
     "altSourceUrl": "https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/main/source.json"
   }

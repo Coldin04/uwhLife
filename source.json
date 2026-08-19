@@ -39,12 +39,12 @@
       ],
       "versions": [
         {
-          "version": "1.6.2",
-          "buildVersion": "24",
-          "date": "2026-08-11",
-          "localizedDescription": "本次更新:\n1. 修复了一些已知问题\n2. 优化了软件性能",
+          "version": "2.0.0",
+          "buildVersion": "30",
+          "date": "2026-08-19",
+          "localizedDescription": "本次更新:\n1. 现在，全新的视觉设计让界面焕然一新，让你能够更轻松地使用软件的各项功能\n2. 现在，全新的首页排布设计，让你一撇既可一目了然的获得信息\n3. 课表页现在在底栏独立，你可以更方便的查看课表信息\n4. 我的页面得到优化，设置页现在页更加清晰了\n5. 启动屏幕得到重新设计，避免白屏等待\n6. 优化了应用的性能体验，提升了软件的流畅度\n7. 重新设计了登录和认证流程，尽可能避免登录失效的bug情况\n8. 优化了门锁的使用体验，增强功能稳定性\n9. 修复了一些已知问题\n10. 请注意，部分功能受限于测试，将在下一版本推出",
           "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_unsigned.ipa",
-          "size": 39178260,
+          "size": 18677379,
           "minOSVersion": "15.0"
         }
       ],
@@ -60,6 +60,15 @@
     }
   ],
   "news": [
+    {
+      "title": "v2.0.0 更新",
+      "identifier": "2.0.0",
+      "caption": "现在，全新的视觉设计让界面焕然一新，让你能够更轻松地使用软件的各项功能",
+      "date": "2026-08-19",
+      "tintColor": "#2196F3",
+      "notify": true,
+      "appID": "com.cold04.uwhlife"
+    },
     {
       "title": "v1.6.2 更新",
       "identifier": "1.6.2",
