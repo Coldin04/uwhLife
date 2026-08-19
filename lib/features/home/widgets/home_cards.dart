@@ -142,11 +142,7 @@ class CircularFeatureButton extends StatelessWidget {
             shape: const CircleBorder(),
             child: ClipOval(
               child: BackdropFilter(
-                // 跟底栏（_SlidingNavBar）用同一套毛玻璃参数：同样的模糊
-                // 半径，不叠投影、不描边，纯粹靠模糊 + 半透明色块。之前这里
-                // 多了一圈黑色投影，糊在照片上会在圆形边缘晕出一圈脏兮兮的
-                // 暗环，在饱和度高的背景上格外明显（被形容成"发绿发脏"）。
-                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     color: backgroundColor.withValues(

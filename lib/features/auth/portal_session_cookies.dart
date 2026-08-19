@@ -51,6 +51,24 @@ class PortalSessionCookies {
     await _persistence.write(cookies.encodeForSecureStorage());
   }
 
+  /// Persists a cookie jar obtained from a native HTTP redirect probe. This
+  /// keeps the WebView and the HTTP client on the same authenticated session
+  /// after an SSO ticket refresh.
+  static Future<void> rememberHttpCookies(HttpCookieJar cookies) async {
+    _cookies = cookies;
+    _loading = null;
+    await _persistence.write(cookies.encodeForSecureStorage());
+    try {
+      await cookies.syncToWebView(<Uri>[
+        Uri.https('ids.uwh.edu.cn', '/authserver/'),
+        Uri.https('ehall.uwh.edu.cn', '/getLoginUser'),
+      ]);
+    } catch (_) {
+      // Native HTTP probing remains authoritative even if the optional
+      // WebView cookie bridge is unavailable during startup.
+    }
+  }
+
   /// Imports the session created by the manual WebView login flow.
   ///
   /// Native login calls [rememberLogin] directly. A captcha or a user-entered

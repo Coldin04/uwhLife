@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' show ImageFilter;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -47,6 +48,7 @@ class _RootPageState extends State<RootPage>
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
   StreamSubscription<dynamic>? _deepLinkSub;
+  Timer? _automaticUpdateTimer;
 
   @override
   void initState() {
@@ -64,8 +66,7 @@ class _RootPageState extends State<RootPage>
       end: Offset.zero,
     ).animate(_fadeAnimation);
     _animController.value = 1.0;
-    // 页面只 new 一次：Element.updateChild 遇到同一个 widget 实例会整棵跳过，
-    // 切 tab 时这四棵子树就都不用重建了。
+    // 首页首帧直接挂载；其它 tab 第一次打开时才挂载，挂载后继续保活。
     _pages = <Widget>[
       HomePage(
         key: _homeKey,
@@ -76,9 +77,21 @@ class _RootPageState extends State<RootPage>
         onOpenClassroom: _openClassroom,
         onOpenBath: _openBath,
       ),
-      AppListPage(key: _appsKey, onOpenApp: _openAppEntry),
-      SchedulePage(key: _scheduleKey),
-      const ProfilePage(),
+      _LazyTab(
+        index: 1,
+        selectedIndex: _currentIndex,
+        builder: () => SchedulePage(key: _scheduleKey),
+      ),
+      _LazyTab(
+        index: 2,
+        selectedIndex: _currentIndex,
+        builder: () => AppListPage(key: _appsKey, onOpenApp: _openAppEntry),
+      ),
+      _LazyTab(
+        index: 3,
+        selectedIndex: _currentIndex,
+        builder: () => const ProfilePage(),
+      ),
     ];
     _initDeepLinks();
     _scheduleAutomaticUpdateCheck();
@@ -87,6 +100,7 @@ class _RootPageState extends State<RootPage>
   @override
   void dispose() {
     _deepLinkSub?.cancel();
+    _automaticUpdateTimer?.cancel();
     _animController.dispose();
     _currentIndex.dispose();
     super.dispose();
@@ -111,7 +125,10 @@ class _RootPageState extends State<RootPage>
   void _scheduleAutomaticUpdateCheck() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      unawaited(UpdateDialogs.checkAndShow(context, automatic: true));
+      _automaticUpdateTimer = Timer(const Duration(milliseconds: 1600), () {
+        if (!mounted) return;
+        unawaited(UpdateDialogs.checkAndShow(context, automatic: true));
+      });
     });
   }
 
@@ -140,9 +157,9 @@ class _RootPageState extends State<RootPage>
     if (index == _currentIndex.value) {
       switch (index) {
         case 1:
-          _appsKey.currentState?.handleTabReselect();
-        case 2:
           _scheduleKey.currentState?.handleTabReselect();
+        case 2:
+          _appsKey.currentState?.handleTabReselect();
       }
       return;
     }
@@ -161,8 +178,8 @@ class _RootPageState extends State<RootPage>
   }
 
   void _openAppList() {
-    if (_currentIndex.value == 1) return;
-    _switchTab(1);
+    if (_currentIndex.value == 2) return;
+    _switchTab(2);
   }
 
   void _openAppEntry(AppEntry app) {
@@ -226,7 +243,7 @@ class _RootPageState extends State<RootPage>
   }
 
   Future<void> _openSchedule() async {
-    _switchTab(2);
+    _switchTab(1);
   }
 
   Future<void> _openClassroom() async {
@@ -317,6 +334,53 @@ class _RootPageState extends State<RootPage>
   }
 }
 
+/// Keeps the IndexedStack shape stable without constructing every tab during
+/// the first frame. Once activated, the child instance is retained like the
+/// old eager IndexedStack implementation.
+class _LazyTab extends StatefulWidget {
+  const _LazyTab({
+    required this.index,
+    required this.selectedIndex,
+    required this.builder,
+  });
+
+  final int index;
+  final ValueListenable<int> selectedIndex;
+  final Widget Function() builder;
+
+  @override
+  State<_LazyTab> createState() => _LazyTabState();
+}
+
+class _LazyTabState extends State<_LazyTab> {
+  Widget? _child;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.selectedIndex.addListener(_onIndexChanged);
+    if (widget.selectedIndex.value == widget.index) _activate();
+  }
+
+  @override
+  void dispose() {
+    widget.selectedIndex.removeListener(_onIndexChanged);
+    super.dispose();
+  }
+
+  void _onIndexChanged() {
+    if (_child != null || widget.selectedIndex.value != widget.index) return;
+    setState(_activate);
+  }
+
+  void _activate() {
+    _child ??= widget.builder();
+  }
+
+  @override
+  Widget build(BuildContext context) => _child ?? const SizedBox.shrink();
+}
+
 class _RootPageBackground extends StatelessWidget {
   const _RootPageBackground({required this.isDark});
 
@@ -343,12 +407,12 @@ class _NavItem {
 
 const _items = [
   _NavItem(Icons.home_outlined, Icons.home_rounded),
-  _NavItem(Icons.widgets_outlined, Icons.widgets_rounded),
   _NavItem(Icons.calendar_month_outlined, Icons.calendar_month_rounded),
+  _NavItem(Icons.widgets_outlined, Icons.widgets_rounded),
   _NavItem(Icons.account_circle_outlined, Icons.account_circle),
 ];
 
-const _itemLabels = ['首页', '应用', '课表', '我的'];
+const _itemLabels = ['首页', '课表', '应用', '我的'];
 
 class _SlidingNavBar extends StatelessWidget {
   const _SlidingNavBar({
@@ -382,7 +446,8 @@ class _SlidingNavBar extends StatelessWidget {
 
     return ClipRect(
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        // 底栏下方的列表会持续变化；保持真实模糊，但用较小采样半径。
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
         child: Container(
           // 比之前缩短 5px；图标组同步上移 5px，保持其相对屏幕位置。
           height: 66 + bottomPadding,

@@ -64,7 +64,7 @@ class SchedulePage extends StatefulWidget {
 }
 
 class SchedulePageState extends State<SchedulePage> {
-  final ScheduleRepository _repository = ScheduleRepository();
+  final ScheduleRepository _repository = ScheduleRepository.shared;
   final ScrollController _scrollController = ScrollController();
   Future<ScheduleData>? _scheduleFuture;
   int? _selectedWeek;
@@ -427,7 +427,7 @@ class SchedulePageState extends State<SchedulePage> {
                       isDark: isDark,
                       topInset: MediaQuery.paddingOf(context).top,
                       title: schedule == null || selectedWeek == null
-                          ? const Text('我的课表')
+                          ? const _ScheduleSingleLineTitle()
                           : _ScheduleAppBarTitle(
                               schedule: schedule,
                               selectedWeek: selectedWeek,
@@ -686,6 +686,24 @@ class _ScheduleAppBarTitle extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 没有可展示的学期信息时，课表标题退化为标准 AppBar 的单行标题。
+class _ScheduleSingleLineTitle extends StatelessWidget {
+  const _ScheduleSingleLineTitle();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Text(
+      '我的课表',
+      style: theme.textTheme.titleLarge?.copyWith(
+        color: theme.colorScheme.onSurface,
+        // 与详情页等单行 AppBar 标题保持一致。
+        fontSize: 18,
       ),
     );
   }

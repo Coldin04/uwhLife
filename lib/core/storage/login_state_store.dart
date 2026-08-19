@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'portal_user_store.dart';
@@ -5,6 +6,11 @@ import 'portal_user_store.dart';
 /// 统一门户登录态读写。所有页面都通过这个类操作 SharedPreferences，
 /// 保证 key 和清理逻辑只有一份。
 class LoginStateStore {
+  /// Process-local login state shared by the home status indicator and the
+  /// profile tab. The persisted value remains the source of truth; this
+  /// notifier only avoids making each page wait for its own refresh.
+  static final ValueNotifier<bool> notifier = ValueNotifier<bool>(false);
+
   static const String expiryKey = 'login_expiry_millis';
   static const String loggedInKey = 'portal_logged_in';
 
@@ -14,7 +20,9 @@ class LoginStateStore {
 
   static Future<bool> readLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(loggedInKey) ?? false;
+    final value = prefs.getBool(loggedInKey) ?? false;
+    if (notifier.value != value) notifier.value = value;
+    return value;
   }
 
   /// 用户是否主动退出过登录（且此后没有再登录成功）。
@@ -29,6 +37,7 @@ class LoginStateStore {
     await prefs.setBool(loggedInKey, true);
     await prefs.remove(expiryKey);
     await prefs.remove(manualLogoutKey);
+    notifier.value = true;
     return true;
   }
 
@@ -38,6 +47,7 @@ class LoginStateStore {
     await prefs.setBool(loggedInKey, false);
     await prefs.remove(expiryKey);
     await PortalUserStore.clear();
+    notifier.value = false;
   }
 
   /// 用户主动退出登录 / 清除登录状态，在下次成功登录前不再自动重登。

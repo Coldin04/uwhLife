@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'core/platform/orientation_policy.dart';
 import 'core/theme/app_theme.dart';
 import 'features/root/root_page.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Start in portrait so Android phones never flash into landscape while the
+  // first frame is loading. OrientationPolicy unlocks tablet-sized displays.
+  await SystemChrome.setPreferredOrientations(const <DeviceOrientation>[
+    DeviceOrientation.portraitUp,
+  ]);
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -15,7 +21,7 @@ void main() {
       systemNavigationBarContrastEnforced: false,
     ),
   );
-  runApp(const UwhLifeApp());
+  runApp(const OrientationPolicy(child: UwhLifeApp()));
 }
 
 class UwhLifeApp extends StatelessWidget {
@@ -30,6 +36,11 @@ class UwhLifeApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         fontFamily: 'AlibabaPuHuiTi',
+        fontFamilyFallback: const <String>[
+          'Noto Sans CJK SC',
+          'PingFang SC',
+          'sans-serif',
+        ],
         colorScheme: buildColorScheme(Brightness.light),
         dialogTheme: buildDialogTheme(Brightness.light),
         bottomSheetTheme: buildBottomSheetTheme(Brightness.light),
@@ -39,6 +50,11 @@ class UwhLifeApp extends StatelessWidget {
       darkTheme: ThemeData(
         useMaterial3: true,
         fontFamily: 'AlibabaPuHuiTi',
+        fontFamilyFallback: const <String>[
+          'Noto Sans CJK SC',
+          'PingFang SC',
+          'sans-serif',
+        ],
         colorScheme: buildColorScheme(Brightness.dark),
         dialogTheme: buildDialogTheme(Brightness.dark),
         bottomSheetTheme: buildBottomSheetTheme(Brightness.dark),

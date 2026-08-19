@@ -40,7 +40,11 @@ class MainActivity : FlutterActivity() {
                 // straight from the launch artwork to the home page.
                 splashScreenView.animate()
                     .alpha(0f)
-                    .setDuration(220L)
+                    // The hand-off is entirely native and only covers the
+                    // platform splash view; Flutter's first frame is already
+                    // underneath it. Keep it short so it does not delay
+                    // first interaction.
+                    .setDuration(120L)
                     .setInterpolator(DecelerateInterpolator())
                     .withEndAction { splashScreenView.remove() }
                     .start()

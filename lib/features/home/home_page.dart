@@ -5,7 +5,6 @@ import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../core/platform/browser_data_cleaner.dart';
 import '../../core/storage/boundary_debug_settings.dart';
@@ -13,6 +12,7 @@ import '../../core/storage/home_page_settings.dart';
 import '../../core/storage/login_state_store.dart';
 import '../../core/storage/portal_user_store.dart';
 import '../../core/theme/app_theme.dart';
+import '../auth/ids_http_auth.dart';
 import '../auth/portal_auto_login.dart';
 import '../auth/portal_session_cookies.dart';
 import '../door/door_api.dart';
@@ -24,6 +24,8 @@ import 'widgets/status_indicator.dart';
 
 // 只用在问候语上，比正文重一档（普惠体真实档位只有 400/500/700）。
 const FontWeight _homePageSemiBold = FontWeight.w500;
+
+enum _DoorButtonState { idle, busy, needsLogin, opened }
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -57,69 +59,71 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   static const _defaultHitokoto = '读万卷书，行万里路';
   bool _loggedIn = false;
   String _hitokoto = _defaultHitokoto;
-  final ScheduleRepository _scheduleRepository = ScheduleRepository();
+  final ScheduleRepository _scheduleRepository = ScheduleRepository.shared;
   ScheduleCourseOccurrence? _scheduleHintCourse;
   bool _scheduleHintIsCurrent = false;
   bool _hasScheduleHintData = false;
   bool _mockScheduleHint = false;
   bool _iconOnlyMode = false;
+  bool _scheduleHintLoading = true;
   bool _loadingScheduleHint = false;
   Timer? _scheduleHintTimer;
-  late final WebViewController _probeController;
-  Completer<({String body, String url})>? _probeCompleter;
-  Object _probeToken = Object();
+  Timer? _deferredScheduleRefreshTimer;
+  Timer? _hitokotoDelayTimer;
+  final HttpClient _probeClient = HttpClient()
+    ..connectionTimeout = const Duration(seconds: 4);
+  HttpCookieJar? _probeCookies;
   bool _probing = false;
 
-  bool _doorBusy = false;
-  String? _doorMessage;
-  Timer? _doorMessageTimer;
+  _DoorButtonState _doorState = _DoorButtonState.idle;
+  Timer? _doorStateTimer;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _probeController = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (url) async {
-            final token = _probeToken;
-            final c = _probeCompleter;
-            if (c == null || c.isCompleted) return;
-            try {
-              final r = await _probeController.runJavaScriptReturningResult(
-                'document.body ? document.body.innerText : ""',
-              );
-              if (!mounted || token != _probeToken || c.isCompleted) return;
-              c.complete((body: r.toString(), url: url));
-            } catch (_) {
-              if (!mounted || token != _probeToken || c.isCompleted) return;
-              c.complete((body: '', url: url));
-            }
-          },
-          onWebResourceError: (_) {
-            final token = _probeToken;
-            final c = _probeCompleter;
-            if (c != null && token == _probeToken && !c.isCompleted) {
-              c.complete((body: '', url: ''));
-            }
-          },
-        ),
-      );
+    LoginStateStore.notifier.addListener(_onLoginStateChanged);
     _loadLoginState();
     _loadMockScheduleHint();
     _loadHomePageSettings();
-    _loadHitokoto();
-    unawaited(_refreshScheduleHint());
-    _probeAndSync();
+    unawaited(_initializeScheduleHint());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // Start the fast HTTP probe immediately after the first useful frame,
+      // so auth freshness never competes with the home layout's first build.
+      unawaited(_probeAndSync());
+      // Neither a cached quote nor a second network request is needed to
+      // make the first frame useful. Let the home/door controls settle first.
+      _hitokotoDelayTimer = Timer(const Duration(milliseconds: 900), () {
+        if (mounted) _loadHitokoto();
+      });
+    });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _doorMessageTimer?.cancel();
+    LoginStateStore.notifier.removeListener(_onLoginStateChanged);
+    _doorStateTimer?.cancel();
     _scheduleHintTimer?.cancel();
+    _deferredScheduleRefreshTimer?.cancel();
+    _hitokotoDelayTimer?.cancel();
+    _probeClient.close(force: true);
     super.dispose();
+  }
+
+  void _onLoginStateChanged() {
+    if (!mounted || _loggedIn == LoginStateStore.notifier.value) return;
+    final loggedIn = LoginStateStore.notifier.value;
+    setState(() {
+      _loggedIn = loggedIn;
+      if (!loggedIn) {
+        _hasScheduleHintData = false;
+        _scheduleHintCourse = null;
+        _scheduleHintIsCurrent = false;
+      }
+    });
+    if (!loggedIn) _scheduleHintTimer?.cancel();
   }
 
   @override
@@ -155,16 +159,37 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Future<void> triggerDoorFromDeepLink() => _triggerDoor();
 
   Future<void> _loadLoginState() async {
-    final loggedIn = await LoginStateStore.readLoggedIn();
-    if (!mounted) return;
-    if (!loggedIn) _scheduleHintTimer?.cancel();
-    setState(() => _loggedIn = loggedIn);
-    if (!loggedIn && _hasScheduleHintData) {
-      setState(() {
-        _hasScheduleHintData = false;
-        _scheduleHintCourse = null;
-        _scheduleHintIsCurrent = false;
-      });
+    await LoginStateStore.readLoggedIn();
+  }
+
+  Future<void> _initializeScheduleHint() async {
+    var waitingForRefresh = false;
+    try {
+      if (!await LoginStateStore.readLoggedIn()) {
+        if (mounted) setState(() => _scheduleHintLoading = false);
+        return;
+      }
+      final cached = await ScheduleCache.read(now: DateTime.now());
+      if (!mounted) return;
+      if (cached?.schedule.isCurrentTerm == true) {
+        _applyScheduleHint(cached!.schedule);
+        setState(() => _scheduleHintLoading = false);
+        return;
+      }
+
+      // If there is no usable cache, show a stable card first and let the
+      // full schedule request happen after the home controls are interactive.
+      _deferredScheduleRefreshTimer = Timer(
+        const Duration(milliseconds: 900),
+        () {
+          if (mounted) unawaited(_refreshScheduleHint());
+        },
+      );
+      waitingForRefresh = true;
+    } finally {
+      if (!waitingForRefresh && mounted && _scheduleHintLoading) {
+        setState(() => _scheduleHintLoading = false);
+      }
     }
   }
 
@@ -182,6 +207,7 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
             _scheduleHintIsCurrent = false;
           });
         }
+        _scheduleHintLoading = false;
         return;
       }
       final now = DateTime.now();
@@ -209,11 +235,15 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
             _scheduleHintIsCurrent = false;
           });
         }
+        _scheduleHintLoading = false;
         return;
       }
       _applyScheduleHint(schedule);
     } finally {
       _loadingScheduleHint = false;
+      if (mounted && _scheduleHintLoading) {
+        setState(() => _scheduleHintLoading = false);
+      }
     }
   }
 
@@ -293,6 +323,7 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Future<void> _probeAndSync() async {
     if (_probing) return;
     _probing = true;
+    _probeCookies = null;
     try {
       var res = await _runProbe();
 
@@ -343,22 +374,55 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Future<({String body, String url})> _runRequest(String url) async {
-    final token = Object();
-    final completer = Completer<({String body, String url})>();
-    _probeToken = token;
-    _probeCompleter = completer;
     try {
-      await _probeController.loadRequest(Uri.parse(url));
-      return await completer.future.timeout(
-        const Duration(seconds: 6),
-        onTimeout: () => (body: '', url: ''),
-      );
-    } finally {
-      if (_probeToken == token && identical(_probeCompleter, completer)) {
-        _probeCompleter = null;
-        _probeToken = Object();
+      final start = Uri.parse(url);
+      final cookies = _probeCookies ??= HttpCookieJar();
+      await _seedProbeCookies(start, cookies);
+
+      var next = start;
+      for (var hop = 0; hop < 8; hop++) {
+        final request = await _probeClient
+            .getUrl(next)
+            .timeout(const Duration(seconds: 6));
+        request.followRedirects = false;
+        request.headers.set(
+          HttpHeaders.acceptHeader,
+          'application/json,text/html;q=0.9,*/*;q=0.8',
+        );
+        final cookieHeader = cookies.cookieHeaderFor(next);
+        if (cookieHeader.isNotEmpty) {
+          request.headers.set(HttpHeaders.cookieHeader, cookieHeader);
+        }
+
+        final response = await request.close().timeout(
+          const Duration(seconds: 6),
+        );
+        cookies.save(next, response.cookies);
+        final body = await response
+            .transform(utf8.decoder)
+            .join()
+            .timeout(const Duration(seconds: 6));
+        final location = response.headers.value(HttpHeaders.locationHeader);
+        if (location == null ||
+            response.statusCode < 300 ||
+            response.statusCode >= 400) {
+          return (body: body, url: next.toString());
+        }
+        next = next.resolve(location);
+        await _seedProbeCookies(next, cookies);
       }
+    } catch (_) {
+      // Login probing is best-effort and must never surface an uncaught
+      // network exception from the background startup task.
     }
+    return (body: '', url: '');
+  }
+
+  Future<void> _seedProbeCookies(Uri uri, HttpCookieJar jar) async {
+    final hasPersisted = await PortalSessionCookies.seedFor(uri, jar);
+    if (hasPersisted && jar.cookieHeaderFor(uri).isNotEmpty) return;
+    final header = await BrowserDataCleaner.getCookies(url: uri.toString());
+    if (header.trim().isNotEmpty) jar.addCookieHeader(uri, header);
   }
 
   bool _isIdsLoginResult(({String body, String url}) result) {
@@ -370,6 +434,10 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Future<bool> _syncPortalUser(({String body, String url}) result) async {
     if (!await PortalUserStore.saveFromLoginUserResponse(result.body)) {
       return false;
+    }
+    final cookies = _probeCookies;
+    if (cookies != null) {
+      await PortalSessionCookies.rememberHttpCookies(cookies);
     }
     await LoginStateStore.markLoggedIn();
     return true;
@@ -467,11 +535,10 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Future<void> _triggerDoor() async {
-    if (_doorBusy) return;
-    _doorMessageTimer?.cancel();
+    if (_doorState == _DoorButtonState.busy) return;
+    _doorStateTimer?.cancel();
     setState(() {
-      _doorBusy = true;
-      _doorMessage = null;
+      _doorState = _DoorButtonState.busy;
     });
     final messenger = ScaffoldMessenger.of(context);
 
@@ -481,10 +548,16 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
       if (!mounted) return;
       switch (result.status) {
         case DoorOpenStatus.opened:
-          _showDoorMessage(result.message);
+          _showDoorState(
+            _DoorButtonState.opened,
+            duration: const Duration(seconds: 3),
+          );
           break;
         case DoorOpenStatus.needsLogin:
-          _showDoorMessage(result.message);
+          _showDoorState(
+            _DoorButtonState.needsLogin,
+            duration: const Duration(seconds: 4),
+          );
           messenger.hideCurrentSnackBar();
           messenger.showSnackBar(
             SnackBar(
@@ -494,32 +567,47 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
           );
           break;
         case DoorOpenStatus.failed:
-          _showDoorMessage(result.message);
+          _showDoorState(_DoorButtonState.idle);
+          messenger.showSnackBar(SnackBar(content: Text(result.message)));
           break;
       }
     } finally {
       if (mounted) {
         setState(() {
-          _doorBusy = false;
+          if (_doorState == _DoorButtonState.busy) {
+            _doorState = _DoorButtonState.idle;
+          }
         });
-      } else {
-        _doorBusy = false;
       }
     }
   }
 
-  void _showDoorMessage(String text) {
-    _doorMessageTimer?.cancel();
+  void _showDoorState(_DoorButtonState state, {Duration? duration}) {
+    _doorStateTimer?.cancel();
     setState(() {
-      _doorMessage = text;
+      _doorState = state;
     });
-    _doorMessageTimer = Timer(const Duration(seconds: 4), () {
+    if (duration == null) return;
+    _doorStateTimer = Timer(duration, () {
       if (!mounted) return;
       setState(() {
-        _doorMessage = null;
+        _doorState = _DoorButtonState.idle;
       });
     });
   }
+
+  String get _doorTitle => switch (_doorState) {
+    _DoorButtonState.busy => '开锁中',
+    _DoorButtonState.needsLogin => '请登录',
+    _DoorButtonState.opened => '已开锁',
+    _DoorButtonState.idle => '门锁',
+  };
+
+  IconData get _doorIcon => switch (_doorState) {
+    _DoorButtonState.needsLogin => Icons.priority_high_rounded,
+    _DoorButtonState.opened => Icons.lock_open_rounded,
+    _ => Icons.lock_rounded,
+  };
 
   LoginStatus get _status {
     return _loggedIn ? LoginStatus.loggedIn : LoginStatus.loggedOut;
@@ -532,6 +620,28 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (hour < 14) return '中午好';
     if (hour < 18) return '下午好';
     return '晚上好';
+  }
+
+  String _homeBackgroundAsset(Size size) {
+    // The tablet crop deliberately keeps the left-side architecture visible;
+    // the phone crop keeps the right-side subject used by the old alignment.
+    if (size.shortestSide >= 600) {
+      return 'assets/home_backgroud/variants/background_tablet_left.jpg';
+    }
+    if (size.width > size.height) {
+      return 'assets/home_backgroud/variants/background_compact.jpg';
+    }
+    return 'assets/home_backgroud/variants/background_phone_right.jpg';
+  }
+
+  int _homeBackgroundCacheWidth(Size size, double devicePixelRatio) {
+    final assetWidth = size.shortestSide >= 600
+        ? 1600
+        : size.width > size.height
+        ? 1024
+        : 1080;
+    final requested = (size.width * devicePixelRatio).round();
+    return requested.clamp(480, assetWidth).toInt();
   }
 
   ScheduleCourseOccurrence _mockScheduleHintOccurrence() {
@@ -560,6 +670,13 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final viewport = MediaQuery.sizeOf(context);
+    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+    final backgroundAsset = _homeBackgroundAsset(viewport);
+    final backgroundCacheWidth = _homeBackgroundCacheWidth(
+      viewport,
+      devicePixelRatio,
+    );
     // 首页背景永远是这张蓝灰照片，不跟随主题切换（没有浅色版素材）。
     // 之前浅色模式下文字改用深蓝灰，实测对着照片只有 ~1.6:1 的对比度，
     // 基本读不出来。文字和图标不再分主题，统一沿用深色模式那套白色系，
@@ -594,39 +711,40 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
       child: Stack(
         children: [
           Positioned.fill(
-            child: Image.asset(
-              'assets/home_backgroud/background.jpg',
-              fit: BoxFit.cover,
-              // 小尺寸设备装不下整张图时，保留最左边、多出来的部分从右边
-              // 裁掉，而不是左右两边均匀裁切。
-              alignment: Alignment.centerRight,
-            ),
-          ),
-          // 背景图只有一张，不分深浅色版本。深色模式下原样显示会太亮，
-          // 跟同一页面里其它已经改深的控件（状态栏、卡片）不搭，叠一层
-          // 半透明黑压暗它，浅色模式不受影响。
-          if (isDark)
-            const Positioned.fill(
-              child: ColoredBox(color: Color.fromRGBO(0, 0, 0, 0.38)),
-            ),
-          // 圆形入口、课程卡片、底部 tab 栏这些"云母玻璃"控件的可读性，
-          // 之前完全指望背景图本身别太亮/别太杂——这是在赌，换一张白天
-          // 建筑的背景图就可能读不清。这里叠一层固定的从上到下加深的
-          // 黑色渐变（越往下越暗，最深到 28% 黑），不随背景图内容变化，
-          // 给底部这一整块操作区域一个跟图片无关的最低可读性保底；
-          // 顶部问候语区域不受影响（渐变从屏幕中段才开始起效）。
-          const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: [0.45, 1.0],
-                  colors: [
-                    Color.fromRGBO(0, 0, 0, 0),
-                    Color.fromRGBO(0, 0, 0, 0.28),
-                  ],
-                ),
+            // 背景图、暗色遮罩和可读性渐变在首帧后不会变化。把它们做成
+            // 单独的 paint layer，课表/登录态/开门按钮刷新不会重新绘制照片。
+            child: RepaintBoundary(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.asset(
+                    backgroundAsset,
+                    cacheWidth: backgroundCacheWidth,
+                    fit: BoxFit.cover,
+                    alignment: Alignment.center,
+                    filterQuality: FilterQuality.medium,
+                  ),
+                  // 背景图只有一张，不分深浅色版本。深色模式下原样显示会太亮，
+                  // 跟同一页面里其它已经改深的控件（状态栏、卡片）不搭，叠一层
+                  // 半透明黑压暗它，浅色模式不受影响。
+                  if (isDark)
+                    const ColoredBox(color: Color.fromRGBO(0, 0, 0, 0.38)),
+                  // 圆形入口、课程卡片和底栏的可读性不依赖照片内容：越往下
+                  // 越暗的固定渐变为文字与图标保留稳定对比度。
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        stops: [0.45, 1.0],
+                        colors: [
+                          Color.fromRGBO(0, 0, 0, 0),
+                          Color.fromRGBO(0, 0, 0, 0.28),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -696,10 +814,12 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                 // 跟问候语列同一个顶部内边距，让状态徽标的高度
                                 // 对齐"上午好"这行文字，而不是对齐整个 Row。
                                 padding: const EdgeInsets.only(top: 8),
-                                child: StatusIndicator(
-                                  status: _status,
-                                  onTap: _openPortal,
-                                  onLongPress: _confirmClearLoginState,
+                                child: RepaintBoundary(
+                                  child: StatusIndicator(
+                                    status: _status,
+                                    onTap: _openPortal,
+                                    onLongPress: _confirmClearLoginState,
+                                  ),
                                 ),
                               ),
                             ],
@@ -716,57 +836,68 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                       MainAxisAlignment.spaceAround,
                                   children: [
                                     Expanded(
-                                      child: CircularFeatureButton(
-                                        icon: Icons.lock_rounded,
-                                        title: '门锁',
-                                        status: _doorBusy
-                                            ? '开门中…'
-                                            : _doorMessage,
-                                        busy: _doorBusy,
-                                        backgroundColor: const Color(
-                                          0xFF22C55E,
+                                      child: RepaintBoundary(
+                                        child: CircularFeatureButton(
+                                          icon: _doorIcon,
+                                          title: _doorTitle,
+                                          busy:
+                                              _doorState ==
+                                              _DoorButtonState.busy,
+                                          backgroundColor: const Color(
+                                            0xFF22C55E,
+                                          ),
+                                          foregroundColor:
+                                              actionForegroundColor,
+                                          micaOpacity: isDark ? 0.62 : 0.58,
+                                          labelColor: actionLabelColor,
+                                          iconOnly: _iconOnlyMode,
+                                          onTap: _triggerDoor,
                                         ),
-                                        foregroundColor: actionForegroundColor,
-                                        micaOpacity: isDark ? 0.62 : 0.58,
-                                        labelColor: actionLabelColor,
-                                        iconOnly: _iconOnlyMode,
-                                        onTap: _triggerDoor,
                                       ),
                                     ),
                                     Expanded(
-                                      child: CircularFeatureButton(
-                                        icon: Icons.credit_card_rounded,
-                                        title: '付款码',
-                                        backgroundColor: actionCircleColor,
-                                        foregroundColor: actionForegroundColor,
-                                        micaOpacity: 0.12,
-                                        labelColor: actionLabelColor,
-                                        iconOnly: _iconOnlyMode,
-                                        onTap: _openPayCode,
+                                      child: RepaintBoundary(
+                                        child: CircularFeatureButton(
+                                          icon: Icons.credit_card_rounded,
+                                          title: '付款码',
+                                          backgroundColor: actionCircleColor,
+                                          foregroundColor:
+                                              actionForegroundColor,
+                                          micaOpacity: 0.12,
+                                          labelColor: actionLabelColor,
+                                          iconOnly: _iconOnlyMode,
+                                          onTap: _openPayCode,
+                                        ),
                                       ),
                                     ),
                                     Expanded(
-                                      child: CircularFeatureButton(
-                                        icon: Icons.school_outlined,
-                                        title: '二课',
-                                        backgroundColor: actionCircleColor,
-                                        foregroundColor: actionForegroundColor,
-                                        micaOpacity: 0.12,
-                                        labelColor: actionLabelColor,
-                                        iconOnly: _iconOnlyMode,
-                                        onTap: _openClassroom,
+                                      child: RepaintBoundary(
+                                        child: CircularFeatureButton(
+                                          icon: Icons.school_outlined,
+                                          title: '二课',
+                                          backgroundColor: actionCircleColor,
+                                          foregroundColor:
+                                              actionForegroundColor,
+                                          micaOpacity: 0.12,
+                                          labelColor: actionLabelColor,
+                                          iconOnly: _iconOnlyMode,
+                                          onTap: _openClassroom,
+                                        ),
                                       ),
                                     ),
                                     Expanded(
-                                      child: CircularFeatureButton(
-                                        icon: Icons.shower_outlined,
-                                        title: '洗浴',
-                                        backgroundColor: actionCircleColor,
-                                        foregroundColor: actionForegroundColor,
-                                        micaOpacity: 0.12,
-                                        labelColor: actionLabelColor,
-                                        iconOnly: _iconOnlyMode,
-                                        onTap: _openBath,
+                                      child: RepaintBoundary(
+                                        child: CircularFeatureButton(
+                                          icon: Icons.shower_outlined,
+                                          title: '洗浴',
+                                          backgroundColor: actionCircleColor,
+                                          foregroundColor:
+                                              actionForegroundColor,
+                                          micaOpacity: 0.12,
+                                          labelColor: actionLabelColor,
+                                          iconOnly: _iconOnlyMode,
+                                          onTap: _openBath,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -778,12 +909,15 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
                             padding: const EdgeInsets.only(top: 2),
                             child: Transform.translate(
                               offset: const Offset(0, -8),
-                              child: _UpcomingCourseQuote(
-                                occurrence: displayedScheduleHint,
-                                isCurrent: _mockScheduleHint
-                                    ? false
-                                    : _scheduleHintIsCurrent,
-                                onTap: () => unawaited(_openSchedule()),
+                              child: RepaintBoundary(
+                                child: _UpcomingCourseQuote(
+                                  occurrence: displayedScheduleHint,
+                                  isCurrent: _mockScheduleHint
+                                      ? false
+                                      : _scheduleHintIsCurrent,
+                                  loading: _scheduleHintLoading,
+                                  onTap: () => unawaited(_openSchedule()),
+                                ),
                               ),
                             ),
                           ),
@@ -793,18 +927,6 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   ),
                 );
               },
-            ),
-          ),
-          Positioned(
-            left: -10,
-            top: -10,
-            width: 1,
-            height: 1,
-            child: IgnorePointer(
-              child: Opacity(
-                opacity: 0,
-                child: WebViewWidget(controller: _probeController),
-              ),
             ),
           ),
         ],
@@ -817,20 +939,19 @@ class _UpcomingCourseQuote extends StatelessWidget {
   const _UpcomingCourseQuote({
     required this.occurrence,
     required this.isCurrent,
+    required this.loading,
     required this.onTap,
   });
 
   final ScheduleCourseOccurrence? occurrence;
   final bool isCurrent;
+  final bool loading;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final occurrence = this.occurrence;
-    // 跟圆形入口一样：毛玻璃基色不叠黑、不取背景色，固定用极淡的白
-    // （只轻微提亮 + 磨砂，不改变背景本身的色相），文字统一白色。
-    // 卡片上是三行正文，比图标更需要一点分量，透光度比圆形入口
-    // （0.16）略高，但依然是「跟背景融为一体」的玻璃，不是实心底板。
+    // 课程卡保持与底栏一致的轻量真实模糊，半径统一为 8。
     const cardColor = Colors.white;
     const cardForegroundColor = Color(0xFFF1F5F9);
     const cardFillAlpha = 0.22;
@@ -859,7 +980,7 @@ class _UpcomingCourseQuote extends StatelessWidget {
           child: ClipRRect(
             borderRadius: radius,
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
               child: Material(
                 color: cardColor.withValues(alpha: cardFillAlpha),
                 shape: RoundedRectangleBorder(borderRadius: radius),
@@ -870,70 +991,82 @@ class _UpcomingCourseQuote extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                title,
+                      children: loading
+                          ? const [
+                              _SkeletonLine(widthFactor: 0.48, height: 18),
+                              SizedBox(height: 10),
+                              _SkeletonLine(widthFactor: 0.72, height: 12),
+                              SizedBox(height: 8),
+                              _SkeletonLine(widthFactor: 0.56, height: 12),
+                              SizedBox(height: 8),
+                              _SkeletonLine(widthFactor: 0.40, height: 12),
+                            ]
+                          : [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            color: cardForegroundColor,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Icon(
+                                    Icons.today_outlined,
+                                    color: cardForegroundColor.withValues(
+                                      alpha: scheduleLineAlpha,
+                                    ),
+                                    size: 22,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                scheduleLine,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.titleMedium
+                                style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
-                                      color: cardForegroundColor,
+                                      color: cardForegroundColor.withValues(
+                                        alpha: scheduleLineAlpha,
+                                      ),
                                       fontWeight: FontWeight.w500,
                                     ),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            Icon(
-                              Icons.today_outlined,
-                              color: cardForegroundColor.withValues(
-                                alpha: scheduleLineAlpha,
+                              const SizedBox(height: 3),
+                              Text(
+                                locationLine,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: cardForegroundColor.withValues(
+                                        alpha: minorLineAlpha,
+                                      ),
+                                    ),
                               ),
-                              size: 22,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          scheduleLine,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: cardForegroundColor.withValues(
-                                  alpha: scheduleLineAlpha,
-                                ),
-                                fontWeight: FontWeight.w500,
+                              const SizedBox(height: 3),
+                              Text(
+                                teacherLine,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: cardForegroundColor.withValues(
+                                        alpha: minorLineAlpha,
+                                      ),
+                                    ),
                               ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          locationLine,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: cardForegroundColor.withValues(
-                                  alpha: minorLineAlpha,
-                                ),
-                              ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          teacherLine,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: cardForegroundColor.withValues(
-                                  alpha: minorLineAlpha,
-                                ),
-                              ),
-                        ),
-                      ],
+                            ],
                     ),
                   ),
                 ),
@@ -958,5 +1091,26 @@ class _UpcomingCourseQuote extends StatelessWidget {
     final hour = value.hour.toString().padLeft(2, '0');
     final minute = value.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
+  }
+}
+
+class _SkeletonLine extends StatelessWidget {
+  const _SkeletonLine({required this.widthFactor, required this.height});
+
+  final double widthFactor;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return FractionallySizedBox(
+      widthFactor: widthFactor,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.26),
+          borderRadius: BorderRadius.circular(height / 2),
+        ),
+        child: SizedBox(height: height),
+      ),
+    );
   }
 }

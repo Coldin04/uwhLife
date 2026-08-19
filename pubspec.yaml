@@ -49,15 +49,17 @@ flutter:
 
   assets:
     - assets/app_list.json
-    - assets/home_backgroud/background.jpg
+    - assets/home_backgroud/variants/
     - icon.png
 
   fonts:
     - family: AlibabaPuHuiTi
+      # Static UI subset; dynamic portal/course/user text falls back to the
+      # platform CJK font configured in ThemeData.
       fonts:
-        - asset: assets/fonts/AlibabaPuHuiTi-Regular.ttf
+        - asset: assets/fonts/AlibabaPuHuiTi-Regular-StaticSubset.ttf
           weight: 400
-        - asset: assets/fonts/AlibabaPuHuiTi-Medium.ttf
+        - asset: assets/fonts/AlibabaPuHuiTi-Medium-StaticSubset.ttf
           weight: 500
-        - asset: assets/fonts/AlibabaPuHuiTi-Bold.ttf
+        - asset: assets/fonts/AlibabaPuHuiTi-Bold-StaticSubset.ttf
           weight: 700

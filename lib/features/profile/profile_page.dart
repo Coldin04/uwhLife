@@ -28,6 +28,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
+  bool _loading = true;
   bool _loggedIn = false;
   String? _userName;
   String? _userAccount;
@@ -36,13 +37,20 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    LoginStateStore.notifier.addListener(_onLoginStateChanged);
     _refresh();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    LoginStateStore.notifier.removeListener(_onLoginStateChanged);
     super.dispose();
+  }
+
+  void _onLoginStateChanged() {
+    if (!mounted || _loggedIn == LoginStateStore.notifier.value) return;
+    setState(() => _loggedIn = LoginStateStore.notifier.value);
   }
 
   @override
@@ -53,11 +61,15 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
   }
 
   Future<void> _refresh() async {
-    final loggedIn = await LoginStateStore.readLoggedIn();
-    final user = await PortalUserStore.read();
-    final creds = await PortalCredentials.read();
+    final loggedInFuture = LoginStateStore.readLoggedIn();
+    final userFuture = PortalUserStore.read();
+    final credsFuture = PortalCredentials.read();
+    final loggedIn = await loggedInFuture;
+    final user = await userFuture;
+    final creds = await credsFuture;
     if (!mounted) return;
     setState(() {
+      _loading = false;
       _loggedIn = loggedIn;
       _userName = user.userName;
       _userAccount = user.userAccount ?? creds?.$1;
@@ -159,6 +171,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) return const _ProfileLoading();
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
@@ -280,6 +293,85 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ProfileLoading extends StatelessWidget {
+  const _ProfileLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fill = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08);
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          MediaQuery.paddingOf(context).top + 12,
+          20,
+          20,
+        ),
+        child: Column(
+          children: [
+            Container(
+              height: 92,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: fill,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(radius: 28, backgroundColor: fill),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _ProfileSkeletonLine(width: 116, color: fill),
+                        const SizedBox(height: 10),
+                        _ProfileSkeletonLine(width: 170, color: fill),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 22),
+            for (var i = 0; i < 3; i++) ...[
+              Container(
+                height: 58,
+                decoration: BoxDecoration(
+                  color: fill,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              if (i != 2) const SizedBox(height: 10),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileSkeletonLine extends StatelessWidget {
+  const _ProfileSkeletonLine({required this.width, required this.color});
+
+  final double width;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: 12,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(6),
       ),
     );
   }

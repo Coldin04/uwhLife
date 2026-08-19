@@ -22,14 +22,13 @@ class StatusIndicator extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    // 跟首页圆形入口用同一套毛玻璃：模糊 + 一层极淡的白，不再套一圈实心
-    // 深色方块背景——那个纯色底跟首页其它控件的玻璃质感不是一回事。
+    // 与首页快捷入口保持一致的轻量真实模糊。
     return Material(
       color: Colors.transparent,
       shape: const CircleBorder(),
       child: ClipOval(
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.16),

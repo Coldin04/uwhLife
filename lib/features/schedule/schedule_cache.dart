@@ -103,6 +103,8 @@ class ScheduleCacheEntry {
 }
 
 class ScheduleRepository {
+  static final ScheduleRepository shared = ScheduleRepository();
+
   ScheduleRepository({
     ScheduleFetcher? fetcher,
     DateTime Function()? now,
@@ -114,10 +116,33 @@ class ScheduleRepository {
   final ScheduleFetcher _fetcher;
   final DateTime Function() _now;
   final Duration _cacheValidity;
+  Future<ScheduleData>? _inFlight;
 
-  Future<ScheduleData> load({
-    bool forceRefresh = false,
-    String? termCode,
+  Future<ScheduleData> load({bool forceRefresh = false, String? termCode}) {
+    // Home's compact course card and the full schedule page can become
+    // visible close together. Reuse one cache/network operation instead of
+    // opening two identical portal sessions.
+    final pending = _inFlight;
+    if (!forceRefresh && termCode == null && pending != null) return pending;
+
+    final future = _load(forceRefresh: forceRefresh, termCode: termCode);
+    if (!forceRefresh && termCode == null) {
+      _inFlight = future;
+      future.then<void>(
+        (_) {
+          if (identical(_inFlight, future)) _inFlight = null;
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          if (identical(_inFlight, future)) _inFlight = null;
+        },
+      );
+    }
+    return future;
+  }
+
+  Future<ScheduleData> _load({
+    required bool forceRefresh,
+    required String? termCode,
   }) async {
     final now = _now();
     final cached = await ScheduleCache.read(now: now);

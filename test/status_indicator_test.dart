@@ -14,7 +14,7 @@ void main() {
     expect(find.byType(InkWell), findsNothing);
   });
 
-  testWidgets('shows the red indicator when status is logged out', (
+  testWidgets('shows the logged-out status button', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -24,17 +24,7 @@ void main() {
     );
 
     expect(find.byType(InkWell), findsOneWidget);
-    final redDot = tester.widget<Container>(
-      find.descendant(
-        of: find.byType(InkWell),
-        matching: find.byWidgetPredicate((widget) {
-          return widget is Container &&
-              widget.decoration is BoxDecoration &&
-              (widget.decoration! as BoxDecoration).color ==
-                  const Color(0xFFD44848);
-        }),
-      ),
-    );
-    expect((redDot.decoration! as BoxDecoration).shape, BoxShape.circle);
+    expect(find.byIcon(Icons.person_outline_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.priority_high_rounded), findsOneWidget);
   });
 }
