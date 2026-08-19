@@ -4,7 +4,9 @@ import android.content.Intent
 import android.content.ClipData
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.provider.Settings
+import android.view.animation.DecelerateInterpolator
 import android.webkit.CookieManager
 import android.webkit.WebView
 import android.webkit.WebStorage
@@ -29,6 +31,23 @@ class MainActivity : FlutterActivity() {
     private var deepLinkSink: EventChannel.EventSink? = null
     private var initialDeepLink: String? = null
     private var initialDeepLinkConsumed = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            splashScreen.setOnExitAnimationListener { splashScreenView ->
+                // Let Flutter's first frame settle underneath the platform
+                // splash, then fade the platform layer out instead of cutting
+                // straight from the launch artwork to the home page.
+                splashScreenView.animate()
+                    .alpha(0f)
+                    .setDuration(220L)
+                    .setInterpolator(DecelerateInterpolator())
+                    .withEndAction { splashScreenView.remove() }
+                    .start()
+            }
+        }
+        super.onCreate(savedInstanceState)
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

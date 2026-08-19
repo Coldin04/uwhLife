@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -14,10 +15,17 @@ import 'schedule_ics_exporter.dart';
 import '../webview/portal_webview_page.dart';
 
 const _scheduleGreen = Color(0xFF22C55E);
-const _scheduleGridLine = Color(0xFFE8E8E8);
+const _scheduleGridLine = Color(0xFFE5E5EA);
+const _scheduleTodayRed = Color(0xFFFF3B30);
 const _weekdayLabels = <String>['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 // 内容左右边距放在每个子项上，让周切换的 PageView 能整屏进出。
-const _scheduleContentPadding = EdgeInsets.symmetric(horizontal: 10);
+const double _scheduleHorizontalPadding = 10;
+const _scheduleContentPadding = EdgeInsets.symmetric(
+  horizontal: _scheduleHorizontalPadding,
+);
+// 与应用列表一致，避开根页面悬浮底栏及系统安全区。
+const double _scheduleFloatingNavClearance = 112;
+const double _scheduleAppBarHeight = 64;
 
 /// 课表相关页面都是浅色渐变背景，状态栏图标必须跟着主题走，
 /// 否则浅色模式下会保持白色图标，几乎看不见。
@@ -52,11 +60,12 @@ class SchedulePage extends StatefulWidget {
   const SchedulePage({super.key});
 
   @override
-  State<SchedulePage> createState() => _SchedulePageState();
+  State<SchedulePage> createState() => SchedulePageState();
 }
 
-class _SchedulePageState extends State<SchedulePage> {
+class SchedulePageState extends State<SchedulePage> {
   final ScheduleRepository _repository = ScheduleRepository();
+  final ScrollController _scrollController = ScrollController();
   Future<ScheduleData>? _scheduleFuture;
   int? _selectedWeek;
 
@@ -89,6 +98,25 @@ class _SchedulePageState extends State<SchedulePage> {
   void _changeWeek(int week, ScheduleData schedule) {
     if (week < 1 || week > schedule.maxWeek) return;
     setState(() => _selectedWeek = week);
+  }
+
+  /// 已在「课表」tab 时再次点击底栏，快速回到该页顶部。
+  void handleTabReselect() {
+    if (!_scrollController.hasClients ||
+        _scrollController.position.pixels <= 0) {
+      return;
+    }
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _openScheduleWebPage() => _pushScheduleWebPage(context);
@@ -137,7 +165,7 @@ class _SchedulePageState extends State<SchedulePage> {
       ).showSnackBar(const SnackBar(content: Text('缺少学期日期或上课时间，暂时无法添加到日历')));
       return;
     }
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('添加到系统日历'),
@@ -201,7 +229,7 @@ class _SchedulePageState extends State<SchedulePage> {
     ScheduleData schedule,
     List<ScheduleCalendarEvent> events,
   ) async {
-    final grantAccess = await showDialog<bool>(
+    final grantAccess = await showAppDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('需要完整日历访问'),
@@ -248,7 +276,7 @@ class _SchedulePageState extends State<SchedulePage> {
   }
 
   Future<void> _offerIcsImport(ScheduleData schedule, String message) async {
-    final openImport = await showDialog<bool>(
+    final openImport = await showAppDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('无法创建独立日历'),
@@ -374,6 +402,11 @@ class _SchedulePageState extends State<SchedulePage> {
               schedule: schedule!,
               selectedWeek: selectedWeek!,
               onChangeWeek: (week) => _changeWeek(week, schedule),
+              scrollController: _scrollController,
+              // 顶栏是覆盖层，但首屏课表仍从顶栏下方开始；向上滚动时
+              // 网格内容再进入顶栏的毛玻璃采样区。
+              topInset:
+                  MediaQuery.paddingOf(context).top + _scheduleAppBarHeight,
             );
           }
 
@@ -382,46 +415,42 @@ class _SchedulePageState extends State<SchedulePage> {
               color: appBackground(isDark ? Brightness.dark : Brightness.light),
             ),
             child: Scaffold(
-              extendBodyBehindAppBar: true,
               backgroundColor: Colors.transparent,
-              appBar: AppBar(
-                toolbarHeight: 64,
-                titleSpacing: 2,
-                backgroundColor: Colors.transparent,
-                surfaceTintColor: Colors.transparent,
-                forceMaterialTransparency: true,
-                systemOverlayStyle: _scheduleOverlayStyle(isDark),
-                title: schedule == null || selectedWeek == null
-                    ? const Text('我的课表')
-                    : _ScheduleAppBarTitle(
-                        schedule: schedule,
-                        onTap: () => _chooseTerm(schedule),
-                      ),
-                actions: [
-                  _ScheduleActionsMenu(
-                    onRefresh: () => _load(termCode: schedule?.term.code),
-                    onOpenWeb: _openScheduleWebPage,
-                    onExportWakeUp: schedule == null || !schedule.hasCourseTable
-                        ? null
-                        : () => unawaited(_exportCsv(schedule)),
-                    onExportIcs: schedule == null || !schedule.hasCourseTable
-                        ? null
-                        : () => unawaited(_exportIcs(schedule)),
-                    onAddToCalendar:
-                        schedule != null &&
-                            schedule.hasCourseTable &&
-                            defaultTargetPlatform == TargetPlatform.iOS
-                        ? () => unawaited(_addToCalendar(schedule))
-                        : null,
+              body: Stack(
+                children: [
+                  Positioned.fill(child: body),
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: _ScheduleTopBar(
+                      isDark: isDark,
+                      topInset: MediaQuery.paddingOf(context).top,
+                      title: schedule == null || selectedWeek == null
+                          ? const Text('我的课表')
+                          : _ScheduleAppBarTitle(
+                              schedule: schedule,
+                              selectedWeek: selectedWeek,
+                              onTap: () => _chooseTerm(schedule),
+                            ),
+                      onRefresh: () => _load(termCode: schedule?.term.code),
+                      onOpenWeb: _openScheduleWebPage,
+                      onExportWakeUp:
+                          schedule == null || !schedule.hasCourseTable
+                          ? null
+                          : () => unawaited(_exportCsv(schedule)),
+                      onExportIcs: schedule == null || !schedule.hasCourseTable
+                          ? null
+                          : () => unawaited(_exportIcs(schedule)),
+                      onAddToCalendar:
+                          schedule != null &&
+                              schedule.hasCourseTable &&
+                              defaultTargetPlatform == TargetPlatform.iOS
+                          ? () => unawaited(_addToCalendar(schedule))
+                          : null,
+                    ),
                   ),
-                  const SizedBox(width: 4),
                 ],
-              ),
-              body: Padding(
-                padding: EdgeInsets.only(
-                  top: MediaQuery.paddingOf(context).top + 64,
-                ),
-                child: body,
               ),
             ),
           );
@@ -431,8 +460,11 @@ class _SchedulePageState extends State<SchedulePage> {
   }
 }
 
-class _ScheduleActionsMenu extends StatelessWidget {
-  const _ScheduleActionsMenu({
+class _ScheduleTopBar extends StatelessWidget {
+  const _ScheduleTopBar({
+    required this.isDark,
+    required this.topInset,
+    required this.title,
     required this.onRefresh,
     required this.onOpenWeb,
     this.onExportWakeUp,
@@ -440,7 +472,68 @@ class _ScheduleActionsMenu extends StatelessWidget {
     this.onAddToCalendar,
   });
 
+  final bool isDark;
+  final double topInset;
+  final Widget title;
   final VoidCallback onRefresh;
+  final VoidCallback onOpenWeb;
+  final VoidCallback? onExportWakeUp;
+  final VoidCallback? onExportIcs;
+  final VoidCallback? onAddToCalendar;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: topInset + _scheduleAppBarHeight,
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF111111).withValues(alpha: 0.30)
+                  : scheme.surface.withValues(alpha: 0.26),
+            ),
+            child: Padding(
+              padding: EdgeInsets.only(
+                top: topInset,
+                left: _scheduleHorizontalPadding,
+                right: 4,
+              ),
+              child: Row(
+                children: [
+                  Expanded(child: title),
+                  IconButton(
+                    tooltip: '刷新课表',
+                    onPressed: onRefresh,
+                    icon: const Icon(Icons.refresh_rounded),
+                  ),
+                  _ScheduleActionsMenu(
+                    onOpenWeb: onOpenWeb,
+                    onExportWakeUp: onExportWakeUp,
+                    onExportIcs: onExportIcs,
+                    onAddToCalendar: onAddToCalendar,
+                  ),
+                  const SizedBox(width: 4),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScheduleActionsMenu extends StatelessWidget {
+  const _ScheduleActionsMenu({
+    required this.onOpenWeb,
+    this.onExportWakeUp,
+    this.onExportIcs,
+    this.onAddToCalendar,
+  });
+
   final VoidCallback onOpenWeb;
   final VoidCallback? onExportWakeUp;
   final VoidCallback? onExportIcs;
@@ -450,41 +543,62 @@ class _ScheduleActionsMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final dividerColor = scheme.onSurface.withValues(alpha: 0.12);
+    final isDark = theme.brightness == Brightness.dark;
+    final background = isDark ? const Color(0xFF1F1F21) : Colors.white;
+    final foreground = isDark ? Colors.white : const Color(0xFF111111);
+    final border = isDark ? const Color(0x22FFFFFF) : const Color(0x14000000);
     return MenuAnchor(
       alignmentOffset: const Offset(-162, 4),
-      style: buildMd2MenuStyle(theme.brightness),
+      style: MenuStyle(
+        backgroundColor: WidgetStatePropertyAll(background),
+        surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+        elevation: const WidgetStatePropertyAll(3),
+        side: WidgetStatePropertyAll(BorderSide(color: border)),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+        padding: const WidgetStatePropertyAll(EdgeInsets.all(4)),
+      ),
       menuChildren: [
         MenuItemButton(
-          onPressed: onRefresh,
-          leadingIcon: const Icon(Icons.refresh_rounded, size: 19),
-          style: _menuItemStyle(theme.brightness),
-          child: const Text('刷新缓存'),
-        ),
-        MenuItemButton(
           onPressed: onOpenWeb,
-          leadingIcon: const Icon(Icons.open_in_browser_rounded, size: 19),
-          style: _menuItemStyle(theme.brightness),
+          leadingIcon: Icon(
+            Icons.open_in_browser_rounded,
+            size: 18,
+            color: foreground,
+          ),
+          style: _menuItemStyle(foreground),
           child: const Text('打开课表网页'),
         ),
-        Divider(height: 9, color: dividerColor),
         MenuItemButton(
           onPressed: onExportWakeUp,
-          leadingIcon: const Icon(Icons.file_download_outlined, size: 19),
-          style: _menuItemStyle(theme.brightness),
+          leadingIcon: Icon(
+            Icons.file_download_outlined,
+            size: 18,
+            color: foreground,
+          ),
+          style: _menuItemStyle(foreground),
           child: const Text('导出 WakeUp'),
         ),
         MenuItemButton(
           onPressed: onExportIcs,
-          leadingIcon: const Icon(Icons.calendar_month_outlined, size: 19),
-          style: _menuItemStyle(theme.brightness),
+          leadingIcon: Icon(
+            Icons.calendar_month_outlined,
+            size: 18,
+            color: foreground,
+          ),
+          style: _menuItemStyle(foreground),
           child: const Text('导出 ICS 日历'),
         ),
         if (onAddToCalendar != null)
           MenuItemButton(
             onPressed: onAddToCalendar,
-            leadingIcon: const Icon(Icons.event_available_outlined, size: 19),
-            style: _menuItemStyle(theme.brightness),
+            leadingIcon: Icon(
+              Icons.event_available_outlined,
+              size: 18,
+              color: foreground,
+            ),
+            style: _menuItemStyle(foreground),
             child: const Text('添加到系统日历'),
           ),
       ],
@@ -496,21 +610,33 @@ class _ScheduleActionsMenu extends StatelessWidget {
           backgroundColor: Colors.transparent,
           hoverColor: scheme.onSurface.withValues(alpha: 0.06),
           highlightColor: scheme.onSurface.withValues(alpha: 0.10),
-          foregroundColor: md2MenuForeground(theme.brightness),
+          foregroundColor: foreground,
         ),
       ),
     );
   }
 
-  ButtonStyle _menuItemStyle(Brightness brightness) {
-    return buildMd2MenuItemStyle(brightness);
+  ButtonStyle _menuItemStyle(Color foreground) {
+    return MenuItemButton.styleFrom(
+      minimumSize: const Size(194, 42),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      foregroundColor: foreground,
+      backgroundColor: Colors.transparent,
+      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+    );
   }
 }
 
 class _ScheduleAppBarTitle extends StatelessWidget {
-  const _ScheduleAppBarTitle({required this.schedule, required this.onTap});
+  const _ScheduleAppBarTitle({
+    required this.schedule,
+    required this.selectedWeek,
+    required this.onTap,
+  });
 
   final ScheduleData schedule;
+  final int selectedWeek;
   final VoidCallback onTap;
 
   @override
@@ -520,29 +646,44 @@ class _ScheduleAppBarTitle extends StatelessWidget {
       onTap: schedule.availableTerms.length > 1 ? onTap : null,
       borderRadius: BorderRadius.circular(6),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        child: Row(
+        padding: const EdgeInsets.symmetric(vertical: 1),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Flexible(
-              child: Text(
-                schedule.term.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: scheme.onSurface,
-                  fontWeight: FontWeight.w500,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 220),
+                  child: Text(
+                    schedule.term.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: scheme.onSurface,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
+                if (schedule.availableTerms.length > 1) ...[
+                  const SizedBox(width: 2),
+                  Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 18,
+                    color: scheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 1),
+            Text(
+              '第 $selectedWeek 周',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: scheme.onSurface.withValues(alpha: 0.60),
+                fontWeight: FontWeight.w400,
               ),
             ),
-            if (schedule.availableTerms.length > 1) ...[
-              const SizedBox(width: 2),
-              Icon(
-                Icons.keyboard_arrow_down_rounded,
-                size: 18,
-                color: scheme.onSurface.withValues(alpha: 0.7),
-              ),
-            ],
           ],
         ),
       ),
@@ -555,11 +696,15 @@ class _ScheduleView extends StatefulWidget {
     required this.schedule,
     required this.selectedWeek,
     required this.onChangeWeek,
+    required this.scrollController,
+    required this.topInset,
   });
 
   final ScheduleData schedule;
   final int selectedWeek;
   final ValueChanged<int> onChangeWeek;
+  final ScrollController scrollController;
+  final double topInset;
 
   @override
   State<_ScheduleView> createState() => _ScheduleViewState();
@@ -611,7 +756,11 @@ class _ScheduleViewState extends State<_ScheduleView> {
   Widget build(BuildContext context) {
     final notice = widget.schedule.courseTableNotice;
     return ListView(
-      padding: const EdgeInsets.only(bottom: 32),
+      controller: widget.scrollController,
+      padding: EdgeInsets.only(
+        top: widget.topInset,
+        bottom: _scheduleFloatingNavClearance,
+      ),
       children: [
         // 课表未发布/未返回有效数据时不渲染日历，只给提示，
         // 未排课课程等其它模块照常展示。
@@ -621,15 +770,6 @@ class _ScheduleViewState extends State<_ScheduleView> {
             child: _CourseTableNotice(message: notice),
           )
         else ...[
-          Padding(
-            padding: _scheduleContentPadding,
-            child: _ScheduleHeader(
-              schedule: widget.schedule,
-              selectedWeek: widget.selectedWeek,
-              onChangeWeek: _selectWeek,
-            ),
-          ),
-          const SizedBox(height: 6),
           SizedBox(
             height: _layout.gridTotalHeight,
             child: PageView.builder(
@@ -649,6 +789,14 @@ class _ScheduleViewState extends State<_ScheduleView> {
               },
             ),
           ),
+          Padding(
+            padding: _scheduleContentPadding,
+            child: _WeekNavigation(
+              schedule: widget.schedule,
+              selectedWeek: widget.selectedWeek,
+              onChangeWeek: _selectWeek,
+            ),
+          ),
         ],
         if (widget.schedule.unscheduledCourses.isNotEmpty) ...[
           const SizedBox(height: 20),
@@ -664,8 +812,8 @@ class _ScheduleViewState extends State<_ScheduleView> {
   }
 }
 
-class _ScheduleHeader extends StatelessWidget {
-  const _ScheduleHeader({
+class _WeekNavigation extends StatelessWidget {
+  const _WeekNavigation({
     required this.schedule,
     required this.selectedWeek,
     required this.onChangeWeek,
@@ -680,7 +828,7 @@ class _ScheduleHeader extends StatelessWidget {
     final canGoBack = selectedWeek > 1;
     final canGoForward = selectedWeek < schedule.maxWeek;
     return SizedBox(
-      height: 42,
+      height: 48,
       child: Row(
         children: [
           _WeekArrowButton(
@@ -689,17 +837,7 @@ class _ScheduleHeader extends StatelessWidget {
             icon: Icons.chevron_left_rounded,
             onPressed: () => onChangeWeek(selectedWeek - 1),
           ),
-          Expanded(
-            child: Center(
-              child: Text(
-                '第 $selectedWeek 周',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: _scheduleGreen,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
+          const Spacer(),
           _WeekArrowButton(
             tooltip: '下一周',
             enabled: canGoForward,
@@ -869,7 +1007,7 @@ class _ScheduleGrid extends StatelessWidget {
                                 alignment: Alignment.center,
                                 decoration: BoxDecoration(
                                   color: isToday
-                                      ? _scheduleGreen
+                                      ? _scheduleTodayRed
                                       : Colors.transparent,
                                   shape: BoxShape.circle,
                                 ),
@@ -1080,13 +1218,12 @@ class _CourseBlock extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: palette.background,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.32)),
+          borderRadius: BorderRadius.circular(5),
         ),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(5),
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
@@ -1095,7 +1232,7 @@ class _CourseBlock extends StatelessWidget {
               );
             },
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 6),
               child: Align(
                 alignment: Alignment.topLeft,
                 child: Text(
@@ -1105,9 +1242,9 @@ class _CourseBlock extends StatelessWidget {
                   textAlign: TextAlign.left,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: palette.foreground,
-                    fontSize: 11.5,
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w500,
-                    height: 1.18,
+                    height: 1.22,
                   ),
                 ),
               ),
@@ -1127,40 +1264,66 @@ class _CoursePalette {
 }
 
 _CoursePalette _courseColor(String courseName, Brightness brightness) {
+  // Apple Calendar 的日程块是浅色底 + 深色同色系文字，而不是高饱和
+  // 实色块配白字。色相只用于区分课程，信息层级由文字对比度承担。
   const lightPalettes = <_CoursePalette>[
-    _CoursePalette(Color(0xFF70A7E8), Colors.white),
-    _CoursePalette(Color(0xFF63BE91), Colors.white),
-    _CoursePalette(Color(0xFFE58B72), Colors.white),
-    _CoursePalette(Color(0xFFD97898), Colors.white),
-    _CoursePalette(Color(0xFF8797D8), Colors.white),
-    _CoursePalette(Color(0xFFA17FD0), Colors.white),
-    _CoursePalette(Color(0xFF55B7AD), Colors.white),
-    _CoursePalette(Color(0xFFD97EAF), Colors.white),
-    _CoursePalette(Color(0xFF669FDC), Colors.white),
-    _CoursePalette(Color(0xFF55AFCA), Colors.white),
-    _CoursePalette(Color(0xFF83AD55), Colors.white),
-    _CoursePalette(Color(0xFFD99B50), Colors.white),
+    _CoursePalette(Color(0xFFDDEEFF), Color(0xFF075E9C)),
+    _CoursePalette(Color(0xFFDDF5E8), Color(0xFF18794E)),
+    _CoursePalette(Color(0xFFFFECDD), Color(0xFFA35300)),
+    _CoursePalette(Color(0xFFFFE4E8), Color(0xFFB4233B)),
+    _CoursePalette(Color(0xFFE8E9FF), Color(0xFF3B4DA5)),
+    _CoursePalette(Color(0xFFF0E8FF), Color(0xFF6840A5)),
+    _CoursePalette(Color(0xFFDDF5F3), Color(0xFF087C78)),
+    _CoursePalette(Color(0xFFFFE5F0), Color(0xFFB12B66)),
+    _CoursePalette(Color(0xFFE2F2FF), Color(0xFF007895)),
+    _CoursePalette(Color(0xFFEDF6D9), Color(0xFF557B18)),
+    _CoursePalette(Color(0xFFFFF2D8), Color(0xFF8A6200)),
+    _CoursePalette(Color(0xFFF9E7D9), Color(0xFF925111)),
   ];
   const darkPalettes = <_CoursePalette>[
-    _CoursePalette(Color(0xFF2F6FB9), Colors.white),
-    _CoursePalette(Color(0xFF1F7F4B), Colors.white),
-    _CoursePalette(Color(0xFFA85410), Colors.white),
-    _CoursePalette(Color(0xFFB83E4E), Colors.white),
-    _CoursePalette(Color(0xFF68727E), Colors.white),
-    _CoursePalette(Color(0xFF8053B8), Colors.white),
-    _CoursePalette(Color(0xFF0E746B), Colors.white),
-    _CoursePalette(Color(0xFFC13E75), Colors.white),
-    _CoursePalette(Color(0xFF4D5FB5), Colors.white),
-    _CoursePalette(Color(0xFF187F9A), Colors.white),
-    _CoursePalette(Color(0xFF477A18), Colors.white),
-    _CoursePalette(Color(0xFF8A5707), Colors.white),
+    _CoursePalette(Color(0xFF153B5D), Color(0xFF9DCEFF)),
+    _CoursePalette(Color(0xFF183E2D), Color(0xFF98E2B5)),
+    _CoursePalette(Color(0xFF513215), Color(0xFFFFC27C)),
+    _CoursePalette(Color(0xFF531F2A), Color(0xFFFFA0AE)),
+    _CoursePalette(Color(0xFF292E63), Color(0xFFB9C1FF)),
+    _CoursePalette(Color(0xFF40255C), Color(0xFFD6B7FF)),
+    _CoursePalette(Color(0xFF123F3D), Color(0xFF8DDDD8)),
+    _CoursePalette(Color(0xFF51233B), Color(0xFFFFACCF)),
+    _CoursePalette(Color(0xFF124253), Color(0xFF92DCFA)),
+    _CoursePalette(Color(0xFF35471A), Color(0xFFBFDF8D)),
+    _CoursePalette(Color(0xFF55461A), Color(0xFFFFD77B)),
+    _CoursePalette(Color(0xFF4B301F), Color(0xFFFFC6A0)),
   ];
   final palettes = brightness == Brightness.dark ? darkPalettes : lightPalettes;
+  return palettes[_coursePaletteIndex(courseName, palettes.length)];
+}
+
+/// 详情页采用 Tailwind 500 级别的同色系底色，和周视图的浅色块形成
+/// 清晰层级，同时避免过深的高饱和实色。
+_CoursePalette _courseDetailColor(String courseName) {
+  const palettes = <_CoursePalette>[
+    _CoursePalette(Color(0xFF3B82F6), Colors.white), // blue-500
+    _CoursePalette(Color(0xFF10B981), Colors.white), // emerald-500
+    _CoursePalette(Color(0xFFF59E0B), Colors.white), // amber-500
+    _CoursePalette(Color(0xFFF43F5E), Colors.white), // rose-500
+    _CoursePalette(Color(0xFF6366F1), Colors.white), // indigo-500
+    _CoursePalette(Color(0xFF8B5CF6), Colors.white), // violet-500
+    _CoursePalette(Color(0xFF14B8A6), Colors.white), // teal-500
+    _CoursePalette(Color(0xFFEC4899), Colors.white), // pink-500
+    _CoursePalette(Color(0xFF06B6D4), Colors.white), // cyan-500
+    _CoursePalette(Color(0xFF84CC16), Colors.white), // lime-500
+    _CoursePalette(Color(0xFFEAB308), Colors.white), // yellow-500
+    _CoursePalette(Color(0xFFF97316), Colors.white), // orange-500
+  ];
+  return palettes[_coursePaletteIndex(courseName, palettes.length)];
+}
+
+int _coursePaletteIndex(String courseName, int paletteCount) {
   var hash = 0;
   for (final codeUnit in courseName.codeUnits) {
     hash = (hash * 31 + codeUnit) & 0x7fffffff;
   }
-  return palettes[hash % palettes.length];
+  return hash % paletteCount;
 }
 
 String _compactClassroom(String classroom) {
@@ -1279,15 +1442,10 @@ class _CourseTableNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.fromLTRB(20, 26, 20, 22),
-      decoration: BoxDecoration(
-        // 空课表/报错是中性信息，不该用品牌绿底强调。改成和首页小卡片同一套中性灰。
-        color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5),
-        borderRadius: BorderRadius.circular(8),
-      ),
+      decoration: const BoxDecoration(color: Colors.transparent),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1308,7 +1466,7 @@ class _CourseTableNotice extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '教务系统发布课表后，点击右上角“刷新缓存”即可加载。',
+            '教务系统发布课表后，点击右上角刷新按钮即可加载。',
             textAlign: TextAlign.center,
             style: Theme.of(
               context,
@@ -1373,7 +1531,7 @@ class ScheduleCourseDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    final palette = _courseColor(course.name, brightness);
+    final palette = _courseDetailColor(course.name);
     return DecoratedBox(
       decoration: BoxDecoration(color: appBackground(brightness)),
       child: Scaffold(
@@ -1452,7 +1610,7 @@ class _UnscheduledCourseDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    final palette = _courseColor(course.name, brightness);
+    final palette = _courseDetailColor(course.name);
     return DecoratedBox(
       decoration: BoxDecoration(color: appBackground(brightness)),
       child: Scaffold(
@@ -1534,7 +1692,7 @@ class _UnscheduledCourseDetailHero extends StatelessWidget {
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     color: palette.foreground,
                     fontWeight: FontWeight.w500,
-                    height: 1.22,
+                    height: 1.25,
                   ),
                 ),
               ),
@@ -1554,11 +1712,13 @@ class _UnscheduledCourseDetailHero extends StatelessWidget {
             _DetailHeroLine(
               icon: Icons.person_outline_rounded,
               value: course.teacher,
+              foreground: palette.foreground,
             ),
           if (course.weekDescription.isNotEmpty)
             _DetailHeroLine(
               icon: Icons.calendar_month_outlined,
               value: course.weekDescription,
+              foreground: palette.foreground,
             ),
         ],
       ),
@@ -1594,7 +1754,7 @@ class _CourseDetailHero extends StatelessWidget {
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               color: palette.foreground,
               fontWeight: FontWeight.w500,
-              height: 1.22,
+              height: 1.25,
             ),
           ),
           if (course.sectionCode.isNotEmpty) ...[
@@ -1611,10 +1771,19 @@ class _CourseDetailHero extends StatelessWidget {
             _DetailHeroLine(
               icon: Icons.person_outline_rounded,
               value: course.teacher,
+              foreground: palette.foreground,
             ),
-          _DetailHeroLine(icon: Icons.schedule_rounded, value: time),
+          _DetailHeroLine(
+            icon: Icons.schedule_rounded,
+            value: time,
+            foreground: palette.foreground,
+          ),
           if (location.isNotEmpty)
-            _DetailHeroLine(icon: Icons.location_on_outlined, value: location),
+            _DetailHeroLine(
+              icon: Icons.location_on_outlined,
+              value: location,
+              foreground: palette.foreground,
+            ),
         ],
       ),
     );
@@ -1622,10 +1791,15 @@ class _CourseDetailHero extends StatelessWidget {
 }
 
 class _DetailHeroLine extends StatelessWidget {
-  const _DetailHeroLine({required this.icon, required this.value});
+  const _DetailHeroLine({
+    required this.icon,
+    required this.value,
+    required this.foreground,
+  });
 
   final IconData icon;
   final String value;
+  final Color foreground;
 
   @override
   Widget build(BuildContext context) {
@@ -1634,15 +1808,16 @@ class _DetailHeroLine extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 17, color: Colors.white.withValues(alpha: 0.9)),
+          Icon(icon, size: 18, color: foreground.withValues(alpha: 0.88)),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               value,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.white,
+                color: foreground,
+                fontSize: 15,
                 fontWeight: FontWeight.w500,
-                height: 1.28,
+                height: 1.35,
               ),
             ),
           ),
@@ -1716,9 +1891,17 @@ class _DetailRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (value.isEmpty || value == '0') return const SizedBox.shrink();
-    final labelStyle = Theme.of(
-      context,
-    ).textTheme.bodySmall?.copyWith(color: _subtleText(context));
+    final theme = Theme.of(context);
+    final labelStyle = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurface.withValues(alpha: 0.68),
+      fontSize: 13,
+      fontWeight: FontWeight.w500,
+    );
+    final valueStyle = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onSurface,
+      fontSize: 15,
+      height: 1.35,
+    );
     if (stacked) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 7),
@@ -1727,7 +1910,7 @@ class _DetailRow extends StatelessWidget {
           children: [
             Text(label, style: labelStyle),
             const SizedBox(height: 6),
-            SelectableText(value),
+            SelectableText(value, style: valueStyle),
           ],
         ),
       );
@@ -1738,7 +1921,7 @@ class _DetailRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(width: 82, child: Text(label, style: labelStyle)),
-          Expanded(child: SelectableText(value)),
+          Expanded(child: SelectableText(value, style: valueStyle)),
         ],
       ),
     );

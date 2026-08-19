@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/platform/browser_data_cleaner.dart';
+import '../../core/storage/login_state_store.dart';
+import '../auth/portal_auto_login.dart';
 
 class MessageApi {
   static const String _baseUrl = 'https://ehall.uwh.edu.cn';
@@ -89,7 +91,7 @@ class MessageApi {
   static Future<void> _doWarmUp() async {
     final portalCookies = await _getNativeCookiesForUrl(_initPage);
     if (portalCookies.trim().isEmpty) {
-      throw Exception('未获取到门户 Cookie，请先登录统一门户');
+      throw _MessageSessionExpiredException('未获取到门户 Cookie，请先登录统一门户');
     }
 
     final setCookieHeaders = await _requestMessageSessionCookies(
@@ -272,12 +274,44 @@ class MessageApi {
 
     if (!_hasMessageSessionCookie(cookies)) {
       reset();
-      throw Exception('未获取到消息 Cookie，请先登录统一门户');
+      throw _MessageSessionExpiredException('未获取到消息 Cookie，请先登录统一门户');
     }
     return _cookiesForRequest(cookies);
   }
 
-  static Future<Map<String, dynamic>> _getJson(String url) async {
+  static Future<Map<String, dynamic>> _getJson(String url) {
+    return _getJsonWithPortalRecovery(url, allowPortalRecovery: true);
+  }
+
+  static Future<Map<String, dynamic>> _getJsonWithPortalRecovery(
+    String url, {
+    required bool allowPortalRecovery,
+  }) async {
+    try {
+      return await _getJsonWithMessageRetry(url);
+    } on _MessageSessionExpiredException {
+      if (!allowPortalRecovery) {
+        await LoginStateStore.markLoggedOut();
+        rethrow;
+      }
+
+      // 消息子系统的 Cookie 刷新失败后，再恢复一次门户/IDS 会话并从
+      // 头重建消息 Cookie；整个业务请求至多重放一次。
+      final outcome = await PortalAutoLogin.instance.restoreSession(
+        force: true,
+      );
+      if (outcome != PortalAutoLoginOutcome.restored) {
+        await LoginStateStore.markLoggedOut();
+        rethrow;
+      }
+      reset();
+      return _getJsonWithPortalRecovery(url, allowPortalRecovery: false);
+    }
+  }
+
+  static Future<Map<String, dynamic>> _getJsonWithMessageRetry(
+    String url,
+  ) async {
     var cookies = await _ensureMessageCookies(forceWarmUp: false);
     try {
       return await _requestJson(url, cookies);

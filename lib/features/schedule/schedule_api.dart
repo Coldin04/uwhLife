@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:html/parser.dart' as html_parser;
 
 import '../../core/platform/browser_data_cleaner.dart';
+import '../../core/storage/login_state_store.dart';
+import '../auth/portal_auto_login.dart';
 import 'models/schedule_models.dart';
 
 class ScheduleApi {
@@ -63,6 +65,28 @@ class ScheduleApi {
   }
 
   static Future<ScheduleData> fetchSchedule({String? termCode}) async {
+    try {
+      return await _fetchSchedule(termCode: termCode);
+    } on ScheduleAuthenticationException {
+      // Ehall 与 IDS 的 Cookie 可以分别过期。课表首次请求发现认证页后，
+      // 用已保存凭据刷新一次 IDS 会话，再完整重试一次原请求链。
+      final outcome = await PortalAutoLogin.instance.restoreSession(
+        force: true,
+      );
+      if (outcome != PortalAutoLoginOutcome.restored) {
+        await LoginStateStore.markLoggedOut();
+        rethrow;
+      }
+      try {
+        return await _fetchSchedule(termCode: termCode);
+      } on ScheduleAuthenticationException {
+        await LoginStateStore.markLoggedOut();
+        rethrow;
+      }
+    }
+  }
+
+  static Future<ScheduleData> _fetchSchedule({String? termCode}) async {
     final client = _ScheduleHttpClient(
       nativeCookieHosts: const <String>{'ids.uwh.edu.cn'},
     );

@@ -36,6 +36,10 @@ void main() {
   // 所以这里都用有界的 pump。
   testWidgets('searching filters across every category', (tester) async {
     await _pumpAppList(tester);
+    expect(find.byType(TextField), findsNothing);
+
+    await _openSearch(tester);
+    expect(find.byType(TextField), findsOneWidget);
 
     await _search(tester, '座位');
 
@@ -50,13 +54,15 @@ void main() {
   testWidgets('clearing the search restores category paging', (tester) async {
     await _pumpAppList(tester);
 
+    await _openSearch(tester);
     await _search(tester, '座位');
     expect(find.byType(PageView), findsNothing);
     expect(find.text('座位预约'), findsOneWidget);
 
-    await _search(tester, '');
+    await tester.tap(find.byTooltip('关闭搜索'));
+    await tester.pumpAndSettle();
 
-    // 分类分页回来，并且还是原来那批应用（「全部」页第一屏）。
+    // 返回关闭搜索后，分类分页回来，并且还是原来那批应用（「全部」页第一屏）。
     expect(find.byType(PageView), findsOneWidget);
     expect(find.text('消费账单'), findsOneWidget);
   });
@@ -70,26 +76,76 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('座位预约'), findsOneWidget);
 
+    await _openSearch(tester);
     await _search(tester, '座位');
-    await _search(tester, '');
+    await tester.tap(find.byTooltip('关闭搜索'));
+    await tester.pumpAndSettle();
 
-    // 清空搜索框要回到原来那个分类，而不是悄悄跳回「全部」——
+    // 关闭搜索要回到原来那个分类，而不是悄悄跳回「全部」——
     // 跳回去的话内容是「全部」、下划线还在「教务」，两边对不上。
     expect(find.text('座位预约'), findsOneWidget);
     expect(find.text('消费账单'), findsNothing);
+  });
+
+  testWidgets('reselecting the tab returns to all apps on the second tap', (
+    tester,
+  ) async {
+    final key = GlobalKey<AppListPageState>();
+    await _pumpAppList(tester, key: key);
+
+    await tester.tap(find.text('教务'));
+    await tester.pumpAndSettle();
+    expect(find.text('座位预约'), findsOneWidget);
+
+    key.currentState!.handleTabReselect();
+    await tester.pump();
+    expect(find.text('座位预约'), findsOneWidget);
+
+    key.currentState!.handleTabReselect();
+    await tester.pumpAndSettle();
+    expect(find.text('消费账单'), findsOneWidget);
+    expect(find.text('座位预约'), findsNothing);
+  });
+
+  testWidgets('search waits for idle input and closes on system back', (
+    tester,
+  ) async {
+    await _pumpAppList(tester);
+    await _openSearch(tester);
+
+    expect(find.text('消费账单'), findsNothing);
+    expect(find.text('座位预约'), findsNothing);
+
+    await tester.enterText(find.byType(TextField), '座位');
+    await tester.pump(const Duration(milliseconds: 900));
+    expect(find.text('座位预约'), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('座位预约'), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(find.byType(TextField), findsNothing);
   });
 }
 
 Future<void> _search(WidgetTester tester, String query) async {
   await tester.enterText(find.byType(TextField), query);
   await tester.pump();
-  await tester.pump(const Duration(milliseconds: 350));
+  await tester.pump(const Duration(seconds: 1));
 }
 
-Future<void> _pumpAppList(WidgetTester tester) async {
+Future<void> _openSearch(WidgetTester tester) async {
+  await tester.tap(find.byTooltip('搜索应用'));
+  await tester.pump();
+}
+
+Future<void> _pumpAppList(WidgetTester tester, {Key? key}) async {
   await tester.pumpWidget(
     MaterialApp(
-      home: Scaffold(body: AppListPage(onOpenApp: (AppEntry app) {})),
+      home: Scaffold(
+        body: AppListPage(key: key, onOpenApp: (AppEntry app) {}),
+      ),
     ),
   );
   for (var i = 0; i < 20 && find.byType(PageView).evaluate().isEmpty; i += 1) {

@@ -19,18 +19,13 @@ class AppTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 0),
         child: Row(
           children: [
-            Container(
+            SizedBox(
               width: 44,
               height: 44,
-              decoration: BoxDecoration(
-                color: app.lightColor,
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: Icon(app.icon, color: app.color, size: 22),
+              child: Center(child: Icon(app.icon, color: app.color, size: 26)),
             ),
             const SizedBox(width: 16),
             Expanded(

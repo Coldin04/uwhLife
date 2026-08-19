@@ -96,6 +96,16 @@ void main() {
     expect(manifest.ios.isNewerThan(buildNumber: '11'), isFalse);
   });
 
+  test('requires android updates only below the minimum supported version', () {
+    final manifest = UpdateManifest.fromJson(
+      jsonDecode(rawManifest) as Map<String, dynamic>,
+    );
+
+    expect(manifest.android.requiresUpdate(buildNumber: '9'), isTrue);
+    expect(manifest.android.requiresUpdate(buildNumber: '10'), isFalse);
+    expect(manifest.android.requiresUpdate(buildNumber: '11'), isFalse);
+  });
+
   test('validates sha256 when a checksum is provided', () async {
     final file = File('${Directory.systemTemp.path}/uwhlife-update-test.apk');
     await file.writeAsString(updatePayload);

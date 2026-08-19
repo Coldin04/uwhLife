@@ -3,6 +3,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/platform/browser_data_cleaner.dart';
 import '../../core/storage/boundary_debug_settings.dart';
+import '../../core/storage/home_page_settings.dart';
 import '../../core/storage/login_state_store.dart';
 import '../../core/storage/paycode_brightness_settings.dart';
 import '../../core/storage/portal_credentials.dart';
@@ -11,10 +12,13 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/external_link.dart';
 import '../../core/utils/route_utils.dart';
 import '../auth/ids_login_page.dart';
+import '../auth/portal_session_cookies.dart';
+import '../message/message_list_page.dart';
 import '../update/android_version_code.dart';
 import '../paycode/pay_result_sheet.dart';
 import '../update/update_dialogs.dart';
 import '../webview/portal_webview_page.dart';
+import 'open_source_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -27,11 +31,6 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
   bool _loggedIn = false;
   String? _userName;
   String? _userAccount;
-  bool _hasSavedPassword = false;
-  bool _boundaryDebugEnabled = false;
-  bool _testingPageVisible = false;
-  PayCodeBrightnessSettings _payCodeBrightness =
-      PayCodeBrightnessSettings.defaults;
 
   @override
   void initState() {
@@ -57,37 +56,12 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
     final loggedIn = await LoginStateStore.readLoggedIn();
     final user = await PortalUserStore.read();
     final creds = await PortalCredentials.read();
-    final boundaryDebug = await BoundaryDebugSettings.read();
-    final payCodeBrightness = await PayCodeBrightnessSettings.read();
     if (!mounted) return;
     setState(() {
-      _payCodeBrightness = payCodeBrightness;
       _loggedIn = loggedIn;
       _userName = user.userName;
       _userAccount = user.userAccount ?? creds?.$1;
-      _hasSavedPassword = creds != null;
-      _boundaryDebugEnabled = boundaryDebug.enabled;
-      _testingPageVisible = boundaryDebug.menuVisible;
     });
-  }
-
-  Future<void> _setPayCodeAutoBoost(bool value) async {
-    await _updatePayCodeBrightness(
-      _payCodeBrightness.copyWith(autoBoost: value),
-    );
-  }
-
-  Future<void> _setPayCodeBoostInDarkMode(bool value) async {
-    await _updatePayCodeBrightness(
-      _payCodeBrightness.copyWith(boostInDarkMode: value),
-    );
-  }
-
-  Future<void> _updatePayCodeBrightness(
-    PayCodeBrightnessSettings settings,
-  ) async {
-    setState(() => _payCodeBrightness = settings);
-    await settings.save();
   }
 
   Future<void> _openPortal() async {
@@ -113,7 +87,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
   }
 
   Future<void> _confirmClearLoginState() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
@@ -139,6 +113,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
     if (confirmed != true) return;
 
     await BrowserDataCleaner.clear();
+    await PortalSessionCookies.clear();
     await LoginStateStore.markManualLogout();
     if (!mounted) return;
     ScaffoldMessenger.of(
@@ -147,83 +122,24 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
     await _refresh();
   }
 
-  Future<void> _confirmDeleteSavedPassword() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('删除已保存的密码'),
-          content: const Text('将删除保存在本机的统一门户账号与密码，下次登录需要重新输入。'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              style: dialogQuietAction(context),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: dialogDangerAction(context),
-              child: const Text('删除'),
-            ),
-          ],
-        );
-      },
-    );
-    if (confirmed != true) return;
-
-    await PortalCredentials.clear();
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('已删除已保存的密码')));
-    await _refresh();
-  }
-
-  Future<void> _setBoundaryDebugEnabled(bool enabled) async {
-    final current = await BoundaryDebugSettings.read();
-    await current.copyWith(enabled: enabled).save();
-    if (!mounted) return;
-    setState(() => _boundaryDebugEnabled = enabled);
-  }
-
-  void _showPaymentSheetTest() {
-    showPayResultSheet(
-      context: context,
-      success: true,
-      money: '12.34',
-      payTypeName: '一码通',
-      primaryLabel: '关闭',
-    );
-  }
-
-  Future<void> _openBoundaryDebugSettings() async {
-    if (!_testingPageVisible) return;
-    if (!_boundaryDebugEnabled) return;
-    if (!mounted) return;
-    await Navigator.of(
-      context,
-    ).push(createSlideFadeRoute(const _BoundaryDebugSettingsPage()));
-    if (!mounted) return;
-    await _refresh();
-  }
-
-  Future<void> _openTestingPage() async {
-    await Navigator.of(context).push(
-      createSlideFadeRoute(
-        _TestingPage(
-          boundaryDebugEnabled: _boundaryDebugEnabled,
-          onBoundaryDebugChanged: _setBoundaryDebugEnabled,
-          onOpenBoundaryDebugSettings: _openBoundaryDebugSettings,
-          onShowPaymentSheetTest: _showPaymentSheetTest,
-        ),
-      ),
-    );
-    if (!mounted) return;
-    await _refresh();
-  }
-
   Future<void> _openAboutPage() async {
     await Navigator.of(context).push(createSlideFadeRoute(const _AboutPage()));
+    if (!mounted) return;
+    await _refresh();
+  }
+
+  Future<void> _openSettingsPage() async {
+    await Navigator.of(
+      context,
+    ).push(createSlideFadeRoute(const _SettingsPage()));
+    if (!mounted) return;
+    await _refresh();
+  }
+
+  Future<void> _openMessagesPage() async {
+    await Navigator.of(
+      context,
+    ).push(createSlideFadeRoute(const MessageListPage(standalone: true)));
     if (!mounted) return;
     await _refresh();
   }
@@ -258,168 +174,248 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
     final subtitleColor = isDark
         ? const Color(0xFFBEBEBE)
         : const Color(0xFF777777);
-    // 头像不再是「绿色圆底 + 白色小人」两层，直接用 account_circle 这一个实心字形，
-    // 和底部导航「我的」那个 tab 是同一个图标，只是尺寸大、颜色取灰。
+    final avatarBackground = isDark
+        ? const Color(0xFF2A2A2C)
+        : const Color(0xFFF5F5F5);
     final avatarIconColor = isDark
-        ? const Color(0xFF565656)
-        : const Color(0xFFC7C7C7);
+        ? const Color(0xFFB7B7BA)
+        : const Color(0xFFBDBDBD);
     final accountText = _loggedIn
-        ? (hasUserName && hasUserAccount ? _userAccount!.trim() : null)
-        : '点击进入统一门户登录';
+        ? (hasUserAccount ? _userAccount!.trim() : '点击登录以访问更多功能')
+        : '点击登录以访问更多功能';
 
     return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
-        children: [
-          Text(
-            '我的',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: titleColor,
-              fontWeight: wBold,
-              letterSpacing: -0.8,
-            ),
-          ),
-          const SizedBox(height: 22),
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: _openPortal,
-              onLongPress: _confirmClearLoginState,
-              borderRadius: BorderRadius.circular(18),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.account_circle,
-                      size: 60,
-                      color: avatarIconColor,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: wBold,
-                              color: titleColor,
-                              height: 1.2,
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          MediaQuery.paddingOf(context).top + 12,
+          20,
+          20,
+        ),
+        child: Column(
+          children: [
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _openPortal,
+                onLongPress: _confirmClearLoginState,
+                borderRadius: BorderRadius.circular(18),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 28,
+                        backgroundColor: avatarBackground,
+                        child: Icon(
+                          Icons.person_rounded,
+                          size: 28,
+                          color: avatarIconColor,
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: titleColor,
+                                height: 1.2,
+                              ),
                             ),
-                          ),
-                          if (accountText != null) ...[
                             const SizedBox(height: 6),
                             Text(
                               accountText,
                               style: TextStyle(
                                 color: subtitleColor,
-                                fontSize: 13,
+                                fontSize: 14,
                                 height: 1.3,
                               ),
                             ),
                           ],
-                        ],
+                        ),
                       ),
-                    ),
-                    Icon(Icons.chevron_right_rounded, color: subtitleColor),
-                  ],
+                      Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 16,
+                        color: subtitleColor,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 22),
-          if (_loggedIn || _hasSavedPassword) ...[
-            if (_loggedIn)
+            const SizedBox(height: 22),
+            if (_loggedIn) ...[
               _ProfileActionRow(
                 icon: Icons.logout_rounded,
                 iconColor: const Color(0xFFD44848),
                 title: '退出登录',
                 onTap: _confirmClearLoginState,
               ),
-            if (_hasSavedPassword)
-              _ProfileActionRow(
-                icon: Icons.lock_reset_rounded,
-                iconColor: const Color(0xFFD44848),
-                title: '删除已保存的密码',
-                onTap: _confirmDeleteSavedPassword,
-              ),
-            const SizedBox(height: 10),
-          ],
-          _ProfileActionRow(
-            icon: Icons.brightness_high_rounded,
-            iconColor: subtitleColor,
-            title: '付款码自动增亮',
-            trailing: Switch.adaptive(
-              value: _payCodeBrightness.autoBoost,
-              onChanged: _setPayCodeAutoBoost,
-            ),
-          ),
-          _ProfileActionRow(
-            icon: Icons.nightlight_round,
-            iconColor: subtitleColor,
-            title: '深色模式下增亮',
-            trailing: Switch.adaptive(
-              value: _payCodeBrightness.boostInDarkMode,
-              // 总开关关掉后这项没有意义，一并置灰。
-              onChanged: _payCodeBrightness.autoBoost
-                  ? _setPayCodeBoostInDarkMode
-                  : null,
-            ),
-          ),
-          const SizedBox(height: 10),
-          _ProfileActionRow(
-            icon: Icons.system_update_alt_rounded,
-            iconColor: subtitleColor,
-            title: '检查更新',
-            onTap: () => UpdateDialogs.checkAndShow(context),
-          ),
-          _ProfileActionRow(
-            icon: Icons.info_outline_rounded,
-            iconColor: subtitleColor,
-            title: '关于',
-            onTap: _openAboutPage,
-            onLongPress: _resetBoundaryDebugDefaultsIfVisible,
-          ),
-          if (_testingPageVisible) ...[
+              const SizedBox(height: 10),
+            ],
             _ProfileActionRow(
-              icon: Icons.science_outlined,
+              icon: Icons.mail_outline_rounded,
               iconColor: subtitleColor,
-              title: '测试与调试',
-              onTap: _openTestingPage,
+              title: '我的消息',
+              onTap: _openMessagesPage,
+            ),
+            _ProfileActionRow(
+              icon: Icons.settings_outlined,
+              iconColor: subtitleColor,
+              title: '设置',
+              onTap: _openSettingsPage,
+            ),
+            _ProfileActionRow(
+              icon: Icons.info_outline_rounded,
+              iconColor: subtitleColor,
+              title: '关于',
+              onTap: _openAboutPage,
+              onLongPress: _resetBoundaryDebugDefaultsIfVisible,
             ),
           ],
-        ],
+        ),
       ),
     );
   }
 }
 
-class _TestingPage extends StatefulWidget {
-  const _TestingPage({
-    required this.boundaryDebugEnabled,
-    required this.onBoundaryDebugChanged,
-    required this.onOpenBoundaryDebugSettings,
-    required this.onShowPaymentSheetTest,
-  });
-
-  final bool boundaryDebugEnabled;
-  final ValueChanged<bool> onBoundaryDebugChanged;
-  final VoidCallback onOpenBoundaryDebugSettings;
-  final VoidCallback onShowPaymentSheetTest;
+class _SettingsPage extends StatefulWidget {
+  const _SettingsPage();
 
   @override
-  State<_TestingPage> createState() => _TestingPageState();
+  State<_SettingsPage> createState() => _SettingsPageState();
 }
 
-class _TestingPageState extends State<_TestingPage> {
-  late bool _boundaryDebugEnabled = widget.boundaryDebugEnabled;
+class _SettingsPageState extends State<_SettingsPage> {
+  bool _loading = true;
+  bool _hasSavedPassword = false;
+  bool _boundaryDebugEnabled = false;
+  bool _mockScheduleHint = false;
+  bool _testingPageVisible = false;
+  HomePageSettings _homePageSettings = HomePageSettings.defaults;
+  PayCodeBrightnessSettings _payCodeBrightness =
+      PayCodeBrightnessSettings.defaults;
 
-  Future<void> _setBoundaryDebugEnabled(bool value) async {
-    widget.onBoundaryDebugChanged(value);
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    final credentialsFuture = PortalCredentials.read();
+    final payCodeBrightnessFuture = PayCodeBrightnessSettings.read();
+    final boundaryDebugFuture = BoundaryDebugSettings.read();
+    final homePageSettingsFuture = HomePageSettings.read();
+    final credentials = await credentialsFuture;
+    final payCodeBrightness = await payCodeBrightnessFuture;
+    final boundaryDebug = await boundaryDebugFuture;
+    final homePageSettings = await homePageSettingsFuture;
     if (!mounted) return;
-    setState(() => _boundaryDebugEnabled = value);
+    setState(() {
+      _hasSavedPassword = credentials != null;
+      _payCodeBrightness = payCodeBrightness;
+      _boundaryDebugEnabled = boundaryDebug.enabled;
+      _mockScheduleHint = boundaryDebug.mockScheduleHint;
+      _testingPageVisible = boundaryDebug.menuVisible;
+      _homePageSettings = homePageSettings;
+      _loading = false;
+    });
+  }
+
+  Future<void> _setPayCodeAutoBoost(bool value) async {
+    await _savePayCodeBrightness(_payCodeBrightness.copyWith(autoBoost: value));
+  }
+
+  Future<void> _setPayCodeBoostInDarkMode(bool value) async {
+    await _savePayCodeBrightness(
+      _payCodeBrightness.copyWith(boostInDarkMode: value),
+    );
+  }
+
+  Future<void> _savePayCodeBrightness(
+    PayCodeBrightnessSettings settings,
+  ) async {
+    setState(() => _payCodeBrightness = settings);
+    await settings.save();
+  }
+
+  Future<void> _setBoundaryDebugEnabled(bool enabled) async {
+    final current = await BoundaryDebugSettings.read();
+    await current.copyWith(enabled: enabled).save();
+    if (!mounted) return;
+    setState(() => _boundaryDebugEnabled = enabled);
+  }
+
+  Future<void> _setMockScheduleHint(bool enabled) async {
+    final current = await BoundaryDebugSettings.read();
+    await current.copyWith(mockScheduleHint: enabled).save();
+    if (!mounted) return;
+    setState(() => _mockScheduleHint = enabled);
+  }
+
+  void _showPaymentSheetTest() {
+    showPayResultSheet(
+      context: context,
+      success: true,
+      money: '12.34',
+      payTypeName: '一码通',
+      primaryLabel: '关闭',
+    );
+  }
+
+  Future<void> _openBoundaryDebugSettings() async {
+    if (!_boundaryDebugEnabled) return;
+    await Navigator.of(
+      context,
+    ).push(createSlideFadeRoute(const _BoundaryDebugSettingsPage()));
+    if (!mounted) return;
+    await _load();
+  }
+
+  Future<void> _setHomeIconOnlyMode(bool value) async {
+    final next = _homePageSettings.copyWith(iconOnlyMode: value);
+    setState(() => _homePageSettings = next);
+    await next.save();
+  }
+
+  Future<void> _confirmDeleteSavedPassword() async {
+    final confirmed = await showAppDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('删除已保存的密码'),
+          content: const Text('将删除保存在本机的统一门户账号与密码，下次登录需要重新输入。'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              style: dialogQuietAction(context),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: dialogDangerAction(context),
+              child: const Text('删除'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true) return;
+
+    await PortalCredentials.clear();
+    if (!mounted) return;
+    setState(() => _hasSavedPassword = false);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('已删除已保存的密码')));
   }
 
   @override
@@ -429,33 +425,128 @@ class _TestingPageState extends State<_TestingPage> {
     final subtitleColor = isDark
         ? const Color(0xFFBEBEBE)
         : const Color(0xFF777777);
+    final pageBackground = appBackground(theme.brightness);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('测试与调试')),
+      backgroundColor: pageBackground,
+      appBar: AppBar(
+        title: const Text('设置'),
+        backgroundColor: pageBackground,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        shadowColor: Colors.transparent,
+      ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-          children: [
-            _ProfileActionRow(
-              icon: Icons.bug_report_outlined,
-              iconColor: _boundaryDebugEnabled ? brandGreen : subtitleColor,
-              title: '边界测试',
-              onTap: _boundaryDebugEnabled
-                  ? widget.onOpenBoundaryDebugSettings
-                  : null,
-              trailing: Switch.adaptive(
-                value: _boundaryDebugEnabled,
-                onChanged: _setBoundaryDebugEnabled,
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : ListView(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+                children: [
+                  Text(
+                    '首页',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: subtitleColor,
+                      fontWeight: wMedium,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  _ProfileActionRow(
+                    icon: Icons.text_fields_rounded,
+                    iconColor: subtitleColor,
+                    title: 'icon 无字模式',
+                    trailing: Switch.adaptive(
+                      value: _homePageSettings.iconOnlyMode,
+                      onChanged: _setHomeIconOnlyMode,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  Text(
+                    '付款码',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: subtitleColor,
+                      fontWeight: wMedium,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  _ProfileActionRow(
+                    icon: Icons.brightness_high_rounded,
+                    iconColor: subtitleColor,
+                    title: '付款码自动增亮',
+                    trailing: Switch.adaptive(
+                      value: _payCodeBrightness.autoBoost,
+                      onChanged: _setPayCodeAutoBoost,
+                    ),
+                  ),
+                  _ProfileActionRow(
+                    icon: Icons.nightlight_round,
+                    iconColor: subtitleColor,
+                    title: '深色模式下增亮',
+                    trailing: Switch.adaptive(
+                      value: _payCodeBrightness.boostInDarkMode,
+                      onChanged: _payCodeBrightness.autoBoost
+                          ? _setPayCodeBoostInDarkMode
+                          : null,
+                    ),
+                  ),
+                  if (_hasSavedPassword) ...[
+                    const SizedBox(height: 22),
+                    Text(
+                      '账号与安全',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: subtitleColor,
+                        fontWeight: wMedium,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    _ProfileActionRow(
+                      icon: Icons.lock_reset_rounded,
+                      iconColor: const Color(0xFFD44848),
+                      title: '删除已保存的密码',
+                      onTap: _confirmDeleteSavedPassword,
+                    ),
+                  ],
+                  if (_testingPageVisible) ...[
+                    const SizedBox(height: 22),
+                    Text(
+                      '测试与调试',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: subtitleColor,
+                        fontWeight: wMedium,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    _ProfileActionRow(
+                      icon: Icons.bug_report_outlined,
+                      iconColor: _boundaryDebugEnabled
+                          ? brandGreen
+                          : subtitleColor,
+                      title: '边界测试',
+                      onTap: _boundaryDebugEnabled
+                          ? _openBoundaryDebugSettings
+                          : null,
+                      trailing: Switch.adaptive(
+                        value: _boundaryDebugEnabled,
+                        onChanged: _setBoundaryDebugEnabled,
+                      ),
+                    ),
+                    _ProfileActionRow(
+                      icon: Icons.receipt_long_rounded,
+                      iconColor: subtitleColor,
+                      title: '测试支付成功弹窗',
+                      onTap: _showPaymentSheetTest,
+                    ),
+                    _ProfileActionRow(
+                      icon: Icons.view_agenda_outlined,
+                      iconColor: _mockScheduleHint ? brandGreen : subtitleColor,
+                      title: '预览首页课表卡片',
+                      trailing: Switch.adaptive(
+                        value: _mockScheduleHint,
+                        onChanged: _setMockScheduleHint,
+                      ),
+                    ),
+                  ],
+                ],
               ),
-            ),
-            _ProfileActionRow(
-              icon: Icons.receipt_long_rounded,
-              iconColor: subtitleColor,
-              title: '测试支付成功弹窗',
-              onTap: widget.onShowPaymentSheetTest,
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -569,70 +660,97 @@ class _AboutPageState extends State<_AboutPage> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final titleColor = theme.colorScheme.onSurface;
-    final subtitleColor = isDark
-        ? const Color(0xFFBEBEBE)
-        : const Color(0xFF777777);
+    final versionColor = isDark
+        ? const Color(0xFF9CA3AF) // Tailwind gray-400
+        : const Color(0xFF6B7280); // Tailwind gray-500
+    final pageBackground = appBackground(theme.brightness);
 
     return Scaffold(
-      appBar: AppBar(),
+      backgroundColor: pageBackground,
+      appBar: AppBar(
+        backgroundColor: pageBackground,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        shadowColor: Colors.transparent,
+      ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Center(
-            child: Column(
-              children: [
-                const Spacer(flex: 2),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(22),
-                  child: Image.asset(
-                    'icon.png',
-                    width: 88,
-                    height: 88,
-                    fit: BoxFit.cover,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.only(top: 32, bottom: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    image: const DecorationImage(
+                      image: AssetImage('icon.png'),
+                      fit: BoxFit.cover,
+                    ),
+                    boxShadow: [
+                      if (!isDark)
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 18),
-                Text(
+              ),
+              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
                   '芜忧皖江',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.titleMedium?.copyWith(
+                  style: TextStyle(
                     color: titleColor,
                     fontWeight: wBold,
+                    fontSize: 28,
+                    letterSpacing: -0.5,
                   ),
                 ),
-                const SizedBox(height: 8),
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _handleVersionTap,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 18,
-                    ),
-                    child: Text(
-                      '版本 $_versionText',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: subtitleColor,
-                        height: 1.4,
-                      ),
+              ),
+              const SizedBox(height: 4),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _handleVersionTap,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    'Version $_versionText',
+                    style: TextStyle(
+                      color: versionColor,
+                      fontSize: 14,
+                      letterSpacing: 0.2,
                     ),
                   ),
                 ),
-                const Spacer(flex: 5),
-                _AboutLinkRow(
-                  title: '官方网站',
-                  value: 'uwh.cold04.com',
-                  onTap: () => _openLink('https://uwh.cold04.com'),
-                ),
-                _AboutLinkRow(
-                  title: 'GitHub',
-                  value: 'github.com/Coldin04/uwhLife',
-                  onTap: () => _openLink('https://github.com/Coldin04/uwhLife'),
-                ),
-                const SizedBox(height: 12),
-              ],
-            ),
+              ),
+              const SizedBox(height: 32),
+              _AboutActionRow(
+                title: '检查更新',
+                onTap: () => UpdateDialogs.checkAndShow(context),
+              ),
+              _AboutActionRow(
+                title: '开源声明',
+                onTap: () => Navigator.of(
+                  context,
+                ).push(createSlideFadeRoute(const OpenSourcePage())),
+              ),
+              const SizedBox(height: 8),
+              _AboutActionRow(
+                title: '官网',
+                onTap: () => _openLink('https://uwh.cold04.com'),
+              ),
+              _AboutActionRow(
+                title: 'GitHub',
+                onTap: () => _openLink('https://github.com/Coldin04/uwhLife'),
+              ),
+            ],
           ),
         ),
       ),
@@ -640,55 +758,27 @@ class _AboutPageState extends State<_AboutPage> {
   }
 }
 
-class _AboutLinkRow extends StatelessWidget {
-  const _AboutLinkRow({
-    required this.title,
-    required this.value,
-    required this.onTap,
-  });
+class _AboutActionRow extends StatelessWidget {
+  const _AboutActionRow({required this.title, required this.onTap});
 
   final String title;
-  final String value;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final primaryColor = theme.colorScheme.onSurface;
-    final secondaryColor = isDark
-        ? const Color(0xFFBEBEBE)
-        : const Color(0xFF777777);
+    final color = Theme.of(context).colorScheme.onSurface;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 4),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: primaryColor,
-                      fontWeight: wMedium,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    value,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: secondaryColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right_rounded, color: secondaryColor),
-          ],
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
+        child: Text(
+          title,
+          style: TextStyle(
+            color: color,
+            fontSize: 16,
+            fontWeight: FontWeight.w400,
+          ),
         ),
       ),
     );

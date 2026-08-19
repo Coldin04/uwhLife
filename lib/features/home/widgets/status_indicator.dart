@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 
 enum LoginStatus { loggedIn, loggedOut }
@@ -20,31 +22,46 @@ class StatusIndicator extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    const dotColor = Color(0xFFD44848);
-
+    // 跟首页圆形入口用同一套毛玻璃：模糊 + 一层极淡的白，不再套一圈实心
+    // 深色方块背景——那个纯色底跟首页其它控件的玻璃质感不是一回事。
     return Material(
       color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        onLongPress: onLongPress,
-        child: Container(
-          width: 28,
-          height: 28,
-          alignment: Alignment.center,
-          child: Container(
-            width: 8,
-            height: 8,
+      shape: const CircleBorder(),
+      child: ClipOval(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: DecoratedBox(
             decoration: BoxDecoration(
-              color: dotColor,
+              color: Colors.white.withValues(alpha: 0.16),
               shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: dotColor.withValues(alpha: 0.18),
-                  blurRadius: 10,
-                  spreadRadius: 3,
+            ),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: onTap,
+              onLongPress: onLongPress,
+              child: const SizedBox(
+                width: 36,
+                height: 36,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Icon(
+                      Icons.person_outline_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    Positioned(
+                      right: 4,
+                      bottom: 4,
+                      child: Icon(
+                        Icons.priority_high_rounded,
+                        color: Colors.white,
+                        size: 10,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),

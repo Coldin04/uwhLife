@@ -24,8 +24,6 @@ class UpdateDialogs {
     if (automatic) {
       if (_automaticCheckShown) return;
       _automaticCheckShown = true;
-      if (await checkCooldown.shouldSkipAutomaticCheck()) return;
-      if (!context.mounted) return;
     }
 
     final messenger = ScaffoldMessenger.maybeOf(context);
@@ -57,20 +55,29 @@ class UpdateDialogs {
     if (Platform.isAndroid) {
       final update = manifest.android;
       final hasUpdate = update.isNewerThan(buildNumber: info.buildNumber);
-      final forceUpdate = update.requiresUpdate(buildNumber: info.buildNumber);
-      if (!hasUpdate && !forceUpdate) {
+      final belowMinimum = update.requiresUpdate(buildNumber: info.buildNumber);
+      final forceUpdate = update.mandatory;
+      if (!hasUpdate && !belowMinimum) {
         await service.cleanupStaleAndroidApks();
         if (!automatic) {
           messenger?.showSnackBar(const SnackBar(content: Text('当前已是最新版本')));
         }
         return;
       }
+      // Mandatory and below-minimum updates must be checked on every launch.
+      if (automatic &&
+          !belowMinimum &&
+          !forceUpdate &&
+          await checkCooldown.shouldSkipAutomaticCheck()) {
+        return;
+      }
+      if (!context.mounted) return;
       await _showAndroidUpdateDialog(
         context,
         service: service,
         cooldown: checkCooldown,
         update: update,
-        forceUpdate: update.mandatory,
+        forceUpdate: forceUpdate,
       );
       return;
     }
@@ -83,6 +90,8 @@ class UpdateDialogs {
         }
         return;
       }
+      if (automatic && await checkCooldown.shouldSkipAutomaticCheck()) return;
+      if (!context.mounted) return;
       await _showIosUpdateDialog(context, update, cooldown: checkCooldown);
     }
   }
@@ -94,7 +103,7 @@ class UpdateDialogs {
     required AndroidUpdateInfo update,
     required bool forceUpdate,
   }) {
-    return showDialog<void>(
+    return showAppDialog<void>(
       context: context,
       barrierDismissible: !forceUpdate,
       builder: (dialogContext) {
@@ -134,7 +143,7 @@ class UpdateDialogs {
     IosUpdateInfo update, {
     required UpdateCheckCooldown cooldown,
   }) {
-    return showDialog<void>(
+    return showAppDialog<void>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
@@ -164,7 +173,7 @@ class UpdateDialogs {
     UpdateService service,
     AndroidUpdateInfo update,
   ) async {
-    final file = await showDialog<File?>(
+    final file = await showAppDialog<File?>(
       context: context,
       barrierDismissible: false,
       builder: (context) =>
@@ -177,7 +186,7 @@ class UpdateDialogs {
     final canInstall = await ApkInstaller.canRequestPackageInstalls();
     if (!context.mounted) return;
     if (!canInstall) {
-      await showDialog<void>(
+      await showAppDialog<void>(
         context: context,
         barrierDismissible: false,
         builder: (dialogContext) => _InstallPermissionDialog(

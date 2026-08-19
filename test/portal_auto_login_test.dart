@@ -67,6 +67,24 @@ void main() {
       expect(recorder.attempts, 0);
     });
 
+    test('can refresh IDS even while the portal session is still healthy',
+        () async {
+      final recorder = _Recorder();
+      final autoLogin = _autoLogin(
+        recorder,
+        result: _authenticated,
+        loggedIn: true,
+      );
+
+      expect(
+        await autoLogin.restoreSession(force: true),
+        PortalAutoLoginOutcome.restored,
+      );
+      expect(recorder.attempts, 1);
+      expect(recorder.syncedCookies, isTrue);
+      expect(recorder.markedLoggedIn, isTrue);
+    });
+
     test('does nothing after the user logged out on purpose', () async {
       final recorder = _Recorder();
       final autoLogin = _autoLogin(

@@ -50,6 +50,15 @@ class IdsLoginResult {
   final HttpCookieJar? _cookieJar;
   final Uri? _service;
 
+  /// Copies the authenticated HTTP session into a caller-owned jar. The jar
+  /// stays in memory only; callers must not serialize it as credentials.
+  bool copyCookiesTo(HttpCookieJar target) {
+    final cookieJar = _cookieJar;
+    if (cookieJar == null) return false;
+    cookieJar.copyTo(target);
+    return true;
+  }
+
   Future<void> syncCookiesToWebView() async {
     final cookieJar = _cookieJar;
     final service = _service;
@@ -309,6 +318,60 @@ class HttpCookieJar {
         .join('; ');
   }
 
+  /// Copies all currently valid cookies into [target], replacing cookies with
+  /// the same name/domain/path scope there.
+  void copyTo(HttpCookieJar target) {
+    _discardExpired();
+    for (final cookie in _cookies) {
+      target._cookies.removeWhere((existing) => existing.sameScope(cookie));
+      target._cookies.add(cookie);
+    }
+  }
+
+  /// Copies only cookies that can be sent to [uri]. Returns whether any
+  /// session cookie was available for that URI.
+  bool copyMatchingTo(Uri uri, HttpCookieJar target) {
+    _discardExpired();
+    final matching = _cookies.where((cookie) => cookie.matches(uri));
+    var copied = false;
+    for (final cookie in matching) {
+      target._cookies.removeWhere((existing) => existing.sameScope(cookie));
+      target._cookies.add(cookie);
+      copied = true;
+    }
+    return copied;
+  }
+
+  /// Encrypted persistence is owned by the session module. This encoding
+  /// contains only cookie attributes needed to rebuild request headers.
+  String encodeForSecureStorage() {
+    _discardExpired();
+    return jsonEncode(<String, Object?>{
+      'version': 1,
+      'cookies': _cookies.map((cookie) => cookie.toJson()).toList(),
+    });
+  }
+
+  static HttpCookieJar? decodeFromSecureStorage(String raw) {
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map || decoded['version'] != 1) return null;
+      final values = decoded['cookies'];
+      if (values is! List) return null;
+      final jar = HttpCookieJar();
+      for (final value in values) {
+        if (value is! Map) continue;
+        final cookie = _StoredCookie.fromJson(value);
+        if (cookie == null || cookie.expired) continue;
+        jar._cookies.removeWhere((existing) => existing.sameScope(cookie));
+        jar._cookies.add(cookie);
+      }
+      return jar;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> syncToWebView(Iterable<Uri> urls) async {
     _discardExpired();
     for (final uri in urls) {
@@ -362,6 +425,37 @@ class _StoredCookie {
   final bool secure;
   final bool httpOnly;
   final DateTime? expires;
+
+  static _StoredCookie? fromJson(Map value) {
+    final name = value['name']?.toString() ?? '';
+    final valueText = value['value']?.toString() ?? '';
+    final domain = value['domain']?.toString().toLowerCase() ?? '';
+    final path = value['path']?.toString() ?? '';
+    if (name.isEmpty || domain.isEmpty || path.isEmpty) return null;
+    final expiresText = value['expires']?.toString();
+    final expires = expiresText == null || expiresText.isEmpty
+        ? null
+        : DateTime.tryParse(expiresText);
+    return _StoredCookie(
+      name: name,
+      value: valueText,
+      domain: domain,
+      path: path,
+      secure: value['secure'] == true,
+      httpOnly: value['httpOnly'] == true,
+      expires: expires,
+    );
+  }
+
+  Map<String, Object?> toJson() => <String, Object?>{
+    'name': name,
+    'value': value,
+    'domain': domain,
+    'path': path,
+    'secure': secure,
+    'httpOnly': httpOnly,
+    'expires': expires?.toIso8601String(),
+  };
 
   bool get expired => expires != null && !expires!.isAfter(DateTime.now());
 

@@ -26,6 +26,7 @@ class PortalWebViewPage extends StatefulWidget {
     required this.icon,
     required this.initialUrl,
     this.credentialAutofillHost = 'ids.uwh.edu.cn',
+    this.autoRecoverIdsSession = true,
     this.topSafeArea = true,
     this.bottomSafeArea = true,
     this.accentColor,
@@ -40,6 +41,11 @@ class PortalWebViewPage extends StatefulWidget {
   /// 以及登录态自动追踪。默认 `ids.uwh.edu.cn`（统一身份认证 CAS 登录页），
   /// 因此任意页面（付款码/洗浴/智慧课堂）跳到 ids 都会触发。
   final String? credentialAutofillHost;
+
+  /// 服务页被重定向到 IDS 登录页后，尝试用已保存的凭据恢复一次 IDS
+  /// 会话，再重放原始 URL。用户主动打开的网页登录页应关闭此项，避免
+  /// 覆盖用户手动填写的意图。
+  final bool autoRecoverIdsSession;
 
   /// true 时 WebView 会留出顶部状态栏的安全区，不会铺到刘海/灵动岛/通知栏下面。
   /// 默认 true。少数沉浸式 H5（自带顶栏）可以传 false 关掉。
@@ -75,6 +81,9 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
   DateTime? _launchOverlayShownAt;
   HybridBleBridge? _bleBridge;
   Timer? _statusBarResampleTimer;
+  Timer? _idsRecoveryTimer;
+  bool _idsRecoveryAttempted = false;
+  bool _recoveringIdsSession = false;
 
   /// 网页顶部区域的明暗，用来决定状态栏图标颜色；null 表示还没采样到。
   Brightness? _pageTopBrightness;
@@ -83,6 +92,7 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
   void dispose() {
     _launchOverlayDelayTimer?.cancel();
     _statusBarResampleTimer?.cancel();
+    _idsRecoveryTimer?.cancel();
     final bleBridge = _bleBridge;
     if (bleBridge != null) {
       unawaited(bleBridge.dispose());
@@ -629,12 +639,11 @@ JSON.stringify({
     return uri.host.toLowerCase() == host.toLowerCase();
   }
 
-  /// 根据当前 WebView 导航到的 URL 自动维护登录态：
-  /// - 落在 `ids.uwh.edu.cn/authserver/login*` → 说明被踢回登录页，标记已登出
-  /// - 落在 `ehall.uwh.edu.cn` → 说明 SSO 通过，标记已登录 7 天
+  /// 把 IDS 登录页视为“认证链仍在进行”，而非立即视为登出。
   ///
-  /// 任何 WebView 页面（门锁 / 付款码 / 洗浴 / 智慧课堂）都会经过这里，
-  /// 所以即使不是从右上角入口进的统一门户，也能正确同步状态。
+  /// Ehall 的 Cookie 与 IDS 的 SSO Cookie 独立失效：服务页可能短暂跳到
+  /// IDS 后又自动带票据回到 Ehall。只有该页停在 IDS 并且一次恢复失败，
+  /// 才更新全局状态为未登录；回到 Ehall 时才确认登录成功。
   Future<void> _trackLoginTransition(String url) async {
     final uri = Uri.tryParse(url);
     if (uri == null) return;
@@ -642,17 +651,71 @@ JSON.stringify({
     final path = uri.path.toLowerCase();
 
     if (host == 'ids.uwh.edu.cn' && path.contains('/authserver/login')) {
-      await LoginStateStore.markLoggedOut();
+      // 已刷新过 Cookie 并重放过当前 service，仍停在 IDS 才能确认认证失效。
+      if (_idsRecoveryAttempted && !_recoveringIdsSession) {
+        await LoginStateStore.markLoggedOut();
+        return;
+      }
       return;
     }
     if (host == 'ehall.uwh.edu.cn') {
+      _idsRecoveryTimer?.cancel();
+      _idsRecoveryAttempted = false;
       await LoginStateStore.markLoggedIn();
       await BrowserDataCleaner.persistCookies();
     }
   }
 
+  void _scheduleIdsSessionRecovery(String loginUrl) {
+    if (!widget.autoRecoverIdsSession || _idsRecoveryAttempted) return;
+    _idsRecoveryTimer?.cancel();
+    _idsRecoveryTimer = Timer(const Duration(milliseconds: 900), () {
+      unawaited(_recoverIdsSessionIfStillNeeded(loginUrl));
+    });
+  }
+
+  Future<void> _recoverIdsSessionIfStillNeeded(String loginUrl) async {
+    if (!mounted ||
+        _recoveringIdsSession ||
+        _idsRecoveryAttempted ||
+        _lastUrl != loginUrl) {
+      return;
+    }
+    _idsRecoveryAttempted = true;
+    _recoveringIdsSession = true;
+    try {
+      // force=true 很关键：Ehall 可能仍有可用 Cookie，但 IDS SSO 已失效。
+      final outcome = await PortalAutoLogin.instance.restoreSession(
+        force: true,
+      );
+      if (!mounted) return;
+      if (outcome == PortalAutoLoginOutcome.restored) {
+        // 新 Cookie 已同步到 WebView；重新访问原始 service URL，让 CAS 按
+        // 原服务签发票据，而不是把用户留在 IDS 表单页。
+        await _controller.loadRequest(Uri.parse(loginUrl));
+        return;
+      }
+      await LoginStateStore.markLoggedOut();
+    } finally {
+      _recoveringIdsSession = false;
+    }
+  }
+
   Future<void> _maybeAutofill(String url) async {
     if (!_isAutofillUrl(url)) return;
+
+    // URL 只能说明到了 IDS 域名；只有实际出现统一认证登录表单时，
+    // 才把它当成“需要认证”的候选。这样 IDS 的个人设置页等其它页面
+    // 不会触发掉线恢复。
+    final formResult = await _controller.runJavaScriptReturningResult(
+      _idsLoginFormScript,
+    );
+    final hasIdsLoginForm = _isJsTrue(formResult);
+    if (!hasIdsLoginForm) return;
+
+    if (widget.autoRecoverIdsSession) {
+      _scheduleIdsSessionRecovery(url);
+    }
 
     // 1) 始终注入捕获脚本，监听用户点击登录按钮 / 提交表单时的明文。
     await _controller.runJavaScript(_captureScript);
@@ -664,6 +727,15 @@ JSON.stringify({
     final saved = await PortalCredentials.read();
     if (saved == null) return;
     await _controller.runJavaScript(_buildFillScript(saved.$1, saved.$2));
+  }
+
+  bool _isJsTrue(Object result) {
+    final normalized = result
+        .toString()
+        .trim()
+        .replaceAll('"', '')
+        .toLowerCase();
+    return result == true || normalized == 'true';
   }
 
   Future<void> _handleCredentialsCaptured(String raw) async {
@@ -688,7 +760,7 @@ JSON.stringify({
     if (!mounted) return;
     _promptingSave = true;
     final isUpdate = existing != null;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (ctx) {
         return AlertDialog(
@@ -1985,6 +2057,19 @@ JSON.stringify({
     }, true);
   }
 })();
+''';
+
+  static const String _idsLoginFormScript = r'''
+(function(){
+  var form = document.querySelector('form#pwdFromId') ||
+             document.querySelector('form[action*="/authserver/login"]');
+  if (!form) return false;
+  var u = form.querySelector('#username') ||
+          form.querySelector('input[name="username"]');
+  var p = form.querySelector('#password') ||
+          form.querySelector('input[type="password"]');
+  return !!(u && p);
+})()
 ''';
 
   String _buildFillScript(String username, String password) {

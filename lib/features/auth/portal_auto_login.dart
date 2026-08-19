@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../core/storage/login_state_store.dart';
 import '../../core/storage/portal_credentials.dart';
 import 'ids_http_auth.dart';
+import 'portal_session_cookies.dart';
 
 typedef IdsLoginCall =
     Future<IdsLoginResult> Function({
@@ -59,11 +60,17 @@ class PortalAutoLogin {
   @visibleForTesting
   bool get attempted => _attempted;
 
-  Future<PortalAutoLoginOutcome> restoreSession() async {
+  /// Uses the saved password to establish a fresh IDS + portal session.
+  ///
+  /// [force] is for the case where an Ehall cookie still works but the IDS
+  /// SSO cookie has expired. In that state the portal can look healthy while
+  /// a service redirect leaves the user at the IDS login page, so the normal
+  /// `loggedIn` shortcut must not suppress the single recovery attempt.
+  Future<PortalAutoLoginOutcome> restoreSession({bool force = false}) async {
     if (_running) return PortalAutoLoginOutcome.skipped;
     _running = true;
     try {
-      if (await _readLoggedIn()) {
+      if (!force && await _readLoggedIn()) {
         // 会话恢复正常，下次掉线时重新获得一次重试机会。
         _attempted = false;
         return PortalAutoLoginOutcome.skipped;
@@ -109,7 +116,8 @@ class PortalAutoLogin {
     );
   }
 
-  static Future<void> _defaultSyncCookies(IdsLoginResult result) {
-    return result.syncCookiesToWebView();
+  static Future<void> _defaultSyncCookies(IdsLoginResult result) async {
+    await PortalSessionCookies.rememberLogin(result);
+    await result.syncCookiesToWebView();
   }
 }

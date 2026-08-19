@@ -8,6 +8,7 @@ class BoundaryDebugSettings {
     required this.latitudeBd09,
     required this.address,
     required this.city,
+    this.mockScheduleHint = false,
   });
 
   static const targetPattern =
@@ -19,6 +20,7 @@ class BoundaryDebugSettings {
   static const _latitudeKey = 'boundary_debug_lat_bd09';
   static const _addressKey = 'boundary_debug_address';
   static const _cityKey = 'boundary_debug_city';
+  static const _mockScheduleHintKey = 'boundary_debug_mock_schedule_hint';
 
   static const defaults = BoundaryDebugSettings(
     enabled: false,
@@ -27,6 +29,7 @@ class BoundaryDebugSettings {
     latitudeBd09: 31.36830,
     address: '安徽省芜湖市鸠江区靠近芜湖学院图书馆',
     city: '芜湖市',
+    mockScheduleHint: false,
   );
 
   final bool enabled;
@@ -35,6 +38,7 @@ class BoundaryDebugSettings {
   final double latitudeBd09;
   final String address;
   final String city;
+  final bool mockScheduleHint;
 
   BoundaryDebugSettings copyWith({
     bool? enabled,
@@ -43,6 +47,7 @@ class BoundaryDebugSettings {
     double? latitudeBd09,
     String? address,
     String? city,
+    bool? mockScheduleHint,
   }) {
     return BoundaryDebugSettings(
       enabled: enabled ?? this.enabled,
@@ -51,6 +56,7 @@ class BoundaryDebugSettings {
       latitudeBd09: latitudeBd09 ?? this.latitudeBd09,
       address: address ?? this.address,
       city: city ?? this.city,
+      mockScheduleHint: mockScheduleHint ?? this.mockScheduleHint,
     );
   }
 
@@ -63,6 +69,8 @@ class BoundaryDebugSettings {
       latitudeBd09: prefs.getDouble(_latitudeKey) ?? defaults.latitudeBd09,
       address: prefs.getString(_addressKey) ?? defaults.address,
       city: prefs.getString(_cityKey) ?? defaults.city,
+      mockScheduleHint:
+          prefs.getBool(_mockScheduleHintKey) ?? defaults.mockScheduleHint,
     );
   }
 
@@ -74,6 +82,7 @@ class BoundaryDebugSettings {
     await prefs.setDouble(_latitudeKey, latitudeBd09);
     await prefs.setString(_addressKey, address);
     await prefs.setString(_cityKey, city);
+    await prefs.setBool(_mockScheduleHintKey, mockScheduleHint);
   }
 
   static Future<void> resetToDefaults({bool menuVisible = false}) async {

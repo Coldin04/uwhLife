@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:ui';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,7 +13,6 @@ import '../apps/app_list_page.dart';
 import '../apps/models/app_entry.dart';
 import '../auth/ids_login_page.dart';
 import '../home/home_page.dart';
-import '../message/message_list_page.dart';
 import '../paycode/paycode_screen.dart';
 import '../profile/profile_page.dart';
 import '../schedule/schedule_page.dart';
@@ -37,12 +36,11 @@ class _RootPageState extends State<RootPage>
   );
 
   final _homeKey = GlobalKey<HomePageState>();
+  final _appsKey = GlobalKey<AppListPageState>();
+  final _scheduleKey = GlobalKey<SchedulePageState>();
   // 切 tab 只该动 IndexedStack 和底栏，不该重建 RootPage 整棵树 —— 四个页面
   // 都挂在 IndexedStack 上，setState 一次就是四棵子树全部重建。
   final ValueNotifier<int> _currentIndex = ValueNotifier<int>(0);
-  // 消息页是首次切过去才开始加载，用一个只会 false→true 的开关代替原来的
-  // `active: _currentIndex == 2`，这样页面本身可以只 new 一次。
-  final ValueNotifier<bool> _messageTabActive = ValueNotifier<bool>(false);
   late final List<Widget> _pages;
   int _previousIndex = 0;
   late final AnimationController _animController;
@@ -78,8 +76,8 @@ class _RootPageState extends State<RootPage>
         onOpenClassroom: _openClassroom,
         onOpenBath: _openBath,
       ),
-      AppListPage(onOpenApp: _openAppEntry),
-      MessageListPage(active: _messageTabActive),
+      AppListPage(key: _appsKey, onOpenApp: _openAppEntry),
+      SchedulePage(key: _scheduleKey),
       const ProfilePage(),
     ];
     _initDeepLinks();
@@ -91,7 +89,6 @@ class _RootPageState extends State<RootPage>
     _deepLinkSub?.cancel();
     _animController.dispose();
     _currentIndex.dispose();
-    _messageTabActive.dispose();
     super.dispose();
   }
 
@@ -140,10 +137,18 @@ class _RootPageState extends State<RootPage>
   }
 
   void _switchTab(int index) {
-    if (index == _currentIndex.value) return;
+    if (index == _currentIndex.value) {
+      switch (index) {
+        case 1:
+          _appsKey.currentState?.handleTabReselect();
+        case 2:
+          _scheduleKey.currentState?.handleTabReselect();
+      }
+      return;
+    }
     _previousIndex = _currentIndex.value;
     _currentIndex.value = index;
-    if (index == 2) _messageTabActive.value = true;
+    if (index == 0) unawaited(_homeKey.currentState?.refreshDebugSettings());
     final goingRight = index > _previousIndex;
     _slideAnimation =
         Tween<Offset>(
@@ -221,9 +226,7 @@ class _RootPageState extends State<RootPage>
   }
 
   Future<void> _openSchedule() async {
-    await Navigator.of(
-      context,
-    ).push(createSlideFadeRoute(const SchedulePage()));
+    _switchTab(2);
   }
 
   Future<void> _openClassroom() async {
@@ -329,7 +332,7 @@ class _RootPageBackground extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Bottom nav bar with a sliding pill indicator
+// Standard bottom navigation bar
 // ---------------------------------------------------------------------------
 
 class _NavItem {
@@ -340,10 +343,12 @@ class _NavItem {
 
 const _items = [
   _NavItem(Icons.home_outlined, Icons.home_rounded),
-  _NavItem(Icons.apps_outlined, Icons.apps_rounded),
-  _NavItem(Icons.mail_outlined, Icons.mail_rounded),
+  _NavItem(Icons.widgets_outlined, Icons.widgets_rounded),
+  _NavItem(Icons.calendar_month_outlined, Icons.calendar_month_rounded),
   _NavItem(Icons.account_circle_outlined, Icons.account_circle),
 ];
+
+const _itemLabels = ['首页', '应用', '课表', '我的'];
 
 class _SlidingNavBar extends StatelessWidget {
   const _SlidingNavBar({
@@ -360,112 +365,83 @@ class _SlidingNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final inactiveColor = isDark
-        ? const Color(0xFFDEDEDE)
+    // 首页背景是照片，跟另外三个纯色页面的主题背景不是一回事：那三页
+    // 的底栏跟着系统主题走（浅色主题=浅色底栏）没问题，但停在首页时,
+    // 底栏得跟首页那几个圆形入口用同一套「不取色、不叠黑，只用极淡的
+    // 白磨砂 + 白图标白文字」的玻璃质感，否则会跟首页整体风格脱节。
+    final onHomeTab = currentIndex == 0;
+    final inactiveColor = onHomeTab
+        ? Colors.white.withValues(alpha: 0.62)
+        : isDark
+        ? const Color(0xFF7D8798)
+        : const Color(0xFF6B7280);
+    final activeColor = onHomeTab || isDark
+        ? Colors.white
         : const Color(0xFF111827);
-    final activeColor = isDark
-        ? const Color(0xFF1B7F44)
-        : const Color(0xFF22C55E);
     final bottomPadding = MediaQuery.of(context).padding.bottom;
-    final bottomOuterMargin = bottomPadding + 8;
 
-    // 悬浮胶囊（仿 iOS 26）：四周留外边距浮在内容之上，靠毛玻璃透出下层。
-    // 外边距 / 圆角 / 高度都不要动，动了就不悬浮了。
-    const radius = BorderRadius.all(Radius.circular(28));
-
-    return Container(
-      height: 72 + bottomPadding,
-      padding: EdgeInsets.fromLTRB(16, 8, 16, bottomOuterMargin),
-      color: Colors.transparent,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final tabWidth = constraints.maxWidth / _items.length;
-          // 投影必须画在 ClipRRect 外面。之前它挂在被裁剪的 DecoratedBox 上，
-          // 直接被裁掉了 —— 结果胶囊只有毛玻璃、没有落影，透出的背景反而让它
-          // 看着像陷在内容下层。这里在外层单独铺一层投影把它抬起来。
-          return DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: radius,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.44 : 0.16),
-                  blurRadius: 24,
-                  spreadRadius: -6,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: radius,
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    // 深色下不再拿黑色当底：页面底色本来就接近纯黑，压黑之后胶囊
-                    // 整条看着像挖了个洞。换成中等灰、透明度高一点，抬起来一档。
-                    color: isDark
-                        ? const Color(0xFF4A4A4A).withValues(alpha: 0.62)
-                        : Colors.white.withValues(alpha: 0.36),
-                    // 描边只去掉了原来的浅绿（0xFFBDEFCF），换成同透明度的中性色，
-                    // 胶囊的形状和毛玻璃质感保持不变。
-                    border: Border.all(
-                      color: (isDark ? Colors.white : Colors.black).withValues(
-                        alpha: isDark ? 0.08 : 0.10,
-                      ),
-                      width: 1,
-                    ),
-                    borderRadius: radius,
-                  ),
-                  child: Stack(
-                    children: [
-                      AnimatedPositioned(
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.easeOutCubic,
-                        left: tabWidth * currentIndex + (tabWidth - 64) / 2,
-                        top: 12,
-                        child: Container(
-                          width: 64,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: activeColor,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                      ),
-                      Row(
-                        children: List.generate(_items.length, (i) {
-                          final selected = i == currentIndex;
-                          return Expanded(
-                            child: GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: () => onTap(i),
-                              child: SizedBox(
-                                height: 56,
-                                child: Center(
-                                  child: Icon(
-                                    selected
-                                        ? _items[i].activeIcon
-                                        : _items[i].icon,
-                                    color: selected
-                                        ? (isDark
-                                              ? const Color(0xFFBFF7D0)
-                                              : Colors.white)
-                                        : inactiveColor,
-                                    size: 24,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-                    ],
-                  ),
-                ),
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          // 比之前缩短 5px；图标组同步上移 5px，保持其相对屏幕位置。
+          height: 66 + bottomPadding,
+          padding: EdgeInsets.only(bottom: bottomPadding + 3),
+          decoration: BoxDecoration(
+            color: onHomeTab
+                ? Colors.white.withValues(alpha: 0.16)
+                : isDark
+                ? const Color(0xFF0B0E13).withValues(alpha: 0.62)
+                : scheme.surface.withValues(alpha: 0.56),
+            border: Border(
+              top: BorderSide(
+                color: (onHomeTab || isDark ? Colors.white : Colors.black)
+                    .withValues(alpha: 0.08),
               ),
             ),
-          );
-        },
+          ),
+          child: Row(
+            children: List.generate(_items.length, (i) {
+              final selected = i == currentIndex;
+              final color = selected ? activeColor : inactiveColor;
+              return Expanded(
+                child: Semantics(
+                  button: true,
+                  selected: selected,
+                  label: _itemLabels[i],
+                  child: InkWell(
+                    onTap: () => onTap(i),
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 1, bottom: 3),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            selected ? _items[i].activeIcon : _items[i].icon,
+                            color: color,
+                            size: 24,
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            _itemLabels[i],
+                            style: TextStyle(
+                              color: color,
+                              fontSize: 11,
+                              fontWeight: selected
+                                  ? FontWeight.w500
+                                  : FontWeight.w400,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
       ),
     );
   }

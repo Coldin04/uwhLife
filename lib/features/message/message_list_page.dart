@@ -19,11 +19,12 @@ const List<Color> _avatarColors = [
 ];
 
 class MessageListPage extends StatefulWidget {
-  const MessageListPage({super.key, required this.active});
+  const MessageListPage({super.key, this.active, this.standalone = false});
 
-  /// 消息 tab 是否已经被打开过。RootPage 把页面只 new 一次挂在 IndexedStack 上，
-  /// 所以「首次进入才加载」这件事靠监听它、而不是靠 didUpdateWidget 比较。
-  final ValueListenable<bool> active;
+  /// RootPage 以前用它延迟消息 tab 的首次加载；独立的“我的消息”页面不传该值，
+  /// 会在创建后立即加载。
+  final ValueListenable<bool>? active;
+  final bool standalone;
 
   @override
   State<MessageListPage> createState() => _MessageListPageState();
@@ -37,27 +38,36 @@ class _MessageListPageState extends State<MessageListPage> {
   @override
   void initState() {
     super.initState();
-    widget.active.addListener(_handleActiveChanged);
-    if (widget.active.value) _loadFromCacheOrFetch();
+    final active = widget.active;
+    if (active == null) {
+      _loadFromCacheOrFetch();
+    } else {
+      active.addListener(_handleActiveChanged);
+      if (active.value) _loadFromCacheOrFetch();
+    }
   }
 
   @override
   void didUpdateWidget(covariant MessageListPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.active == widget.active) return;
-    oldWidget.active.removeListener(_handleActiveChanged);
-    widget.active.addListener(_handleActiveChanged);
-    _handleActiveChanged();
+    oldWidget.active?.removeListener(_handleActiveChanged);
+    widget.active?.addListener(_handleActiveChanged);
+    if (widget.active == null) {
+      _loadFromCacheOrFetch();
+    } else {
+      _handleActiveChanged();
+    }
   }
 
   @override
   void dispose() {
-    widget.active.removeListener(_handleActiveChanged);
+    widget.active?.removeListener(_handleActiveChanged);
     super.dispose();
   }
 
   void _handleActiveChanged() {
-    if (!widget.active.value || _categories != null) return;
+    if (widget.active?.value != true || _categories != null) return;
     _loadFromCacheOrFetch();
   }
 
@@ -125,21 +135,22 @@ class _MessageListPageState extends State<MessageListPage> {
         ? const Color(0xFFBEBEBE)
         : const Color(0xFF777777);
 
-    return SafeArea(
+    final content = SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-            child: Text(
-              '消息',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                color: titleColor,
-                fontWeight: wBold,
-                letterSpacing: -0.8,
+          if (!widget.standalone)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+              child: Text(
+                '我的消息',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  color: titleColor,
+                  fontWeight: wBold,
+                  letterSpacing: -0.8,
+                ),
               ),
             ),
-          ),
           Expanded(
             child: _initialLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -193,6 +204,11 @@ class _MessageListPageState extends State<MessageListPage> {
           ),
         ],
       ),
+    );
+    if (!widget.standalone) return content;
+    return Scaffold(
+      appBar: AppBar(title: const Text('我的消息')),
+      body: content,
     );
   }
 }

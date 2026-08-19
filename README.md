@@ -45,7 +45,7 @@ uwhLife / 芜忧皖江 是一个面向芜湖学院校园生活场景的 Flutter 
 ├── scripts/
 │   └── package_unsigned_ipa.sh
 ├── test/                     # Flutter widget/unit tests
-├── web/                      # 未来 GitHub Pages / 项目主页占位目录
+├── web/                      # GitHub Pages / 项目主页占位目录
 ├── .github/workflows/        # CI 与正式 tag 自动构建流程
 ├── pubspec.yaml              # Flutter 依赖与资源声明
 └── pubspec.lock              # 锁定依赖版本
@@ -167,9 +167,9 @@ macOS 可使用以下命令生成 Base64 内容：
 base64 -i uwhlife-release.keystore | tr -d '\n'
 ```
 
-## 未来 Web 页面
+## Web 页面
 
-`web/` 目录已预留给未来项目主页、GitHub Pages 或下载页。当前它只是静态内容占位，不参与 Flutter 移动端构建。
+`web/` 目录是项目主页（下载页）。当前它只是静态内容占位，不参与 Flutter 移动端构建。
 
 ## 发布前检查
 

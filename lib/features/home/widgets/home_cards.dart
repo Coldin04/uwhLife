@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 
 const FontWeight _homeBold = FontWeight.w500;
@@ -95,6 +97,117 @@ class SecondaryFeatureCard extends StatelessWidget {
         onTap: onTap,
         child: Center(child: Icon(icon, color: foregroundColor, size: 28)),
       ),
+    );
+  }
+}
+
+/// 首页底部的快捷入口：圆形图标配一行简短标题，适合在背景图上继续复用。
+class CircularFeatureButton extends StatelessWidget {
+  const CircularFeatureButton({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.backgroundColor,
+    required this.foregroundColor,
+    required this.onTap,
+    this.status,
+    this.busy = false,
+    this.labelColor,
+    this.micaOpacity,
+    this.iconOnly = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final Color backgroundColor;
+  final Color foregroundColor;
+  final VoidCallback? onTap;
+  final String? status;
+  final bool busy;
+  final Color? labelColor;
+  final double? micaOpacity;
+  final bool iconOnly;
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleStatus = status?.trim();
+    final resolvedLabelColor = labelColor ?? foregroundColor;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Transform.translate(
+          offset: Offset(0, iconOnly ? 8 : 0),
+          child: Material(
+            color: Colors.transparent,
+            shape: const CircleBorder(),
+            child: ClipOval(
+              child: BackdropFilter(
+                // 跟底栏（_SlidingNavBar）用同一套毛玻璃参数：同样的模糊
+                // 半径，不叠投影、不描边，纯粹靠模糊 + 半透明色块。之前这里
+                // 多了一圈黑色投影，糊在照片上会在圆形边缘晕出一圈脏兮兮的
+                // 暗环，在饱和度高的背景上格外明显（被形容成"发绿发脏"）。
+                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: backgroundColor.withValues(
+                      alpha:
+                          micaOpacity ??
+                          (backgroundColor.computeLuminance() > 0.5
+                              ? 0.52
+                              : 0.72),
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: onTap,
+                    child: SizedBox(
+                      width: 64,
+                      height: 64,
+                      child: Center(
+                        child: busy
+                            ? SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: foregroundColor,
+                                ),
+                              )
+                            : Icon(icon, color: foregroundColor, size: 27),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        if (!iconOnly) ...[
+          const SizedBox(height: 6),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: resolvedLabelColor,
+              fontSize: 12,
+              fontWeight: _homeSemiBold,
+            ),
+          ),
+        ],
+        if (!iconOnly && visibleStatus != null && visibleStatus.isNotEmpty) ...[
+          const SizedBox(height: 2),
+          Text(
+            visibleStatus,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: resolvedLabelColor.withValues(alpha: 0.7),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

@@ -5,7 +5,10 @@ import 'dart:io';
 import 'package:html/parser.dart' as html_parser;
 
 import '../../core/platform/browser_data_cleaner.dart';
+import '../../core/storage/login_state_store.dart';
 import '../auth/ids_http_auth.dart';
+import '../auth/portal_auto_login.dart';
+import '../auth/portal_session_cookies.dart';
 
 enum DoorOpenStatus { opened, needsLogin, failed }
 
@@ -28,7 +31,23 @@ class DoorOpenResult {
 class DoorApi {
   const DoorApi._();
 
-  static Future<DoorOpenResult> openDoor() => DoorApiClient().openDoor();
+  static Future<DoorOpenResult> openDoor() async {
+    final first = await DoorApiClient().openDoor();
+    if (first.status != DoorOpenStatus.needsLogin) return first;
+
+    // 门锁服务会单独走一次 CAS。即使 Ehall 仍能打开，也可能是 IDS
+    // 的 SSO Cookie 先失效；刷新成功后只重放一次开门请求。
+    final outcome = await PortalAutoLogin.instance.restoreSession(force: true);
+    if (outcome == PortalAutoLoginOutcome.restored) {
+      final retried = await DoorApiClient().openDoor();
+      if (retried.status == DoorOpenStatus.needsLogin) {
+        await LoginStateStore.markLoggedOut();
+      }
+      return retried;
+    }
+    await LoginStateStore.markLoggedOut();
+    return first;
+  }
 }
 
 class DoorApiClient {
@@ -95,6 +114,10 @@ class DoorApiClient {
   }
 
   Future<void> _loadBrowserCookies(Uri uri) async {
+    // Native IDS login leaves a fresh cookie jar in memory. Prefer it for the
+    // service request; browser cookies remain a compatibility fallback for a
+    // manual WebView login, captcha flow, or a process restarted afterwards.
+    if (await PortalSessionCookies.seedFor(uri, _cookies)) return;
     final header = await BrowserDataCleaner.getCookies(url: uri.toString());
     _cookies.addCookieHeader(uri, header);
   }

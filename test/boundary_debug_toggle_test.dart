@@ -6,6 +6,8 @@ import 'package:package_info_plus_platform_interface/package_info_platform_inter
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:uwhlife/core/storage/boundary_debug_settings.dart';
+import 'package:uwhlife/core/storage/paycode_brightness_settings.dart';
+import 'package:uwhlife/core/storage/portal_credentials.dart';
 import 'package:uwhlife/features/profile/profile_page.dart';
 
 void main() {
@@ -58,7 +60,7 @@ void main() {
     },
   );
 
-  testWidgets('testing page row is hidden until version taps enable it', (
+  testWidgets('testing settings are hidden until version taps enable them', (
     tester,
   ) async {
     await BoundaryDebugSettings.defaults
@@ -74,20 +76,26 @@ void main() {
     await tester.pageBack();
     await tester.pumpAndSettle();
 
+    expect(find.text('测试与调试'), findsNothing);
+
+    await tester.tap(find.text('设置'));
+    await tester.pumpAndSettle();
+
     expect(find.text('测试与调试'), findsOneWidget);
+    expect(find.text('边界测试'), findsOneWidget);
+    expect(find.text('测试支付成功弹窗'), findsOneWidget);
+    expect(find.text('预览首页课表卡片'), findsOneWidget);
   });
 
-  testWidgets('about page shows official website and GitHub links', (
+  testWidgets('about page shows update and open-source actions', (
     tester,
   ) async {
     await _pumpProfile(tester);
     await tester.tap(find.text('关于'));
     await tester.pumpAndSettle();
 
-    expect(find.text('官方网站'), findsOneWidget);
-    expect(find.text('uwh.cold04.com'), findsOneWidget);
-    expect(find.text('GitHub'), findsOneWidget);
-    expect(find.text('github.com/Coldin04/uwhLife'), findsOneWidget);
+    expect(find.text('检查更新'), findsOneWidget);
+    expect(find.text('开源声明'), findsOneWidget);
   });
 
   testWidgets(
@@ -163,6 +171,46 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets(
+    'profile groups credential and payment-code controls in settings',
+    (tester) async {
+      await PortalCredentials.save('20240001', 'saved-password');
+      await const PayCodeBrightnessSettings(
+        autoBoost: true,
+        boostInDarkMode: true,
+      ).save();
+
+      await _pumpProfile(tester);
+
+      expect(find.text('设置'), findsOneWidget);
+      expect(find.text('测试与调试'), findsNothing);
+      expect(find.text('删除已保存的密码'), findsNothing);
+      expect(find.text('付款码自动增亮'), findsNothing);
+      expect(find.text('深色模式下增亮'), findsNothing);
+
+      await tester.tap(find.text('设置'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('删除已保存的密码'), findsOneWidget);
+      expect(find.text('付款码自动增亮'), findsOneWidget);
+      expect(find.text('深色模式下增亮'), findsOneWidget);
+    },
+  );
+
+  testWidgets('settings renders sections from persisted state', (tester) async {
+    await PortalCredentials.save('20240001', 'saved-password');
+    await BoundaryDebugSettings.defaults
+        .copyWith(menuVisible: true, enabled: true)
+        .save();
+
+    await _pumpProfile(tester);
+    await tester.tap(find.text('设置'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text('账号与安全'), findsOneWidget);
+    expect(find.text('测试与调试'), findsOneWidget);
+  });
 }
 
 Future<void> _pumpProfile(WidgetTester tester) async {
@@ -173,7 +221,7 @@ Future<void> _pumpProfile(WidgetTester tester) async {
 }
 
 Future<void> _tapVersionTimes(WidgetTester tester, int count) async {
-  final versionFinder = find.textContaining('版本');
+  final versionFinder = find.textContaining('Version');
   expect(versionFinder, findsOneWidget);
   for (var i = 0; i < count; i += 1) {
     await tester.tap(versionFinder);

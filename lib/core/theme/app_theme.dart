@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 
 // 全局字体是内置的阿里普惠体，pubspec 里只声明了 400 / 500 / 700 三个字重，
@@ -10,7 +12,7 @@ const Color brandGreen = Color(0xFF22C55E);
 /// 全局页面底色。所有页面（含首页）都不再铺绿色渐变，统一纯色。
 /// 取值就是原来那套渐变的末端色，所以内容区观感和 v1.5.0 一致。
 Color appBackground(Brightness brightness) =>
-    brightness == Brightness.dark ? const Color(0xFF040404) : Colors.white;
+    brightness == Brightness.dark ? const Color(0xFF111827) : Colors.white;
 
 // ---------------------------------------------------------------------------
 // MD2 风格弹窗
@@ -27,12 +29,47 @@ DialogThemeData buildDialogTheme(Brightness brightness) {
   final isDark = brightness == Brightness.dark;
   return DialogThemeData(
     // M3 默认会把种子色当 surfaceTint 混进弹窗背景，弹窗因此整体泛绿。
-    // 这里直接给纯白/纯深底并关掉 tint。
-    backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+    // 这里直接给纯白/gray-700 并关掉 tint。
+    backgroundColor: isDark ? const Color(0xFF374151) : Colors.white,
     surfaceTintColor: Colors.transparent,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.all(Radius.circular(8)),
     ),
+  );
+}
+
+/// 统一的 App 对话框路由：淡化背景，并保留少量内容轮廓，减少突兀感。
+Future<T?> showAppDialog<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  bool barrierDismissible = true,
+  bool useRootNavigator = true,
+  RouteSettings? routeSettings,
+}) {
+  return showGeneralDialog<T>(
+    context: context,
+    barrierDismissible: barrierDismissible,
+    barrierLabel: barrierDismissible
+        ? MaterialLocalizations.of(context).modalBarrierDismissLabel
+        : null,
+    barrierColor: Colors.black.withValues(alpha: 0.24),
+    transitionDuration: const Duration(milliseconds: 180),
+    useRootNavigator: useRootNavigator,
+    routeSettings: routeSettings,
+    pageBuilder: (dialogContext, _, _) {
+      return SizedBox.expand(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+          child: SafeArea(child: Builder(builder: builder)),
+        ),
+      );
+    },
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+        child: child,
+      );
+    },
   );
 }
 
