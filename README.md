@@ -1,7 +1,7 @@
 # uwhLife / 芜忧芜院
 
 <p align="center">
-  <img src="assets/branding/app-icon_light_clean.png" alt="uwhLife 应用图标" width="144">
+  <img src="web/assets/app-icon.png" alt="uwhLife 应用图标" width="144">
 </p>
 
 > 本项目使用 vibe coding 方式编写。
