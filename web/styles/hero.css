@@ -2,7 +2,7 @@
 .hero-layout { width: min(100%, 1030px); margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) 360px; align-items: center; gap: clamp(56px, 11vw, 150px); }
 .hero-copy { padding-block: 42px; }
 h1 { margin-bottom: 0; font-size: 78px; font-weight: 700; line-height: 1.08; letter-spacing: 0; }
-h1 span { display: block; background: linear-gradient(105deg, var(--brand), var(--mint) 53%, var(--teal)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+h1 span { display: block; color: var(--ink); }
 .hero-tagline { margin: 24px 0 28px; color: #6b7280; font-size: 18px; line-height: 1.5; }
 
 .download-actions { width: fit-content; max-width: 100%; display: flex; flex-wrap: wrap; gap: 20px; }
