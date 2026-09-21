@@ -13,6 +13,7 @@ import '../../core/storage/login_state_store.dart';
 import '../../core/storage/portal_user_store.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/ids_http_auth.dart';
+import '../auth/ids_login_form.dart';
 import '../auth/portal_auto_login.dart';
 import '../auth/portal_session_cookies.dart';
 import '../door/door_api.dart';
@@ -426,9 +427,7 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   bool _isIdsLoginResult(({String body, String url}) result) {
-    final uri = Uri.tryParse(result.url);
-    return uri?.host.toLowerCase() == 'ids.uwh.edu.cn' &&
-        uri?.path.toLowerCase().contains('/authserver/login') == true;
+    return isIdsLoginForm(url: result.url, body: result.body);
   }
 
   Future<bool> _syncPortalUser(({String body, String url}) result) async {

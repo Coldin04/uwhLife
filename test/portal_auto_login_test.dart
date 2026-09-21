@@ -67,23 +67,25 @@ void main() {
       expect(recorder.attempts, 0);
     });
 
-    test('can refresh IDS even while the portal session is still healthy',
-        () async {
-      final recorder = _Recorder();
-      final autoLogin = _autoLogin(
-        recorder,
-        result: _authenticated,
-        loggedIn: true,
-      );
+    test(
+      'can refresh IDS even while the portal session is still healthy',
+      () async {
+        final recorder = _Recorder();
+        final autoLogin = _autoLogin(
+          recorder,
+          result: _authenticated,
+          loggedIn: true,
+        );
 
-      expect(
-        await autoLogin.restoreSession(force: true),
-        PortalAutoLoginOutcome.restored,
-      );
-      expect(recorder.attempts, 1);
-      expect(recorder.syncedCookies, isTrue);
-      expect(recorder.markedLoggedIn, isTrue);
-    });
+        expect(
+          await autoLogin.restoreSession(force: true),
+          PortalAutoLoginOutcome.restored,
+        );
+        expect(recorder.attempts, 1);
+        expect(recorder.syncedCookies, isTrue);
+        expect(recorder.markedLoggedIn, isTrue);
+      },
+    );
 
     test('does nothing after the user logged out on purpose', () async {
       final recorder = _Recorder();
@@ -121,6 +123,22 @@ void main() {
       expect(await autoLogin.restoreSession(), PortalAutoLoginOutcome.skipped);
       expect(recorder.attempts, 1);
       expect(recorder.markedLoggedIn, isFalse);
+    });
+
+    test('shares a concurrent recovery attempt', () async {
+      final recorder = _Recorder();
+      final autoLogin = _autoLogin(recorder, result: _authenticated);
+
+      final results = await Future.wait([
+        autoLogin.restoreSession(force: true),
+        autoLogin.restoreSession(force: true),
+      ]);
+
+      expect(results, [
+        PortalAutoLoginOutcome.restored,
+        PortalAutoLoginOutcome.restored,
+      ]);
+      expect(recorder.attempts, 1);
     });
 
     test('does not retry when a captcha is required', () async {

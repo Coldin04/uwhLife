@@ -55,7 +55,7 @@ class PortalAutoLogin {
   final Future<void> Function(IdsLoginResult result) _syncCookies;
 
   bool _attempted = false;
-  bool _running = false;
+  Future<PortalAutoLoginOutcome>? _restoreFuture;
 
   @visibleForTesting
   bool get attempted => _attempted;
@@ -67,38 +67,45 @@ class PortalAutoLogin {
   /// a service redirect leaves the user at the IDS login page, so the normal
   /// `loggedIn` shortcut must not suppress the single recovery attempt.
   Future<PortalAutoLoginOutcome> restoreSession({bool force = false}) async {
-    if (_running) return PortalAutoLoginOutcome.skipped;
-    _running = true;
+    final running = _restoreFuture;
+    if (running != null) return running;
+
+    final future = _restoreSession(force: force);
+    _restoreFuture = future;
     try {
-      if (!force && await _readLoggedIn()) {
-        // 会话恢复正常，下次掉线时重新获得一次重试机会。
-        _attempted = false;
-        return PortalAutoLoginOutcome.skipped;
-      }
-      if (_attempted) return PortalAutoLoginOutcome.skipped;
-      if (await _readManualLogout()) return PortalAutoLoginOutcome.skipped;
-      final credentials = await _readCredentials();
-      if (credentials == null) return PortalAutoLoginOutcome.skipped;
-
-      _attempted = true;
-      final result = await _login(
-        username: credentials.$1,
-        password: credentials.$2,
-        service: serviceUri,
-      );
-      if (result.status != IdsLoginStatus.authenticated) {
-        debugPrint('[PortalAutoLogin] failed: ${result.status.name}');
-        return PortalAutoLoginOutcome.failed;
-      }
-
-      await _syncCookies(result);
-      await _markLoggedIn();
-      _attempted = false;
-      debugPrint('[PortalAutoLogin] session restored');
-      return PortalAutoLoginOutcome.restored;
+      return await future;
     } finally {
-      _running = false;
+      if (identical(_restoreFuture, future)) _restoreFuture = null;
     }
+  }
+
+  Future<PortalAutoLoginOutcome> _restoreSession({required bool force}) async {
+    if (!force && await _readLoggedIn()) {
+      // 会话恢复正常，下次掉线时重新获得一次重试机会。
+      _attempted = false;
+      return PortalAutoLoginOutcome.skipped;
+    }
+    if (_attempted) return PortalAutoLoginOutcome.skipped;
+    if (await _readManualLogout()) return PortalAutoLoginOutcome.skipped;
+    final credentials = await _readCredentials();
+    if (credentials == null) return PortalAutoLoginOutcome.skipped;
+
+    _attempted = true;
+    final result = await _login(
+      username: credentials.$1,
+      password: credentials.$2,
+      service: serviceUri,
+    );
+    if (result.status != IdsLoginStatus.authenticated) {
+      debugPrint('[PortalAutoLogin] failed: ${result.status.name}');
+      return PortalAutoLoginOutcome.failed;
+    }
+
+    await _syncCookies(result);
+    await _markLoggedIn();
+    _attempted = false;
+    debugPrint('[PortalAutoLogin] session restored');
+    return PortalAutoLoginOutcome.restored;
   }
 
   /// 账号密码变更等场景下重新放开一次重试机会。
