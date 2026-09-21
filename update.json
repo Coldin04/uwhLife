@@ -25,27 +25,20 @@
       "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v2.0.1/UWHLife_android_x86_64.apk"
     },
     "sha256ByAbi": {
-      "armeabi-v7a": "3d576eca8b8085de51e1d0b0ebf19a681a83aaea566f3372ebc5eef7e318963c",
-      "arm64-v8a": "944a2248fd4cf4c77eb16f5803ef63f6b5c4d76b323c4544b6b060c0d453c1d2",
-      "x86_64": "b21eaab2b66446cb6b3d6426c3bb4a8d9e7fdf04a59c416835737bb928084c18"
+      "armeabi-v7a": "d4ab0d8a2ae21f696f70a7ced6563825726276eec58b884c6c4e18d9b72575e4",
+      "arm64-v8a": "e51e624dbb119c8b91ee8580f8a05d08b13df8004224ef7874274b0bae568fc1",
+      "x86_64": "7e574672b3dd4e0c7e3ad8555dbdca2a8618914425c0bc5e1bd19df4584a3553"
     },
-    "sha256": "944a2248fd4cf4c77eb16f5803ef63f6b5c4d76b323c4544b6b060c0d453c1d2"
+    "sha256": "e51e624dbb119c8b91ee8580f8a05d08b13df8004224ef7874274b0bae568fc1"
   },
   "ios": {
-    "versionName": "2.0.0",
-    "buildVersion": "30",
-    "title": "v2.0.0 更新",
+    "versionName": "2.0.1",
+    "buildVersion": "31",
+    "title": "v2.0.1 更新",
     "notes": [
-      "现在，全新的视觉设计让界面焕然一新，让你能够更轻松地使用软件的各项功能",
-      "现在，全新的首页排布设计，让你一撇既可一目了然的获得信息",
-      "课表页现在在底栏独立，你可以更方便的查看课表信息",
-      "我的页面得到优化，设置页现在页更加清晰了",
-      "启动屏幕得到重新设计，避免白屏等待",
-      "优化了应用的性能体验，提升了软件的流畅度",
-      "重新设计了登录和认证流程，尽可能避免登录失效的bug情况",
+      "消息提醒现在有红点提示了",
       "优化了门锁的使用体验，增强功能稳定性",
-      "修复了一些已知问题",
-      "请注意，部分功能受限于测试，将在下一版本推出"
+      "修复了一些已知问题"
     ],
     "altSourceUrl": "https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/main/source.json"
   }
