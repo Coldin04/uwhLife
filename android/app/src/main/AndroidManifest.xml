@@ -16,8 +16,16 @@
         android:label="芜忧芜院"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:enableOnBackInvokedCallback="true"
         android:networkSecurityConfig="@xml/network_security_config">
+        <!-- Android 8+ uses the adaptive layers above; pre-26 keeps the raster icon. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_uwh" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/app_icon_background" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
