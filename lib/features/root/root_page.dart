@@ -14,6 +14,7 @@ import '../apps/app_list_page.dart';
 import '../apps/models/app_entry.dart';
 import '../auth/ids_login_page.dart';
 import '../home/home_page.dart';
+import '../message/message_api.dart';
 import '../paycode/paycode_screen.dart';
 import '../profile/profile_page.dart';
 import '../schedule/schedule_page.dart';
@@ -66,6 +67,8 @@ class _RootPageState extends State<RootPage>
       end: Offset.zero,
     ).animate(_fadeAnimation);
     _animController.value = 1.0;
+    LoginStateStore.notifier.addListener(_onLoginStateChanged);
+    unawaited(_preloadMessageBadges());
     // 首页首帧直接挂载；其它 tab 第一次打开时才挂载，挂载后继续保活。
     _pages = <Widget>[
       HomePage(
@@ -101,9 +104,22 @@ class _RootPageState extends State<RootPage>
   void dispose() {
     _deepLinkSub?.cancel();
     _automaticUpdateTimer?.cancel();
+    LoginStateStore.notifier.removeListener(_onLoginStateChanged);
     _animController.dispose();
     _currentIndex.dispose();
     super.dispose();
+  }
+
+  Future<void> _preloadMessageBadges() async {
+    if (await LoginStateStore.readLoggedIn()) MessageApi.preload();
+  }
+
+  void _onLoginStateChanged() {
+    if (LoginStateStore.notifier.value) {
+      MessageApi.preload();
+    } else {
+      MessageApi.reset();
+    }
   }
 
   Future<void> _initDeepLinks() async {
@@ -319,14 +335,19 @@ class _RootPageState extends State<RootPage>
           ],
         ),
         bottomNavigationBar: RepaintBoundary(
-          child: ValueListenableBuilder<int>(
-            valueListenable: _currentIndex,
-            builder: (context, index, _) => _SlidingNavBar(
-              currentIndex: index,
-              onTap: _switchTab,
-              isDark: isDark,
-              scheme: scheme,
-            ),
+          child: ValueListenableBuilder<bool>(
+            valueListenable: MessageApi.hasUnreadMessages,
+            builder: (context, hasUnreadMessages, _) =>
+                ValueListenableBuilder<int>(
+                  valueListenable: _currentIndex,
+                  builder: (context, index, _) => _SlidingNavBar(
+                    currentIndex: index,
+                    hasUnreadMessages: hasUnreadMessages,
+                    onTap: _switchTab,
+                    isDark: isDark,
+                    scheme: scheme,
+                  ),
+                ),
           ),
         ),
       ),
@@ -417,12 +438,14 @@ const _itemLabels = ['首页', '课表', '应用', '我的'];
 class _SlidingNavBar extends StatelessWidget {
   const _SlidingNavBar({
     required this.currentIndex,
+    required this.hasUnreadMessages,
     required this.onTap,
     required this.isDark,
     required this.scheme,
   });
 
   final int currentIndex;
+  final bool hasUnreadMessages;
   final ValueChanged<int> onTap;
   final bool isDark;
   final ColorScheme scheme;
@@ -473,7 +496,9 @@ class _SlidingNavBar extends StatelessWidget {
                 child: Semantics(
                   button: true,
                   selected: selected,
-                  label: _itemLabels[i],
+                  label: i == 3 && hasUnreadMessages
+                      ? '我的，有未读消息'
+                      : _itemLabels[i],
                   child: InkWell(
                     onTap: () => onTap(i),
                     child: Padding(
@@ -482,10 +507,23 @@ class _SlidingNavBar extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            selected ? _items[i].activeIcon : _items[i].icon,
-                            color: color,
-                            size: 24,
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Icon(
+                                selected
+                                    ? _items[i].activeIcon
+                                    : _items[i].icon,
+                                color: color,
+                                size: 24,
+                              ),
+                              if (i == 3 && hasUnreadMessages)
+                                const Positioned(
+                                  top: -3,
+                                  right: -4,
+                                  child: _UnreadDot(),
+                                ),
+                            ],
                           ),
                           const SizedBox(height: 3),
                           Text(
@@ -510,4 +548,24 @@ class _SlidingNavBar extends StatelessWidget {
       ),
     );
   }
+}
+
+class _UnreadDot extends StatelessWidget {
+  const _UnreadDot();
+
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+    child: Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(
+        color: const Color(0xFFD44848),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Theme.of(context).colorScheme.surface,
+          width: 1.5,
+        ),
+      ),
+    ),
+  );
 }

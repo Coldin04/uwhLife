@@ -14,6 +14,7 @@ import '../../core/utils/route_utils.dart';
 import '../auth/ids_login_page.dart';
 import '../auth/portal_session_cookies.dart';
 import '../message/message_list_page.dart';
+import '../message/message_api.dart';
 import '../update/android_version_code.dart';
 import '../paycode/pay_result_sheet.dart';
 import '../update/update_dialogs.dart';
@@ -272,11 +273,27 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
               ),
               const SizedBox(height: 10),
             ],
-            _ProfileActionRow(
-              icon: Icons.mail_outline_rounded,
-              iconColor: subtitleColor,
-              title: '我的消息',
-              onTap: _openMessagesPage,
+            ValueListenableBuilder<bool>(
+              valueListenable: MessageApi.hasUnreadMessages,
+              builder: (context, hasUnreadMessages, _) => _ProfileActionRow(
+                icon: Icons.mail_outline_rounded,
+                iconColor: subtitleColor,
+                title: '我的消息',
+                onTap: _openMessagesPage,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (hasUnreadMessages) const _UnreadMessageDot(),
+                    if (hasUnreadMessages) const SizedBox(width: 10),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: isDark
+                          ? const Color(0xFFBEBEBE)
+                          : const Color(0xFF8F8F8F),
+                    ),
+                  ],
+                ),
+              ),
             ),
             _ProfileActionRow(
               icon: Icons.settings_outlined,
@@ -699,6 +716,22 @@ class _ProfileActionRow extends StatelessWidget {
       ),
     );
   }
+}
+
+class _UnreadMessageDot extends StatelessWidget {
+  const _UnreadMessageDot();
+
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+    child: Container(
+      width: 8,
+      height: 8,
+      decoration: const BoxDecoration(
+        color: Color(0xFFD44848),
+        shape: BoxShape.circle,
+      ),
+    ),
+  );
 }
 
 class _AboutPage extends StatefulWidget {

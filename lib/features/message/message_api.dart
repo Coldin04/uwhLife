@@ -33,6 +33,7 @@ class MessageApi {
   static Future<void>? _warmUpFuture;
   static List<MessageCategory>? _cachedCategories;
   static Future<List<MessageCategory>>? _categoryFetchFuture;
+  static final ValueNotifier<bool> hasUnreadMessages = ValueNotifier(false);
 
   /// Call once at app startup to preload categories in background.
   static void preload() {
@@ -251,6 +252,8 @@ class MessageApi {
     _warmedUp = false;
     _warmUpFuture = null;
     _categoryFetchFuture = null;
+    _cachedCategories = null;
+    hasUnreadMessages.value = false;
   }
 
   static Future<String> _ensureMessageCookies({
@@ -444,8 +447,13 @@ class MessageApi {
     _cachedCategories = list
         .map((e) => MessageCategory.fromJson(e as Map<String, dynamic>))
         .toList();
+    hasUnreadMessages.value = hasUnreadIn(_cachedCategories!);
     return _cachedCategories!;
   }
+
+  @visibleForTesting
+  static bool hasUnreadIn(Iterable<MessageCategory> categories) =>
+      categories.any((category) => category.unReadMsgCount > 0);
 
   /// Silently refresh categories in background, updating cache.
   static Future<void> refreshCategoriesSilently() async {

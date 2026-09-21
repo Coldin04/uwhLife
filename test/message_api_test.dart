@@ -46,4 +46,20 @@ void main() {
       );
     });
   });
+
+  test('reports unread messages when any category has an unread count', () {
+    expect(
+      MessageApi.hasUnreadIn([
+        MessageCategory(appId: 'a', appName: 'A', tagId: 1),
+        MessageCategory(appId: 'b', appName: 'B', tagId: 2, unReadMsgCount: 1),
+      ]),
+      isTrue,
+    );
+    expect(
+      MessageApi.hasUnreadIn([
+        MessageCategory(appId: 'a', appName: 'A', tagId: 1),
+      ]),
+      isFalse,
+    );
+  });
 }
