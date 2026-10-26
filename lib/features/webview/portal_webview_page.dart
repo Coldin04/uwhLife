@@ -14,6 +14,8 @@ import '../../core/storage/login_state_store.dart';
 import '../../core/storage/portal_credentials.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/external_link.dart';
+import '../auth/ids_login_form.dart';
+import '../auth/ids_login_guard.dart';
 import '../auth/portal_auto_login.dart';
 import '../scanner/qr_scanner_page.dart';
 import 'bridges/hybrid_ble_bridge.dart';
@@ -81,7 +83,7 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
   DateTime? _launchOverlayShownAt;
   HybridBleBridge? _bleBridge;
   Timer? _statusBarResampleTimer;
-  Timer? _idsRecoveryTimer;
+  late final IdsLoginGuard _idsLoginGuard;
   bool _idsRecoveryAttempted = false;
   bool _recoveringIdsSession = false;
 
@@ -92,7 +94,7 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
   void dispose() {
     _launchOverlayDelayTimer?.cancel();
     _statusBarResampleTimer?.cancel();
-    _idsRecoveryTimer?.cancel();
+    _idsLoginGuard.dispose();
     final bleBridge = _bleBridge;
     if (bleBridge != null) {
       unawaited(bleBridge.dispose());
@@ -310,6 +312,21 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
       },
     );
 
+    _idsLoginGuard = IdsLoginGuard(
+      hasVisibleLoginForm: () async => _isJsTrue(
+        await _controller.runJavaScriptReturningResult(
+          idsVisibleLoginFormScript,
+        ),
+      ),
+      onLoginRequired: () async {
+        if (!mounted) return;
+        await LoginStateStore.markLoggedOut();
+        if (widget.autoRecoverIdsSession && _lastUrl != null) {
+          await _recoverIdsSessionIfStillNeeded(_lastUrl!);
+        }
+      },
+    );
+    _idsLoginGuard.pageStarted(widget.initialUrl);
     _controller.setNavigationDelegate(
       NavigationDelegate(
         onNavigationRequest: (request) {
@@ -320,10 +337,12 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
           if (url == null || url.isEmpty) return;
           // hash 路由的二级菜单只会走到这里，onPageFinished 不会再触发。
           _lastUrl = url;
+          _idsLoginGuard.urlChanged(url);
         },
         onPageStarted: (url) {
           if (!mounted) return;
           _lastUrl = url;
+          _idsLoginGuard.pageStarted(url);
           setState(() {
             _isLoading = true;
             _errorText = null;
@@ -333,6 +352,7 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
         onPageFinished: (url) async {
           if (!mounted) return;
           _lastUrl = url;
+          _idsLoginGuard.pageFinished(url);
           setState(() {
             _isLoading = false;
           });
@@ -353,6 +373,7 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
         },
         onWebResourceError: (error) {
           if (!mounted) return;
+          if (error.isForMainFrame != false) _idsLoginGuard.requestFailed();
           _launchOverlayDelayTimer?.cancel();
           setState(() {
             _isLoading = false;
@@ -639,39 +660,15 @@ JSON.stringify({
     return uri.host.toLowerCase() == host.toLowerCase();
   }
 
-  /// 把 IDS 登录页视为“认证链仍在进行”，而非立即视为登出。
-  ///
-  /// Ehall 的 Cookie 与 IDS 的 SSO Cookie 独立失效：服务页可能短暂跳到
-  /// IDS 后又自动带票据回到 Ehall。只有该页停在 IDS 并且一次恢复失败，
-  /// 才更新全局状态为未登录；回到 Ehall 时才确认登录成功。
+  /// URL changes through IDS are normal SSO traffic. Authentication loss is
+  /// written only by IdsLoginGuard after the visible form has settled.
   Future<void> _trackLoginTransition(String url) async {
     final uri = Uri.tryParse(url);
-    if (uri == null) return;
-    final host = uri.host.toLowerCase();
-    final path = uri.path.toLowerCase();
-
-    if (host == 'ids.uwh.edu.cn' && path.contains('/authserver/login')) {
-      // 已刷新过 Cookie 并重放过当前 service，仍停在 IDS 才能确认认证失效。
-      if (_idsRecoveryAttempted && !_recoveringIdsSession) {
-        await LoginStateStore.markLoggedOut();
-        return;
-      }
-      return;
-    }
-    if (host == 'ehall.uwh.edu.cn') {
-      _idsRecoveryTimer?.cancel();
+    if (uri?.host.toLowerCase() == 'ehall.uwh.edu.cn') {
       _idsRecoveryAttempted = false;
       await LoginStateStore.markLoggedIn();
       await BrowserDataCleaner.persistCookies();
     }
-  }
-
-  void _scheduleIdsSessionRecovery(String loginUrl) {
-    if (!widget.autoRecoverIdsSession || _idsRecoveryAttempted) return;
-    _idsRecoveryTimer?.cancel();
-    _idsRecoveryTimer = Timer(const Duration(milliseconds: 900), () {
-      unawaited(_recoverIdsSessionIfStillNeeded(loginUrl));
-    });
   }
 
   Future<void> _recoverIdsSessionIfStillNeeded(String loginUrl) async {
@@ -695,7 +692,7 @@ JSON.stringify({
         await _controller.loadRequest(Uri.parse(loginUrl));
         return;
       }
-      await LoginStateStore.markLoggedOut();
+      // Recovery failure is not additional evidence of authentication loss.
     } finally {
       _recoveringIdsSession = false;
     }
@@ -708,14 +705,10 @@ JSON.stringify({
     // 才把它当成“需要认证”的候选。这样 IDS 的个人设置页等其它页面
     // 不会触发掉线恢复。
     final formResult = await _controller.runJavaScriptReturningResult(
-      _idsLoginFormScript,
+      idsVisibleLoginFormScript,
     );
     final hasIdsLoginForm = _isJsTrue(formResult);
     if (!hasIdsLoginForm) return;
-
-    if (widget.autoRecoverIdsSession) {
-      _scheduleIdsSessionRecovery(url);
-    }
 
     // 1) 始终注入捕获脚本，监听用户点击登录按钮 / 提交表单时的明文。
     await _controller.runJavaScript(_captureScript);
@@ -2020,16 +2013,13 @@ JSON.stringify({
 })();
 ''';
 
-  static const String _captureScript = r'''
-(function(){
+  static const String _captureScript =
+      '(function(){$idsCredentialFieldsScript'
+      r'''
   if (window.__happyUwhCredsHooked) return;
   window.__happyUwhCredsHooked = true;
-  function $(sel){ return document.querySelector(sel); }
-  function fields(){
-    var u = $('#username') || document.querySelector('input[name="username"]');
-    var p = $('#password') || document.querySelector('input[type="password"]');
-    return {u:u, p:p};
-  }
+  function fields(){ return idsCredentialFields(); }
+  var scope = fields().scope;
   function send(){
     var f = fields();
     if (!f.u || !f.p) return;
@@ -2041,11 +2031,11 @@ JSON.stringify({
     } catch(e) {}
   }
   // 拦截登录按钮点击（capture 阶段，早于站点自身的加密/提交逻辑）
-  var btn = $('#login_submit') ||
-            document.querySelector('button[type="submit"]') ||
-            document.querySelector('input[type="submit"]') ||
-            document.querySelector('.auth_login_btn') ||
-            document.querySelector('.login-btn');
+  var btn = scope.querySelector('#login_submit') ||
+            scope.querySelector('button[type="submit"]') ||
+            scope.querySelector('input[type="submit"]') ||
+            scope.querySelector('.auth_login_btn') ||
+            scope.querySelector('.login-btn');
   if (btn) btn.addEventListener('click', send, true);
   // 表单 submit / 回车键也兜底
   var f = fields();
@@ -2059,30 +2049,19 @@ JSON.stringify({
 })();
 ''';
 
-  static const String _idsLoginFormScript = r'''
-(function(){
-  var form = document.querySelector('form#pwdFromId') ||
-             document.querySelector('form[action*="/authserver/login"]');
-  if (!form) return false;
-  var u = form.querySelector('#username') ||
-          form.querySelector('input[name="username"]');
-  var p = form.querySelector('#password') ||
-          form.querySelector('input[type="password"]');
-  return !!(u && p);
-})()
-''';
-
   String _buildFillScript(String username, String password) {
     final u = jsonEncode(username);
     final p = jsonEncode(password);
     return '''
 (function(){
+  $idsCredentialFieldsScript
   function fire(el){
     el.dispatchEvent(new Event('input', {bubbles:true}));
     el.dispatchEvent(new Event('change', {bubbles:true}));
   }
-  var u = document.querySelector('#username') || document.querySelector('input[name="username"]');
-  var p = document.querySelector('#password') || document.querySelector('input[type="password"]');
+  var fields = idsCredentialFields();
+  var u = fields.u;
+  var p = fields.p;
   if (u && !u.value) { u.value = $u; fire(u); }
   if (p && !p.value) { p.value = $p; fire(p); }
 })();

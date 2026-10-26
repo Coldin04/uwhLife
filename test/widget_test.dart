@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:webview_flutter_platform_interface/webview_flutter_platform_interface.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:uwhlife/main.dart';
+import 'package:uwhlife/core/storage/login_state_store.dart';
+import 'package:uwhlife/features/home/home_page.dart';
 
 void main() {
   const deepLinkMethodChannel = MethodChannel('uwhlife/deep_links');
@@ -28,6 +31,46 @@ void main() {
 
     expect(find.text('门锁'), findsOneWidget);
     expect(find.byIcon(Icons.shower_outlined), findsOneWidget);
+  });
+
+  testWidgets(
+    'cold launch does not warn from a cached false or an unparseable probe',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({
+        LoginStateStore.loggedInKey: false,
+      });
+      await tester.pumpWidget(const MaterialApp(home: HomePage()));
+      await tester.pump();
+      expect(find.byIcon(Icons.priority_high_rounded), findsNothing);
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pump();
+      expect(find.byIcon(Icons.priority_high_rounded), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets('an unparseable cold-launch probe preserves a saved login', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({LoginStateStore.loggedInKey: true});
+    await tester.pumpWidget(const MaterialApp(home: HomePage()));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump();
+    expect(await LoginStateStore.readLoggedIn(), isTrue);
+    expect(find.byIcon(Icons.priority_high_rounded), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('an explicit logout still shows the login entry', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      LoginStateStore.loggedInKey: false,
+      LoginStateStore.manualLogoutKey: true,
+    });
+    await tester.pumpWidget(const MaterialApp(home: HomePage()));
+    await tester.pump();
+    expect(find.byIcon(Icons.priority_high_rounded), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 }
 

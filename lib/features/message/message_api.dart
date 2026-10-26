@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/platform/browser_data_cleaner.dart';
-import '../../core/storage/login_state_store.dart';
 import '../auth/portal_auto_login.dart';
 
 class MessageApi {
@@ -294,7 +293,6 @@ class MessageApi {
       return await _getJsonWithMessageRetry(url);
     } on _MessageSessionExpiredException {
       if (!allowPortalRecovery) {
-        await LoginStateStore.markLoggedOut();
         rethrow;
       }
 
@@ -304,7 +302,8 @@ class MessageApi {
         force: true,
       );
       if (outcome != PortalAutoLoginOutcome.restored) {
-        await LoginStateStore.markLoggedOut();
+        // Cookie/bootstrap/API failures are local to messages. Only a real
+        // browser navigation to a settled editable IDS form can sign out.
         rethrow;
       }
       reset();

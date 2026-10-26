@@ -12,13 +12,13 @@ uwhLife / 芜忧芜院 是一个面向芜湖学院校园生活场景的 Flutter 
 
 
 <div align="center" style="display: flex; justify-content: center; align-items: center; gap: 16px; flex-wrap: wrap;">
-  <a href="https://stikstore.app/altdirect/?url=https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/main/source.json" target="_blank">
+  <a href="https://stikstore.app/altdirect/?url=https://raw.githubusercontent.com/Coldin04/uwhLife/main/source.json" target="_blank">
     <img src="https://raw.githubusercontent.com/stikstore/altdirect/main/assets/png/AltSource_Blue.png" alt="Add AltSource" width="200">
   </a>
-  <a href="https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_unsigned.ipa" target="_blank">
+  <a href="https://github.com/Coldin04/uwhLife/releases/latest/download/UWHLife_unsigned.ipa" target="_blank">
     <img src="https://raw.githubusercontent.com/stikstore/altdirect/main/assets/png/Download_Blue.png" alt="Download .ipa" width="200">
   </a>
-  <a href="https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk" target="_blank">
+  <a href="https://github.com/Coldin04/uwhLife/releases/latest/download/UWHLife_android_arm64-v8a.apk" target="_blank">
     <img src="https://img.shields.io/badge/Download-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Download Android APK" width="200">
   </a>
 </div>
@@ -27,6 +27,7 @@ uwhLife / 芜忧芜院 是一个面向芜湖学院校园生活场景的 Flutter 
 
 - 校园首页：轻量绿色视觉、常用服务入口、登录状态提示。
 - 统一门户 WebView：承载学校统一认证和校内服务页面。
+- 统一认证登录：学号密码直连 IDS；遇到滑块验证码时弹出拼图，拖动即可完成验证。
 - 应用列表：通过本地 JSON 维护校园服务入口。
 - 付款码：生成并展示付款相关二维码界面。
 - 扫码能力：基于移动端相机扫描二维码。
@@ -140,7 +141,7 @@ Release 流程会自动构建：
 - Android release APK：`UWHLife_android_armeabi-v7a.apk`、`UWHLife_android_arm64-v8a.apk`、`UWHLife_android_x86_64.apk`
 - iOS unsigned IPA：通过 `scripts/package_unsigned_ipa.sh` 打包 `UWHLife_unsigned.ipa`
 
-这些产物会上传到对应的 GitHub Release。发布流程还会自动更新 GitHub 仓库里的 `source.json` 和 `update.json`；如果要同步到 Gitee，将这两个 JSON 以及 APK/IPA 产物同步到 `uwhlife_source` 仓库即可。
+这些产物会上传到对应的 GitHub Release。发布流程还会自动更新 GitHub 仓库里的 `source.json` 和 `update.json`，应用更新、网页下载和 AltStore 导入统一使用 GitHub 仓库与 Release 链接。
 
 ### Android Release 签名
 

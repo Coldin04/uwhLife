@@ -19,7 +19,7 @@ void main() {
   final androidX8664Sha256 =
       Platform.environment['ANDROID_X86_64_SHA256'] ?? '';
   final githubRepository =
-      Platform.environment['GITHUB_REPOSITORY'] ?? 'coldin04/uwhLife';
+      Platform.environment['GITHUB_REPOSITORY'] ?? 'Coldin04/uwhLife';
   final release = _readReleaseConfig();
   final title = release['title']?.toString() ?? 'v$versionName 更新';
   final mandatory = release['mandatory'] == true;
@@ -29,16 +29,13 @@ void main() {
       0;
   final notes = _readNotes(release['notes']);
 
-  const giteeLatest =
-      'https://gitee.com/coldin04/uwhlife_source/releases/download/latest';
+  // Gitee 镜像下载已停用；所有发布元数据统一指向 GitHub。
+  // const giteeLatest =
+  //     'https://gitee.com/coldin04/uwhlife_source/releases/download/latest';
   final githubRelease =
       'https://github.com/$githubRepository/releases/download/$tag';
+  final githubRaw = 'https://raw.githubusercontent.com/$githubRepository/main';
   final apkUrls = {
-    'armeabi-v7a': '$giteeLatest/UWHLife_android_armeabi-v7a.apk',
-    'arm64-v8a': '$giteeLatest/UWHLife_android_arm64-v8a.apk',
-    'x86_64': '$giteeLatest/UWHLife_android_x86_64.apk',
-  };
-  final fallbackApkUrls = {
     'armeabi-v7a': '$githubRelease/UWHLife_android_armeabi-v7a.apk',
     'arm64-v8a': '$githubRelease/UWHLife_android_arm64-v8a.apk',
     'x86_64': '$githubRelease/UWHLife_android_x86_64.apk',
@@ -50,6 +47,15 @@ void main() {
       jsonDecode(sourceFile.readAsStringSync()) as Map<String, dynamic>;
   final apps = source['apps'] as List;
   final app = apps.first as Map<String, dynamic>;
+  source['iconURL'] = '$githubRaw/icon.png';
+  source['website'] = 'https://github.com/$githubRepository';
+  app['iconURL'] = '$githubRaw/icon.png';
+  for (final screenshot in (app['screenshots'] as List).whereType<Map>()) {
+    final filename = Uri.parse(
+      screenshot['imageURL'].toString(),
+    ).pathSegments.last;
+    screenshot['imageURL'] = '$githubRaw/web/img/$filename';
+  }
   final versions = app['versions'] as List;
   final existingVersion = versions.whereType<Map>().cast<Map>().firstWhere(
     (item) => item['version']?.toString() == versionName,
@@ -63,7 +69,7 @@ void main() {
       'buildVersion': buildNumber,
       'date': date,
       'localizedDescription': numberedNotes,
-      'downloadURL': '$giteeLatest/UWHLife_unsigned.ipa',
+      'downloadURL': '$githubRelease/UWHLife_unsigned.ipa',
       'size': ipaSize ?? existingSize ?? 0,
       'minOSVersion': '15.0',
     });
@@ -93,10 +99,8 @@ void main() {
     'mandatory': mandatory,
     'title': title,
     'notes': notes,
-    'apkUrl': '$giteeLatest/UWHLife_android_arm64-v8a.apk',
-    'fallbackApkUrl': '$githubRelease/UWHLife_android_arm64-v8a.apk',
+    'apkUrl': '$githubRelease/UWHLife_android_arm64-v8a.apk',
     'apkUrls': apkUrls,
-    'fallbackApkUrls': fallbackApkUrls,
     'sha256ByAbi': {
       'armeabi-v7a': androidArmeabiV7aSha256,
       'arm64-v8a': androidSha256,
@@ -109,8 +113,7 @@ void main() {
     'buildVersion': buildNumber,
     'title': title,
     'notes': notes,
-    'altSourceUrl':
-        'https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/main/source.json',
+    'altSourceUrl': '$githubRaw/source.json',
   };
   updateFile.writeAsStringSync(_prettyJson(update));
 

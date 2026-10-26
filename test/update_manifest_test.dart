@@ -20,12 +20,12 @@ void main() {
     "mandatory": false,
     "title": "发现新版本",
     "notes": ["优化首页加载体验", "修复若干问题"],
-    "apkUrl": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
+    "apkUrl": "https://github.com/Coldin04/uwhLife/releases/latest/download/UWHLife_android_arm64-v8a.apk",
     "fallbackApkUrl": "https://github.com/coldin04/uwhLife/releases/download/v1.2.1/UWHLife_android_arm64-v8a.apk",
     "apkUrls": {
-      "armeabi-v7a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_armeabi-v7a.apk",
-      "arm64-v8a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
-      "x86_64": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_x86_64.apk"
+      "armeabi-v7a": "https://github.com/Coldin04/uwhLife/releases/latest/download/UWHLife_android_armeabi-v7a.apk",
+      "arm64-v8a": "https://github.com/Coldin04/uwhLife/releases/latest/download/UWHLife_android_arm64-v8a.apk",
+      "x86_64": "https://github.com/Coldin04/uwhLife/releases/latest/download/UWHLife_android_x86_64.apk"
     },
     "fallbackApkUrls": {
       "armeabi-v7a": "https://github.com/coldin04/uwhLife/releases/download/v1.2.1/UWHLife_android_armeabi-v7a.apk",
@@ -42,7 +42,7 @@ void main() {
     "buildVersion": "11",
     "title": "发现新版本",
     "notes": ["优化首页加载体验"],
-    "altSourceUrl": "https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/main/source.json"
+    "altSourceUrl": "https://raw.githubusercontent.com/Coldin04/uwhLife/main/source.json"
   }
 }
 ''';
@@ -56,13 +56,13 @@ void main() {
     expect(manifest.android.versionName, '1.2.1');
     expect(manifest.android.versionCode, 11);
     expect(manifest.android.downloadUrls, [
-      'https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk',
+      'https://github.com/Coldin04/uwhLife/releases/latest/download/UWHLife_android_arm64-v8a.apk',
       'https://github.com/coldin04/uwhLife/releases/download/v1.2.1/UWHLife_android_arm64-v8a.apk',
     ]);
     expect(manifest.ios.buildVersion, '11');
     expect(
       manifest.ios.altSourceUrl,
-      'https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/main/source.json',
+      'https://raw.githubusercontent.com/Coldin04/uwhLife/main/source.json',
     );
   });
 
@@ -74,11 +74,11 @@ void main() {
     expect(manifest.android.selectedAbi(['armeabi-v7a']), 'armeabi-v7a');
     expect(manifest.android.selectedAbi(['x86_64']), 'x86_64');
     expect(manifest.android.downloadUrlsFor(['armeabi-v7a']), [
-      'https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_armeabi-v7a.apk',
+      'https://github.com/Coldin04/uwhLife/releases/latest/download/UWHLife_android_armeabi-v7a.apk',
       'https://github.com/coldin04/uwhLife/releases/download/v1.2.1/UWHLife_android_armeabi-v7a.apk',
     ]);
     expect(manifest.android.downloadUrlsFor(['mips']), [
-      'https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk',
+      'https://github.com/Coldin04/uwhLife/releases/latest/download/UWHLife_android_arm64-v8a.apk',
       'https://github.com/coldin04/uwhLife/releases/download/v1.2.1/UWHLife_android_arm64-v8a.apk',
     ]);
   });

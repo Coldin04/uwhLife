@@ -8,17 +8,19 @@ class StatusIndicator extends StatelessWidget {
   const StatusIndicator({
     super.key,
     required this.status,
+    this.ready = true,
     this.onTap,
     this.onLongPress,
   });
 
   final LoginStatus status;
+  final bool ready;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
-    if (status == LoginStatus.loggedIn) {
+    if (!ready || status == LoginStatus.loggedIn) {
       return const SizedBox.shrink();
     }
 

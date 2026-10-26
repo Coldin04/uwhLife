@@ -7,8 +7,10 @@ import '../../core/storage/portal_user_sync.dart';
 import '../../core/theme/app_theme.dart';
 import '../webview/portal_webview_page.dart';
 import 'ids_http_auth.dart';
+import 'ids_slider_captcha.dart';
 import 'portal_auto_login.dart';
 import 'portal_session_cookies.dart';
+import 'widgets/ids_slider_captcha_dialog.dart';
 
 class IdsLoginPage extends StatefulWidget {
   const IdsLoginPage({super.key});
@@ -26,6 +28,7 @@ class _IdsLoginPageState extends State<IdsLoginPage> {
   bool _loading = false;
   bool _obscurePassword = true;
   String? _error;
+  int _captchaAttempts = 0;
 
   @override
   void initState() {
@@ -52,12 +55,14 @@ class _IdsLoginPageState extends State<IdsLoginPage> {
     setState(() {
       _loading = true;
       _error = null;
+      _captchaAttempts = 0;
     });
 
     final result = await IdsHttpAuthClient().login(
       username: _usernameController.text.trim(),
       password: _passwordController.text,
       service: IdsLoginPage.serviceUri,
+      onSliderCaptcha: _showSliderCaptcha,
     );
     if (!mounted) return;
 
@@ -74,7 +79,7 @@ class _IdsLoginPageState extends State<IdsLoginPage> {
         if (!mounted) return;
         Navigator.of(context).pop(true);
       case IdsLoginStatus.captchaRequired:
-        setState(() => _error = '当前账号需要滑块验证，请使用网页登录');
+        setState(() => _error = '滑块验证未通过，请重试或使用网页登录');
       case IdsLoginStatus.invalidCredentials:
       case IdsLoginStatus.failed:
         setState(() => _error = result.message ?? '登录失败，请重试');
@@ -83,6 +88,15 @@ class _IdsLoginPageState extends State<IdsLoginPage> {
     if (mounted && result.status != IdsLoginStatus.authenticated) {
       setState(() => _loading = false);
     }
+  }
+
+  Future<IdsSliderAnswer?> _showSliderCaptcha(
+    IdsSliderChallenge challenge,
+  ) {
+    if (!mounted) return Future<IdsSliderAnswer?>.value();
+    final message = _captchaAttempts > 0 ? '验证未通过，请再试一次' : null;
+    _captchaAttempts++;
+    return IdsSliderCaptchaDialog.show(context, challenge, message: message);
   }
 
   Future<void> _openWebLogin() async {

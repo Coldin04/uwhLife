@@ -41,7 +41,9 @@ class LoginStateStore {
     return true;
   }
 
-  /// 会话失效导致的登出（探测被重定向到统一认证等），之后允许自动重新登录。
+  /// 仅在业务页面跳到 IDS、等待后仍显示可见账号密码框时确认会话失效。
+  /// 网络错误、接口解析失败和子系统 Cookie 缺失不能调用此方法。
+  /// 确认失效后仍允许自动重新登录。
   static Future<void> markLoggedOut() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(loggedInKey, false);

@@ -2,8 +2,8 @@
   "name": "芜忧芜院",
   "subtitle": "芜湖学院校园生活助手",
   "description": "芜湖学院校园APP第三方实现，提供一键开门、课表查看、校园活动等功能。",
-  "iconURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/icon.png",
-  "website": "https://gitee.com/coldin04/uwhlife_source",
+  "iconURL": "https://raw.githubusercontent.com/Coldin04/uwhLife/main/icon.png",
+  "website": "https://github.com/Coldin04/uwhLife",
   "tintColor": "#2196F3",
   "apps": [
     {
@@ -12,27 +12,27 @@
       "developerName": "coldin04",
       "subtitle": "芜湖学院校园生活助手",
       "localizedDescription": "芜湖学院校园APP第三方实现。\n\n功能特性：\n- 🚪 一键开门：蓝牙快速开门，无需等待\n- 📅 快速查看课表：清晰直观的课程安排\n- 🎉 快速加入校园活动：一键报名，不错过精彩\n- 🚿 开水洗浴：蓝牙控制热水设备\n- 📱 轻量快速：告别臃肿，极速启动",
-      "iconURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/icon.png",
+      "iconURL": "https://raw.githubusercontent.com/Coldin04/uwhLife/main/icon.png",
       "tintColor": "#2196F3",
       "category": "lifestyle",
       "screenshots": [
         {
-          "imageURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/web/img/homepage.jpeg",
+          "imageURL": "https://raw.githubusercontent.com/Coldin04/uwhLife/main/web/img/homepage.jpeg",
           "width": 1080,
           "height": 2340
         },
         {
-          "imageURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/web/img/applist.jpeg",
+          "imageURL": "https://raw.githubusercontent.com/Coldin04/uwhLife/main/web/img/applist.jpeg",
           "width": 1080,
           "height": 2340
         },
         {
-          "imageURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/web/img/message.jpeg",
+          "imageURL": "https://raw.githubusercontent.com/Coldin04/uwhLife/main/web/img/message.jpeg",
           "width": 1080,
           "height": 2340
         },
         {
-          "imageURL": "https://gitee.com/coldin04/uwhlife_source/raw/main/web/img/qrcard.jpeg",
+          "imageURL": "https://raw.githubusercontent.com/Coldin04/uwhLife/main/web/img/qrcard.jpeg",
           "width": 1080,
           "height": 2340
         }
@@ -43,7 +43,7 @@
           "buildVersion": "31",
           "date": "2026-09-21",
           "localizedDescription": "本次更新:\n1. 消息提醒现在有红点提示了\n2. 优化了门锁的使用体验，增强功能稳定性\n3. 修复了一些已知问题",
-          "downloadURL": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_unsigned.ipa",
+          "downloadURL": "https://github.com/Coldin04/uwhLife/releases/download/v2.0.1/UWHLife_unsigned.ipa",
           "size": 18678635,
           "minOSVersion": "15.0"
         }

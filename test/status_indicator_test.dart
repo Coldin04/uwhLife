@@ -4,6 +4,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:uwhlife/features/home/widgets/status_indicator.dart';
 
 void main() {
+  testWidgets('does not warn before the saved login state has loaded', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: StatusIndicator(status: LoginStatus.loggedOut, ready: false),
+        ),
+      ),
+    );
+    expect(find.byIcon(Icons.priority_high_rounded), findsNothing);
+  });
+
   testWidgets('hides the indicator when status is logged in', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
@@ -14,9 +27,7 @@ void main() {
     expect(find.byType(InkWell), findsNothing);
   });
 
-  testWidgets('shows the logged-out status button', (
-    tester,
-  ) async {
+  testWidgets('shows the logged-out status button', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(body: StatusIndicator(status: LoginStatus.loggedOut)),

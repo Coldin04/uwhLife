@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:html/parser.dart' as html_parser;
 
 import '../../core/platform/browser_data_cleaner.dart';
-import '../../core/storage/login_state_store.dart';
 import '../auth/portal_auto_login.dart';
 import 'models/schedule_models.dart';
 
@@ -74,15 +73,11 @@ class ScheduleApi {
         force: true,
       );
       if (outcome != PortalAutoLoginOutcome.restored) {
-        await LoginStateStore.markLoggedOut();
         rethrow;
       }
-      try {
-        return await _fetchSchedule(termCode: termCode);
-      } on ScheduleAuthenticationException {
-        await LoginStateStore.markLoggedOut();
-        rethrow;
-      }
+      // A native subsystem response cannot prove that the browser is showing
+      // the IDS credential form. Keep failures local to this request.
+      return _fetchSchedule(termCode: termCode);
     }
   }
 

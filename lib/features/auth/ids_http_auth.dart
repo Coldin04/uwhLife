@@ -1,13 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:html/parser.dart' as html_parser;
-import 'package:pointycastle/export.dart';
 
 import '../../core/platform/browser_data_cleaner.dart';
 import '../../core/storage/portal_user_sync.dart';
+import 'ids_aes.dart';
+import 'ids_slider_captcha.dart';
 
 const _idsHost = 'ids.uwh.edu.cn';
 
@@ -79,17 +78,22 @@ class IdsHttpAuthClient {
   IdsHttpAuthClient({
     HttpClient? httpClient,
     IdsPasswordEncoder? passwordEncoder,
+    IdsSliderSigner? sliderSigner,
   }) : _httpClient = httpClient ?? HttpClient(),
-       _passwordEncoder = passwordEncoder ?? IdsPasswordEncoder();
+       _passwordEncoder = passwordEncoder ?? IdsPasswordEncoder(),
+       _sliderSigner = sliderSigner ?? IdsSliderSigner();
 
   final HttpClient _httpClient;
   final IdsPasswordEncoder _passwordEncoder;
+  final IdsSliderSigner _sliderSigner;
   final HttpCookieJar _cookieJar = HttpCookieJar();
 
   Future<IdsLoginResult> login({
     required String username,
     required String password,
     required Uri service,
+    Future<IdsSliderAnswer?> Function(IdsSliderChallenge challenge)?
+    onSliderCaptcha,
   }) async {
     try {
       final loginUri = Uri.https(
@@ -103,7 +107,8 @@ class IdsHttpAuthClient {
         return const IdsLoginResult.failed('无法识别统一认证登录页');
       }
 
-      if (await _needsSliderCaptcha(loginPage.uri, username)) {
+      final captchaNeeded = await _needsSliderCaptcha(loginPage.uri, username);
+      if (captchaNeeded && !await _solveSliderCaptcha(onSliderCaptcha)) {
         return const IdsLoginResult.captchaRequired();
       }
 
@@ -161,10 +166,80 @@ class IdsHttpAuthClient {
     }
   }
 
+  /// Runs the slider flow until the server accepts one drag or the user
+  /// gives up.
+  Future<bool> _solveSliderCaptcha(
+    Future<IdsSliderAnswer?> Function(IdsSliderChallenge challenge)?
+    onSliderCaptcha, {
+    int maxAttempts = 3,
+  }) async {
+    if (onSliderCaptcha == null) return false;
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
+      final issuedAt = DateTime.now();
+      final challenge = await _openSliderCaptcha();
+      if (challenge == null) return false;
+      final answer = await onSliderCaptcha(challenge);
+      if (answer == null) return false;
+      // The server rejects answers sent less than ~1.1s after the challenge
+      // was issued, so a very quick drag still has to wait a little.
+      await _paceVerification(issuedAt);
+      if (await _verifySliderCaptcha(challenge, answer)) return true;
+    }
+    return false;
+  }
+
+  Future<void> _paceVerification(DateTime issuedAt) async {
+    const minimum = Duration(milliseconds: 1300);
+    final elapsed = DateTime.now().difference(issuedAt);
+    if (elapsed < minimum) {
+      await Future<void>.delayed(minimum - elapsed);
+    }
+  }
+
+  Future<IdsSliderChallenge?> _openSliderCaptcha() async {
+    final uri = Uri.https(
+      _idsHost,
+      '/authserver/common/openSliderCaptcha.htl',
+      <String, String>{'_': '${DateTime.now().millisecondsSinceEpoch}'},
+    );
+    try {
+      final response = await _requestFollowing(uri, xhr: true);
+      final data = jsonDecode(response.body);
+      if (data is! Map) return null;
+      return IdsSliderChallenge.fromJson(Map<String, dynamic>.from(data));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<bool> _verifySliderCaptcha(
+    IdsSliderChallenge challenge,
+    IdsSliderAnswer answer,
+  ) async {
+    final sign = _sliderSigner.sign(challenge: challenge, answer: answer);
+    final uri = Uri.https(
+      _idsHost,
+      '/authserver/common/verifySliderCaptcha.htl',
+    );
+    try {
+      final response = await _requestFollowing(
+        uri,
+        method: 'POST',
+        form: <String, String>{'sign': sign},
+        xhr: true,
+      );
+      final data = jsonDecode(response.body);
+      return data is Map && data['errorCode'] == 1;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<_HttpDocument> _requestFollowing(
     Uri uri, {
     String method = 'GET',
     Map<String, String>? form,
+    bool xhr = false,
   }) async {
     var nextUri = uri;
     var nextMethod = method;
@@ -175,6 +250,7 @@ class IdsHttpAuthClient {
         nextUri,
         method: nextMethod,
         form: nextForm,
+        xhr: xhr,
       );
       final location = response.headers.value(HttpHeaders.locationHeader);
       if (location == null ||
@@ -194,10 +270,26 @@ class IdsHttpAuthClient {
     Uri uri, {
     required String method,
     Map<String, String>? form,
+    bool xhr = false,
   }) async {
     final request = await _httpClient.openUrl(method, uri);
     request.followRedirects = false;
-    request.headers.set(HttpHeaders.acceptHeader, 'text/html,application/json');
+    if (xhr) {
+      request.headers.set('X-Requested-With', 'XMLHttpRequest');
+      request.headers.set(
+        HttpHeaders.acceptHeader,
+        'application/json, text/javascript, */*; q=0.01',
+      );
+      request.headers.set(
+        HttpHeaders.refererHeader,
+        'https://$_idsHost/authserver/login',
+      );
+    } else {
+      request.headers.set(
+        HttpHeaders.acceptHeader,
+        'text/html,application/json',
+      );
+    }
 
     final cookieHeader = _cookieJar.cookieHeaderFor(uri);
     if (cookieHeader.isNotEmpty) {
@@ -245,41 +337,15 @@ class IdsHttpAuthClient {
 
 class IdsPasswordEncoder {
   IdsPasswordEncoder({String Function(int)? randomText})
-    : _randomText = randomText ?? _secureRandomText;
-
-  static const _alphabet = 'ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678';
+    : _randomText = randomText ?? idsSecureRandomText;
 
   final String Function(int) _randomText;
 
   String encode({required String password, required String salt}) {
-    final key = Uint8List.fromList(utf8.encode(salt));
-    if (key.length != 16 && key.length != 24 && key.length != 32) {
-      throw const FormatException('Invalid AES password salt');
-    }
-
-    final plaintext = Uint8List.fromList(
-      utf8.encode('${_randomText(64)}$password'),
-    );
-    final iv = Uint8List.fromList(utf8.encode(_randomText(16)));
-    final cipher = PaddedBlockCipher('AES/CBC/PKCS7')
-      ..init(
-        true,
-        PaddedBlockCipherParameters<ParametersWithIV<KeyParameter>, Null>(
-          ParametersWithIV<KeyParameter>(KeyParameter(key), iv),
-          null,
-        ),
-      );
-    return base64.encode(cipher.process(plaintext));
-  }
-
-  static String _secureRandomText(int length) {
-    final random = Random.secure();
-    return String.fromCharCodes(
-      List<int>.generate(
-        length,
-        (_) => _alphabet.codeUnitAt(random.nextInt(_alphabet.length)),
-        growable: false,
-      ),
+    return idsAesEncrypt(
+      plaintext: '${_randomText(64)}$password',
+      key: salt,
+      iv: _randomText(16),
     );
   }
 }

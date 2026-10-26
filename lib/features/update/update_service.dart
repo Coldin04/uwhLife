@@ -16,8 +16,9 @@ class UpdateService {
       _cacheDirectory = cacheDirectory;
 
   static const manifestUrls = [
-    'https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/main/update.json',
-    'https://raw.githubusercontent.com/coldin04/uwhLife/main/update.json',
+    // Gitee 更新源已停用，更新检测只访问 GitHub。
+    // 'https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/main/update.json',
+    'https://raw.githubusercontent.com/Coldin04/uwhLife/main/update.json',
   ];
 
   final HttpClient? _client;

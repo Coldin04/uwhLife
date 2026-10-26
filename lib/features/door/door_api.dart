@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:html/parser.dart' as html_parser;
 
 import '../../core/platform/browser_data_cleaner.dart';
-import '../../core/storage/login_state_store.dart';
 import '../auth/ids_http_auth.dart';
 import '../auth/portal_auto_login.dart';
 import '../auth/portal_session_cookies.dart';
@@ -40,12 +39,8 @@ class DoorApi {
     final outcome = await PortalAutoLogin.instance.restoreSession(force: true);
     if (outcome == PortalAutoLoginOutcome.restored) {
       final retried = await DoorApiClient().openDoor();
-      if (retried.status == DoorOpenStatus.needsLogin) {
-        await LoginStateStore.markLoggedOut();
-      }
       return retried;
     }
-    await LoginStateStore.markLoggedOut();
     return first;
   }
 }

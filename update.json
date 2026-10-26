@@ -12,14 +12,8 @@
       "优化了门锁的使用体验，增强功能稳定性",
       "修复了一些已知问题"
     ],
-    "apkUrl": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
-    "fallbackApkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v2.0.1/UWHLife_android_arm64-v8a.apk",
+    "apkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v2.0.1/UWHLife_android_arm64-v8a.apk",
     "apkUrls": {
-      "armeabi-v7a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_armeabi-v7a.apk",
-      "arm64-v8a": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_arm64-v8a.apk",
-      "x86_64": "https://gitee.com/coldin04/uwhlife_source/releases/download/latest/UWHLife_android_x86_64.apk"
-    },
-    "fallbackApkUrls": {
       "armeabi-v7a": "https://github.com/Coldin04/uwhLife/releases/download/v2.0.1/UWHLife_android_armeabi-v7a.apk",
       "arm64-v8a": "https://github.com/Coldin04/uwhLife/releases/download/v2.0.1/UWHLife_android_arm64-v8a.apk",
       "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v2.0.1/UWHLife_android_x86_64.apk"
@@ -40,6 +34,6 @@
       "优化了门锁的使用体验，增强功能稳定性",
       "修复了一些已知问题"
     ],
-    "altSourceUrl": "https://raw.giteeusercontent.com/coldin04/uwhlife_source/raw/main/source.json"
+    "altSourceUrl": "https://raw.githubusercontent.com/Coldin04/uwhLife/main/source.json"
   }
 }

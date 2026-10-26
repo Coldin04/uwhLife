@@ -12,10 +12,9 @@ import '../../core/storage/home_page_settings.dart';
 import '../../core/storage/login_state_store.dart';
 import '../../core/storage/portal_user_store.dart';
 import '../../core/theme/app_theme.dart';
-import '../auth/ids_http_auth.dart';
-import '../auth/ids_login_form.dart';
 import '../auth/portal_auto_login.dart';
 import '../auth/portal_session_cookies.dart';
+import '../auth/portal_session_probe.dart';
 import '../door/door_api.dart';
 import '../schedule/models/schedule_models.dart';
 import '../schedule/schedule_cache.dart';
@@ -51,14 +50,11 @@ class HomePage extends StatefulWidget {
 }
 
 class HomePageState extends State<HomePage> with WidgetsBindingObserver {
-  static const _probeUrl = 'https://ehall.uwh.edu.cn/getLoginUser';
-  static const _idsSsoProbeUrl =
-      'https://ids.uwh.edu.cn/authserver/login'
-      '?service=https%3A%2F%2Fehall.uwh.edu.cn%2Flogin';
   static const _hitokotoCacheKey = 'home_hitokoto_text';
   static const _hitokotoUrl = 'https://v1.hitokoto.cn/?encode=json&c=i&c=k';
   static const _defaultHitokoto = '读万卷书，行万里路';
   bool _loggedIn = false;
+  bool _loginStatusKnown = false;
   String _hitokoto = _defaultHitokoto;
   final ScheduleRepository _scheduleRepository = ScheduleRepository.shared;
   ScheduleCourseOccurrence? _scheduleHintCourse;
@@ -71,9 +67,8 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Timer? _scheduleHintTimer;
   Timer? _deferredScheduleRefreshTimer;
   Timer? _hitokotoDelayTimer;
-  final HttpClient _probeClient = HttpClient()
-    ..connectionTimeout = const Duration(seconds: 4);
-  HttpCookieJar? _probeCookies;
+  final PortalSessionProbe _sessionProbe = PortalSessionProbe();
+  Timer? _sessionProbeTimer;
   bool _probing = false;
 
   _DoorButtonState _doorState = _DoorButtonState.idle;
@@ -90,9 +85,7 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
     unawaited(_initializeScheduleHint());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      // Start the fast HTTP probe immediately after the first useful frame,
-      // so auth freshness never competes with the home layout's first build.
-      unawaited(_probeAndSync());
+      _scheduleSessionProbe();
       // Neither a cached quote nor a second network request is needed to
       // make the first frame useful. Let the home/door controls settle first.
       _hitokotoDelayTimer = Timer(const Duration(milliseconds: 900), () {
@@ -109,7 +102,8 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _scheduleHintTimer?.cancel();
     _deferredScheduleRefreshTimer?.cancel();
     _hitokotoDelayTimer?.cancel();
-    _probeClient.close(force: true);
+    _sessionProbeTimer?.cancel();
+    _sessionProbe.dispose();
     super.dispose();
   }
 
@@ -118,6 +112,7 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final loggedIn = LoginStateStore.notifier.value;
     setState(() {
       _loggedIn = loggedIn;
+      _loginStatusKnown = true;
       if (!loggedIn) {
         _hasScheduleHintData = false;
         _scheduleHintCourse = null;
@@ -134,7 +129,7 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
       _loadMockScheduleHint();
       _loadHomePageSettings();
       unawaited(_refreshScheduleHint());
-      _probeAndSync();
+      _scheduleSessionProbe();
     }
   }
 
@@ -160,7 +155,22 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Future<void> triggerDoorFromDeepLink() => _triggerDoor();
 
   Future<void> _loadLoginState() async {
-    await LoginStateStore.readLoggedIn();
+    final loggedIn = await LoginStateStore.readLoggedIn();
+    final manualLogout = await LoginStateStore.readManualLogout();
+    if (!mounted) return;
+    setState(() {
+      _loggedIn = loggedIn;
+      // A cached false (including the default on first launch) is not fresh
+      // evidence of session loss. Wait for a visible form or an explicit exit.
+      _loginStatusKnown = _loginStatusKnown || loggedIn || manualLogout;
+    });
+  }
+
+  void _scheduleSessionProbe() {
+    _sessionProbeTimer?.cancel();
+    _sessionProbeTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) unawaited(_probeAndSync());
+    });
   }
 
   Future<void> _initializeScheduleHint() async {
@@ -324,42 +334,26 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Future<void> _probeAndSync() async {
     if (_probing) return;
     _probing = true;
-    _probeCookies = null;
     try {
-      var res = await _runProbe();
-
-      // Ehall 会话失效而 IDS SSO 仍有效时，getLoginUser 可能先落到 IDS。
-      // 先实际跑一遍 IDS → Ehall 的 SSO 链，而不是立刻显示“掉登录”。
-      if (_isIdsLoginResult(res)) {
-        final sso = await _runRequest(_idsSsoProbeUrl);
-        if (!_isIdsLoginResult(sso) && sso.url.isNotEmpty) {
-          res = await _runProbe();
-        }
-      }
-
-      final portalVerified = await _syncPortalUser(res);
-      if (portalVerified) {
-        // 反向检查 IDS：Ehall Cookie 可以独立于 IDS SSO Cookie 存活。只有
-        // IDS 最终停在登录页时才需要恢复；网络异常保持当前 Ehall 状态。
-        final sso = await _runRequest(_idsSsoProbeUrl);
-        if (_isIdsLoginResult(sso)) {
-          final restored = await _restoreSessionOnce();
-          if (!restored) return;
-          res = await _runProbe();
-          if (!await _syncPortalUser(res)) {
-            await LoginStateStore.markLoggedOut();
-            return;
+      if (await LoginStateStore.readManualLogout()) return;
+      final result = await _sessionProbe.check();
+      if (!mounted || await LoginStateStore.readManualLogout()) return;
+      switch (result.status) {
+        case PortalProbeStatus.response:
+          // A malformed or unavailable user response does not invalidate
+          // either the existing browser session or a successful recovery.
+          if (await PortalUserStore.saveFromLoginUserResponse(result.body)) {
+            await PortalSessionCookies.rememberWebViewSession();
+            await LoginStateStore.markLoggedIn();
           }
-        }
-      } else if (_isIdsLoginResult(res)) {
-        if (!await _restoreSessionOnce()) return;
-        res = await _runProbe();
-        if (!await _syncPortalUser(res)) {
+        case PortalProbeStatus.loginRequired:
+          // The real WebView remained at IDS for three seconds and its
+          // credential fields are visible.
+          setState(() => _loginStatusKnown = true);
           await LoginStateStore.markLoggedOut();
-          return;
-        }
-      } else if (!await LoginStateStore.readLoggedIn()) {
-        return;
+          await PortalAutoLogin.instance.restoreSession(force: true);
+        case PortalProbeStatus.unavailable:
+          break;
       }
       if (mounted) {
         await _loadLoginState();
@@ -368,86 +362,6 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
     } finally {
       _probing = false;
     }
-  }
-
-  Future<({String body, String url})> _runProbe() async {
-    return _runRequest(_probeUrl);
-  }
-
-  Future<({String body, String url})> _runRequest(String url) async {
-    try {
-      final start = Uri.parse(url);
-      final cookies = _probeCookies ??= HttpCookieJar();
-      await _seedProbeCookies(start, cookies);
-
-      var next = start;
-      for (var hop = 0; hop < 8; hop++) {
-        final request = await _probeClient
-            .getUrl(next)
-            .timeout(const Duration(seconds: 6));
-        request.followRedirects = false;
-        request.headers.set(
-          HttpHeaders.acceptHeader,
-          'application/json,text/html;q=0.9,*/*;q=0.8',
-        );
-        final cookieHeader = cookies.cookieHeaderFor(next);
-        if (cookieHeader.isNotEmpty) {
-          request.headers.set(HttpHeaders.cookieHeader, cookieHeader);
-        }
-
-        final response = await request.close().timeout(
-          const Duration(seconds: 6),
-        );
-        cookies.save(next, response.cookies);
-        final body = await response
-            .transform(utf8.decoder)
-            .join()
-            .timeout(const Duration(seconds: 6));
-        final location = response.headers.value(HttpHeaders.locationHeader);
-        if (location == null ||
-            response.statusCode < 300 ||
-            response.statusCode >= 400) {
-          return (body: body, url: next.toString());
-        }
-        next = next.resolve(location);
-        await _seedProbeCookies(next, cookies);
-      }
-    } catch (_) {
-      // Login probing is best-effort and must never surface an uncaught
-      // network exception from the background startup task.
-    }
-    return (body: '', url: '');
-  }
-
-  Future<void> _seedProbeCookies(Uri uri, HttpCookieJar jar) async {
-    final hasPersisted = await PortalSessionCookies.seedFor(uri, jar);
-    if (hasPersisted && jar.cookieHeaderFor(uri).isNotEmpty) return;
-    final header = await BrowserDataCleaner.getCookies(url: uri.toString());
-    if (header.trim().isNotEmpty) jar.addCookieHeader(uri, header);
-  }
-
-  bool _isIdsLoginResult(({String body, String url}) result) {
-    return isIdsLoginForm(url: result.url, body: result.body);
-  }
-
-  Future<bool> _syncPortalUser(({String body, String url}) result) async {
-    if (!await PortalUserStore.saveFromLoginUserResponse(result.body)) {
-      return false;
-    }
-    final cookies = _probeCookies;
-    if (cookies != null) {
-      await PortalSessionCookies.rememberHttpCookies(cookies);
-    }
-    await LoginStateStore.markLoggedIn();
-    return true;
-  }
-
-  Future<bool> _restoreSessionOnce() async {
-    final outcome = await PortalAutoLogin.instance.restoreSession(force: true);
-    if (outcome == PortalAutoLoginOutcome.restored) return true;
-    await LoginStateStore.markLoggedOut();
-    if (mounted) await _loadLoginState();
-    return false;
   }
 
   Future<void> _clearLoginState() async {
@@ -815,6 +729,7 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                 padding: const EdgeInsets.only(top: 8),
                                 child: RepaintBoundary(
                                   child: StatusIndicator(
+                                    ready: _loginStatusKnown,
                                     status: _status,
                                     onTap: _openPortal,
                                     onLongPress: _confirmClearLoginState,

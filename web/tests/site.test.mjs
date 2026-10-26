@@ -41,10 +41,10 @@ test('landing page uses a split app hero and focuses on product features', async
   assert.match(html, /<img class="phone-screenshot" src="img\/homepage_dark\.jpeg" data-dark-src="img\/homepage_dark\.jpeg" data-light-src="img\/homepage\.jpeg" width="1080" height="2340" alt="芜忧芜院应用截图" \/>/);
   assert.doesNotMatch(html, /phone-speaker/);
   assert.match(html, /href="https:\/\/github\.com\/Coldin04\/uwhLife"/);
-  assert.match(html, /href="https:\/\/gitee\.com\/coldin04\/uwhlife_source\/releases"/);
-  assert.match(html, /href="https:\/\/gitee\.com\/coldin04\/uwhlife_source\/releases\/download\/latest\/UWHLife_android_arm64-v8a\.apk"/);
-  assert.match(html, /href="https:\/\/stikstore\.app\/altdirect\/\?url=https:\/\/raw\.giteeusercontent\.com\/coldin04\/uwhlife_source\/raw\/main\/source\.json"/);
-  assert.match(html, /href="https:\/\/gitee\.com\/coldin04\/uwhlife_source\/releases\/download\/latest\/UWHLife_unsigned\.ipa"/);
+  assert.match(html, /href="https:\/\/github\.com\/Coldin04\/uwhLife\/releases"/);
+  assert.match(html, /href="https:\/\/github\.com\/Coldin04\/uwhLife\/releases\/latest\/download\/UWHLife_android_arm64-v8a\.apk"/);
+  assert.match(html, /href="https:\/\/stikstore\.app\/altdirect\/\?url=https:\/\/raw\.githubusercontent\.com\/Coldin04\/uwhLife\/main\/source\.json"/);
+  assert.match(html, /href="https:\/\/github\.com\/Coldin04\/uwhLife\/releases\/latest\/download\/UWHLife_unsigned\.ipa"/);
   assert.match(html, /class="download-button download-button--android"/);
   assert.match(html, /class="download-button download-button--ios"/);
   assert.match(html, /更多版本/);

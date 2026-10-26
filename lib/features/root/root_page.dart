@@ -50,6 +50,7 @@ class _RootPageState extends State<RootPage>
   late Animation<double> _fadeAnimation;
   StreamSubscription<dynamic>? _deepLinkSub;
   Timer? _automaticUpdateTimer;
+  Timer? _messagePreloadTimer;
 
   @override
   void initState() {
@@ -104,6 +105,7 @@ class _RootPageState extends State<RootPage>
   void dispose() {
     _deepLinkSub?.cancel();
     _automaticUpdateTimer?.cancel();
+    _messagePreloadTimer?.cancel();
     LoginStateStore.notifier.removeListener(_onLoginStateChanged);
     _animController.dispose();
     _currentIndex.dispose();
@@ -111,13 +113,18 @@ class _RootPageState extends State<RootPage>
   }
 
   Future<void> _preloadMessageBadges() async {
-    if (await LoginStateStore.readLoggedIn()) MessageApi.preload();
+    if (!await LoginStateStore.readLoggedIn() || !mounted) return;
+    _messagePreloadTimer?.cancel();
+    _messagePreloadTimer = Timer(const Duration(seconds: 5), () async {
+      if (mounted && await LoginStateStore.readLoggedIn()) MessageApi.preload();
+    });
   }
 
   void _onLoginStateChanged() {
     if (LoginStateStore.notifier.value) {
-      MessageApi.preload();
+      unawaited(_preloadMessageBadges());
     } else {
+      _messagePreloadTimer?.cancel();
       MessageApi.reset();
     }
   }
