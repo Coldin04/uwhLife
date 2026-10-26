@@ -39,12 +39,12 @@
       ],
       "versions": [
         {
-          "version": "2.0.1",
-          "buildVersion": "31",
-          "date": "2026-09-21",
+          "version": "2.0.3",
+          "buildVersion": "33",
+          "date": "2026-10-26",
           "localizedDescription": "本次更新:\n1. 消息提醒现在有红点提示了\n2. 优化了门锁的使用体验，增强功能稳定性\n3. 修复了一些已知问题",
-          "downloadURL": "https://github.com/Coldin04/uwhLife/releases/download/v2.0.1/UWHLife_unsigned.ipa",
-          "size": 18678635,
+          "downloadURL": "https://github.com/Coldin04/uwhLife/releases/download/v2.0.3/UWHLife_unsigned.ipa",
+          "size": 18711386,
           "minOSVersion": "15.0"
         }
       ],
@@ -60,6 +60,15 @@
     }
   ],
   "news": [
+    {
+      "title": "v2.0.3 更新",
+      "identifier": "2.0.3",
+      "caption": "消息提醒现在有红点提示了",
+      "date": "2026-10-26",
+      "tintColor": "#2196F3",
+      "notify": true,
+      "appID": "com.cold04.uwhlife"
+    },
     {
       "title": "v2.0.1 更新",
       "identifier": "2.0.1",
