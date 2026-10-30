@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -48,10 +49,33 @@ class BrowserDataCleaner {
   }) async {
     if (!Platform.isAndroid && !Platform.isIOS) return;
     if (cookies.isEmpty) return;
+    final filtered = filterCookiesForUrl(Uri.parse(url), cookies);
+    if (filtered.isEmpty) return;
     await _channel.invokeMethod<void>('setCookiesForUrl', {
       'url': url,
-      'cookies': cookies,
+      'cookies': filtered,
     });
+  }
+
+  /// A campus service may only scope cookies to the campus domain or one of
+  /// its subdomains. The IDS sometimes sends Domain=edu.cn, which browsers
+  /// reject as a public suffix and which must not block valid session cookies.
+  static bool isCookieDomainAllowed(Uri uri, String? cookieDomain) {
+    if (cookieDomain == null || cookieDomain.isEmpty) return true;
+    final host = uri.host.toLowerCase();
+    final domain = cookieDomain.toLowerCase().replaceFirst(RegExp(r'^\.'), '');
+    if (host != domain && !host.endsWith('.$domain')) return false;
+    const campus = 'uwh.edu.cn';
+    final campusHost = host == campus || host.endsWith('.$campus');
+    return !campusHost || domain == campus || domain.endsWith('.$campus');
+  }
+
+  @visibleForTesting
+  static List<String> filterCookiesForUrl(Uri uri, List<String> cookies) {
+    return cookies.where((raw) {
+      final cookie = Cookie.fromSetCookieValue(raw);
+      return isCookieDomainAllowed(uri, cookie.domain);
+    }).toList(growable: false);
   }
 
   static Future<String> getCookies({required String url}) async {

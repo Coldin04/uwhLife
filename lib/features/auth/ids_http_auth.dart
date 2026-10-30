@@ -94,6 +94,7 @@ class IdsHttpAuthClient {
     required String username,
     required String password,
     required Uri service,
+    bool rememberMe = true,
     Future<IdsSliderAnswer?> Function(IdsSliderChallenge challenge)?
     onSliderCaptcha,
   }) async {
@@ -120,6 +121,9 @@ class IdsHttpAuthClient {
           password: password,
           salt: form.passwordSalt,
         );
+      if (rememberMe && form.rememberMeValue != null) {
+        fields['rememberMe'] = form.rememberMeValue!;
+      }
 
       final submitted = await _requestFollowing(
         form.submitUri,
@@ -375,8 +379,7 @@ class HttpCookieJar {
   void save(Uri requestUri, List<Cookie> cookies) {
     for (final cookie in cookies) {
       final stored = _StoredCookie.fromCookie(requestUri, cookie);
-      final host = requestUri.host.toLowerCase();
-      if (host != stored.domain && !host.endsWith('.${stored.domain}')) {
+      if (!BrowserDataCleaner.isCookieDomainAllowed(requestUri, stored.domain)) {
         continue;
       }
       _cookies.removeWhere((existing) => existing.sameScope(stored));
@@ -604,6 +607,7 @@ class _IdsLoginForm {
     required this.submitUri,
     required this.passwordSalt,
     required this.hiddenFields,
+    required this.rememberMeValue,
   });
 
   static _IdsLoginForm? parse(String html, Uri documentUri) {
@@ -622,16 +626,23 @@ class _IdsLoginForm {
 
     final action = form.attributes['action'] ?? '/authserver/login';
     final actionUri = documentUri.resolve(action);
+    final rememberMe = form.querySelector(
+      'input[type="checkbox"][name="rememberMe"]',
+    );
     return _IdsLoginForm(
       submitUri: actionUri.replace(query: documentUri.query),
       passwordSalt: salt,
       hiddenFields: hiddenFields,
+      rememberMeValue: rememberMe == null
+          ? null
+          : (rememberMe.attributes['value'] ?? 'on'),
     );
   }
 
   final Uri submitUri;
   final String passwordSalt;
   final Map<String, String> hiddenFields;
+  final String? rememberMeValue;
 }
 
 class _HttpDocument {

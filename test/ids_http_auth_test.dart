@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pointycastle/export.dart';
+import 'package:uwhlife/core/platform/browser_data_cleaner.dart';
 import 'package:uwhlife/features/auth/ids_http_auth.dart';
 
 void main() {
@@ -80,6 +81,33 @@ void main() {
       jar.cookieHeaderFor(Uri.parse('https://sub.ids.uwh.edu.cn/auth')),
       contains('domain=two'),
     );
+  });
+
+  test('browser bridge filters invalid campus parent-domain cookies', () {
+    final cookies = BrowserDataCleaner.filterCookiesForUrl(
+      Uri.parse('https://ids.uwh.edu.cn/authserver/login'),
+      ['platformMultilingual=zh; Domain=edu.cn; Path=/', 'CASTGC=ticket; Path=/authserver'],
+    );
+    expect(cookies, ['CASTGC=ticket; Path=/authserver']);
+  });
+
+  test('ignores cookies scoped above the campus domain before WebView sync', () async {
+    final ids = Uri.parse('https://ids.uwh.edu.cn/authserver/login');
+    final jar = HttpCookieJar()
+      ..save(ids, [
+        Cookie('platformMultilingual', 'zh_CN')
+          ..domain = 'edu.cn'
+          ..path = '/',
+        Cookie('CASTGC', 'ticket')..path = '/authserver',
+      ]);
+    final writes = <String>[];
+    await jar.syncToWebView(
+      [ids],
+      setCookies: (_, cookies) async => writes.addAll(cookies),
+      persistCookies: () async {},
+    );
+    expect(writes.any((cookie) => cookie.startsWith('platformMultilingual=')), isFalse);
+    expect(writes.any((cookie) => cookie.startsWith('CASTGC=')), isTrue);
   });
 
   test(

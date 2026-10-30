@@ -4,7 +4,7 @@
   "android": {
     "versionName": "2.1.0",
     "versionCode": 36,
-    "minSupportedVersionCode": 20,
+    "minSupportedVersionCode": 30,
     "mandatory": false,
     "title": "v2.1.0 更新",
     "notes": [

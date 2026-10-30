@@ -13,6 +13,17 @@ class LoginStateStore {
 
   static const String expiryKey = 'login_expiry_millis';
   static const String loggedInKey = 'portal_logged_in';
+  static const String rememberMeKey = 'portal_remember_me';
+
+  static Future<bool> readRememberMe() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(rememberMeKey) ?? true;
+  }
+
+  static Future<void> writeRememberMe(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(rememberMeKey, value);
+  }
 
   /// 用户主动退出登录的标记。会话被动失效（被踢回统一认证）不会写这个值，
   /// 只有点击“退出登录 / 清除登录状态”才会。重新登录成功后自动清除。

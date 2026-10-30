@@ -244,11 +244,13 @@ class PortalAutoLogin {
     required String username,
     required String password,
     required Uri service,
-  }) {
+  }) async {
+    final rememberMe = await LoginStateStore.readRememberMe();
     return IdsHttpAuthClient().login(
       username: username,
       password: password,
       service: service,
+      rememberMe: rememberMe,
     );
   }
 

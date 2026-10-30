@@ -260,19 +260,16 @@ class MessageApi {
   }) async {
     final existingCookies = await _getNativeCookies();
     if (!forceWarmUp) {
-      debugPrint('[MessageApi] first try cookies: "$existingCookies"');
       return _cookiesForRequest(existingCookies);
     }
 
     if (_hasMessageSessionCookie(existingCookies)) {
-      debugPrint('[MessageApi] reuse cookies: "$existingCookies"');
       return _cookiesForRequest(existingCookies);
     }
 
     _warmedUp = false;
     await _warmUp();
     final cookies = await _getNativeCookies();
-    debugPrint('[MessageApi] cookies: "$cookies"');
 
     if (!_hasMessageSessionCookie(cookies)) {
       reset();

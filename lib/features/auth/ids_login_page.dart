@@ -25,6 +25,7 @@ class _IdsLoginPageState extends State<IdsLoginPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _loading = false;
+  bool _rememberMe = true;
   bool _obscurePassword = true;
   String? _error;
   int _captchaAttempts = 0;
@@ -44,9 +45,13 @@ class _IdsLoginPageState extends State<IdsLoginPage> {
 
   Future<void> _loadSavedCredentials() async {
     final credentials = await PortalCredentials.read();
-    if (credentials == null || !mounted) return;
-    _usernameController.text = credentials.$1;
-    _passwordController.text = credentials.$2;
+    final rememberMe = await LoginStateStore.readRememberMe();
+    if (!mounted) return;
+    if (credentials != null) {
+      _usernameController.text = credentials.$1;
+      _passwordController.text = credentials.$2;
+    }
+    setState(() => _rememberMe = rememberMe);
   }
 
   Future<void> _login() async {
@@ -62,6 +67,7 @@ class _IdsLoginPageState extends State<IdsLoginPage> {
       username: _usernameController.text.trim(),
       password: _passwordController.text,
       service: IdsLoginPage.serviceUri,
+      rememberMe: _rememberMe,
       onSliderCaptcha: _showSliderCaptcha,
     );
     if (!mounted) return;
@@ -85,6 +91,7 @@ class _IdsLoginPageState extends State<IdsLoginPage> {
           _usernameController.text.trim(),
           _passwordController.text,
         );
+        await LoginStateStore.writeRememberMe(_rememberMe);
         PortalAutoLogin.instance.reset();
         if (!mounted) return;
         Navigator.of(context).pop(true);
@@ -265,6 +272,18 @@ class _IdsLoginPageState extends State<IdsLoginPage> {
                                   ? '请输入密码'
                                   : null;
                             },
+                          ),
+                          CheckboxListTile(
+                            value: _rememberMe,
+                            onChanged: _loading
+                                ? null
+                                : (value) => setState(
+                                    () => _rememberMe = value ?? false,
+                                  ),
+                            title: const Text('7 天免登录'),
+                            controlAffinity: ListTileControlAffinity.leading,
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
                           ),
                           if (_error != null) ...[
                             const SizedBox(height: 14),
