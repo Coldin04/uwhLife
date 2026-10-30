@@ -13,7 +13,9 @@ jobs:
   release:
     name: Build release artifacts
     if: startsWith(github.ref, 'refs/tags/')
-    runs-on: macos-latest
+    # iPhone Duo 的 verticalBarEdge / reservedRegions 需要 iOS 27.1+ SDK，
+    # 而 macos-latest（macOS 26 镜像）最高只带 Xcode 26.6，必须用 xcode-27 镜像。
+    runs-on: xcode-27
 
     steps:
       - name: Checkout

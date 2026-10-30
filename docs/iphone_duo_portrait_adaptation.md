@@ -30,7 +30,9 @@ xcodebuild -version                 # 期望 Xcode 27.1 / 27.2
 xcrun --sdk iphoneos --show-sdk-version   # 期望 >= 27.1
 ```
 
-`Release` 工作流已固定 `maxim-lobanov/setup-xcode` 选择 Xcode 27.1，并在构建前校验 `xcrun --sdk iphoneos --show-sdk-version >= 27.1`，避免换个 runner 镜像后悄悄编译失败。
+`Release` 工作流的 runner 固定为 `xcode-27` 镜像（macOS 27 + 默认 Xcode 27.1 / 可选 27.2 RC），并用 `maxim-lobanov/setup-xcode` 选中 Xcode 27.1；构建前还会校验 `xcrun --sdk iphoneos --show-sdk-version >= 27.1`。
+
+> `macos-latest` 目前指向 macOS 26 镜像，最高只带 Xcode 26.6，用它跑 Release 会直接卡在 Duo API 上（实测报 `Could not find Xcode version that satisfied version spec: '27.1'`）。
 
 ## 实现细节
 
