@@ -43,7 +43,7 @@
           "buildVersion": "37",
           "date": "2026-10-30",
           "localizedDescription": "本次更新:\n1. 适配了iPhone Duo的界面，受限于flutter，暂未完美适配\n2. 优化了登录问题\n3. 提升了软件性能，减少软件包体积\n4. 解决了一些已知问题",
-          "downloadURL": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.0-37/UWHLife_unsigned.ipa",
+          "downloadURL": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.0/UWHLife_unsigned.ipa",
           "size": 11458345,
           "minOSVersion": "15.0"
         }
