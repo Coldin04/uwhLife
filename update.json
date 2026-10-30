@@ -3,36 +3,36 @@
   "app": "uwhLife",
   "android": {
     "versionName": "2.1.0",
-    "versionCode": 36,
+    "versionCode": 37,
     "minSupportedVersionCode": 30,
     "mandatory": false,
     "title": "v2.1.0 更新",
     "notes": [
       "适配了iPhone Duo的界面，受限于flutter，暂未完美适配",
-      "优化了登录稳定性",
+      "优化了登录问题",
       "提升了软件性能，减少软件包体积",
       "解决了一些已知问题"
     ],
-    "apkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.0/UWHLife_android_arm64-v8a.apk",
+    "apkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.0-37/UWHLife_android_arm64-v8a.apk",
     "apkUrls": {
-      "armeabi-v7a": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.0/UWHLife_android_armeabi-v7a.apk",
-      "arm64-v8a": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.0/UWHLife_android_arm64-v8a.apk",
-      "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.0/UWHLife_android_x86_64.apk"
+      "armeabi-v7a": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.0-37/UWHLife_android_armeabi-v7a.apk",
+      "arm64-v8a": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.0-37/UWHLife_android_arm64-v8a.apk",
+      "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.0-37/UWHLife_android_x86_64.apk"
     },
     "sha256ByAbi": {
-      "armeabi-v7a": "87cbab2ec6aabb100956179a43ea9eccbf1ddc6ae645f935c7b9eff7003dbb0c",
-      "arm64-v8a": "bf0fd0477402bd3007ae90d129dc441325d1ddc26958b88c91a22dfff2ed251a",
-      "x86_64": "1a408dab863612dae449782169dd3160d77e4487eadbba3bd7f652ed185006d1"
+      "armeabi-v7a": "524a612a8333f0828c294b916c5229ba62baa2d777395e1a95382251643588a4",
+      "arm64-v8a": "a41351b59e7cec0ff361adcba8873711ac543561600b3e723af97c8d9970ecee",
+      "x86_64": "131022f07bd8120a0dca98d9de61d9915a0eeb468feb8d8fdbb7fd37afc7a5e4"
     },
-    "sha256": "bf0fd0477402bd3007ae90d129dc441325d1ddc26958b88c91a22dfff2ed251a"
+    "sha256": "a41351b59e7cec0ff361adcba8873711ac543561600b3e723af97c8d9970ecee"
   },
   "ios": {
     "versionName": "2.1.0",
-    "buildVersion": "36",
+    "buildVersion": "37",
     "title": "v2.1.0 更新",
     "notes": [
       "适配了iPhone Duo的界面，受限于flutter，暂未完美适配",
-      "优化了登录稳定性",
+      "优化了登录问题",
       "提升了软件性能，减少软件包体积",
       "解决了一些已知问题"
     ],
