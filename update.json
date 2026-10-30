@@ -2,37 +2,39 @@
   "schemaVersion": 1,
   "app": "uwhLife",
   "android": {
-    "versionName": "2.0.3",
-    "versionCode": 33,
+    "versionName": "2.1.0",
+    "versionCode": 36,
     "minSupportedVersionCode": 20,
     "mandatory": false,
-    "title": "v2.0.3 更新",
+    "title": "v2.1.0 更新",
     "notes": [
-      "消息提醒现在有红点提示了",
-      "优化了门锁的使用体验，增强功能稳定性",
-      "修复了一些已知问题"
+      "适配了iPhone Duo的界面，受限于flutter，暂未完美适配",
+      "优化了登录稳定性",
+      "提升了软件性能，减少软件包体积",
+      "解决了一些已知问题"
     ],
-    "apkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v2.0.3/UWHLife_android_arm64-v8a.apk",
+    "apkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.0/UWHLife_android_arm64-v8a.apk",
     "apkUrls": {
-      "armeabi-v7a": "https://github.com/Coldin04/uwhLife/releases/download/v2.0.3/UWHLife_android_armeabi-v7a.apk",
-      "arm64-v8a": "https://github.com/Coldin04/uwhLife/releases/download/v2.0.3/UWHLife_android_arm64-v8a.apk",
-      "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v2.0.3/UWHLife_android_x86_64.apk"
+      "armeabi-v7a": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.0/UWHLife_android_armeabi-v7a.apk",
+      "arm64-v8a": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.0/UWHLife_android_arm64-v8a.apk",
+      "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.0/UWHLife_android_x86_64.apk"
     },
     "sha256ByAbi": {
-      "armeabi-v7a": "7599ceb2aed81438c303143f426c89dae8edd6a953309094496f8db6b2812a1d",
-      "arm64-v8a": "b0d9d62380c3b50d8eeb06ef9be11e1093367bf71ebaa4d1bef7d6150d5496bc",
-      "x86_64": "a6d8ee6f3015941ff6c16e89811d333808918384f6bbc096d4720b533df339ab"
+      "armeabi-v7a": "87cbab2ec6aabb100956179a43ea9eccbf1ddc6ae645f935c7b9eff7003dbb0c",
+      "arm64-v8a": "bf0fd0477402bd3007ae90d129dc441325d1ddc26958b88c91a22dfff2ed251a",
+      "x86_64": "1a408dab863612dae449782169dd3160d77e4487eadbba3bd7f652ed185006d1"
     },
-    "sha256": "b0d9d62380c3b50d8eeb06ef9be11e1093367bf71ebaa4d1bef7d6150d5496bc"
+    "sha256": "bf0fd0477402bd3007ae90d129dc441325d1ddc26958b88c91a22dfff2ed251a"
   },
   "ios": {
-    "versionName": "2.0.3",
-    "buildVersion": "33",
-    "title": "v2.0.3 更新",
+    "versionName": "2.1.0",
+    "buildVersion": "36",
+    "title": "v2.1.0 更新",
     "notes": [
-      "消息提醒现在有红点提示了",
-      "优化了门锁的使用体验，增强功能稳定性",
-      "修复了一些已知问题"
+      "适配了iPhone Duo的界面，受限于flutter，暂未完美适配",
+      "优化了登录稳定性",
+      "提升了软件性能，减少软件包体积",
+      "解决了一些已知问题"
     ],
     "altSourceUrl": "https://raw.githubusercontent.com/Coldin04/uwhLife/main/source.json"
   }
