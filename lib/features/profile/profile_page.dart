@@ -12,6 +12,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/external_link.dart';
 import '../../core/utils/route_utils.dart';
 import '../auth/ids_login_page.dart';
+import '../auth/portal_auto_login.dart';
 import '../auth/portal_session_cookies.dart';
 import '../message/message_list_page.dart';
 import '../message/message_api.dart';
@@ -125,9 +126,13 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
     );
     if (confirmed != true) return;
 
-    await BrowserDataCleaner.clear();
-    await PortalSessionCookies.clear();
-    await LoginStateStore.markManualLogout();
+    await PortalAutoLogin.instance.logout(
+      clear: () async {
+        await BrowserDataCleaner.clear();
+        // Remove the legacy encrypted copy as well as the active WebKit jar.
+        await PortalSessionCookies.clear();
+      },
+    );
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
@@ -200,12 +205,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
 
     return SafeArea(
       child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          MediaQuery.paddingOf(context).top + 12,
-          20,
-          20,
-        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
         child: Column(
           children: [
             Material(
@@ -324,12 +324,7 @@ class _ProfileLoading extends StatelessWidget {
     final fill = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08);
     return SafeArea(
       child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          MediaQuery.paddingOf(context).top + 12,
-          20,
-          20,
-        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
         child: Column(
           children: [
             Container(

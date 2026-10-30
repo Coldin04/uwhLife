@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/platform/side_navigation.dart';
 import 'models/schedule_models.dart';
 import 'schedule_api.dart';
 import 'schedule_cache.dart';
@@ -26,6 +27,9 @@ const _scheduleContentPadding = EdgeInsets.symmetric(
 // 与应用列表一致，避开根页面悬浮底栏及系统安全区。
 const double _scheduleFloatingNavClearance = 112;
 const double _scheduleAppBarHeight = 64;
+
+double _scheduleTopBarHeight(BuildContext context) =>
+    isDuoDevice && systemVerticalEdge == 'none' ? 56 : _scheduleAppBarHeight;
 
 /// 课表相关页面都是浅色渐变背景，状态栏图标必须跟着主题走，
 /// 否则浅色模式下会保持白色图标，几乎看不见。
@@ -406,7 +410,8 @@ class SchedulePageState extends State<SchedulePage> {
               // 顶栏是覆盖层，但首屏课表仍从顶栏下方开始；向上滚动时
               // 网格内容再进入顶栏的毛玻璃采样区。
               topInset:
-                  MediaQuery.paddingOf(context).top + _scheduleAppBarHeight,
+                  MediaQuery.paddingOf(context).top +
+                  _scheduleTopBarHeight(context),
             );
           }
 
@@ -485,7 +490,7 @@ class _ScheduleTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return SizedBox(
-      height: topInset + _scheduleAppBarHeight,
+      height: topInset + _scheduleTopBarHeight(context),
       child: ClipRect(
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),

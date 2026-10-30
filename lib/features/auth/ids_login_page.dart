@@ -9,7 +9,6 @@ import '../webview/portal_webview_page.dart';
 import 'ids_http_auth.dart';
 import 'ids_slider_captcha.dart';
 import 'portal_auto_login.dart';
-import 'portal_session_cookies.dart';
 import 'widgets/ids_slider_captcha_dialog.dart';
 
 class IdsLoginPage extends StatefulWidget {
@@ -58,6 +57,7 @@ class _IdsLoginPageState extends State<IdsLoginPage> {
       _captchaAttempts = 0;
     });
 
+    final generation = PortalAutoLogin.instance.beginInteractiveLogin();
     final result = await IdsHttpAuthClient().login(
       username: _usernameController.text.trim(),
       password: _passwordController.text,
@@ -68,9 +68,19 @@ class _IdsLoginPageState extends State<IdsLoginPage> {
 
     switch (result.status) {
       case IdsLoginStatus.authenticated:
-        await PortalSessionCookies.rememberLogin(result);
-        await result.syncCookiesToWebView();
-        await LoginStateStore.markLoggedIn();
+        try {
+          final committed = await PortalAutoLogin.instance.completeInteractiveLogin(
+            observedGeneration: generation,
+            syncCookies: result.syncCookiesToWebView,
+          );
+          if (!committed) {
+            if (mounted) setState(() => _error = '登录状态已更改，请重试');
+            break;
+          }
+        } catch (_) {
+          if (mounted) setState(() => _error = '登录信息同步失败，请重试');
+          break;
+        }
         await PortalCredentials.save(
           _usernameController.text.trim(),
           _passwordController.text,
@@ -85,7 +95,7 @@ class _IdsLoginPageState extends State<IdsLoginPage> {
         setState(() => _error = result.message ?? '登录失败，请重试');
     }
 
-    if (mounted && result.status != IdsLoginStatus.authenticated) {
+    if (mounted) {
       setState(() => _loading = false);
     }
   }
@@ -100,6 +110,7 @@ class _IdsLoginPageState extends State<IdsLoginPage> {
   }
 
   Future<void> _openWebLogin() async {
+    PortalAutoLogin.instance.beginInteractiveLogin();
     await Navigator.of(context).push<String?>(
       MaterialPageRoute(
         builder: (_) => const PortalWebViewPage(
@@ -116,7 +127,6 @@ class _IdsLoginPageState extends State<IdsLoginPage> {
     if (!mounted) return;
     if (loggedIn) {
       await PortalUserSync.fromWebViewCookies();
-      await PortalSessionCookies.rememberWebViewSession();
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } else {

@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/platform/browser_data_cleaner.dart';
+import '../../core/platform/side_navigation.dart';
 import '../../core/storage/boundary_debug_settings.dart';
 import '../../core/storage/home_page_settings.dart';
 import '../../core/storage/login_state_store.dart';
@@ -335,23 +336,30 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (_probing) return;
     _probing = true;
     try {
+      await PortalAutoLogin.instance.waitForRecovery();
       if (await LoginStateStore.readManualLogout()) return;
+      final generation = PortalAutoLogin.instance.generation;
       final result = await _sessionProbe.check();
       if (!mounted || await LoginStateStore.readManualLogout()) return;
       switch (result.status) {
         case PortalProbeStatus.response:
           // A malformed or unavailable user response does not invalidate
           // either the existing browser session or a successful recovery.
-          if (await PortalUserStore.saveFromLoginUserResponse(result.body)) {
-            await PortalSessionCookies.rememberWebViewSession();
-            await LoginStateStore.markLoggedIn();
-          }
+          await PortalAutoLogin.instance.applyCookiesIfCurrent(
+            observedGeneration: generation,
+            write: () async {
+              if (await PortalUserStore.saveFromLoginUserResponse(
+                result.body,
+              )) {
+                await LoginStateStore.markLoggedIn();
+              }
+            },
+          );
         case PortalProbeStatus.loginRequired:
           // The real WebView remained at IDS for three seconds and its
           // credential fields are visible.
           setState(() => _loginStatusKnown = true);
-          await LoginStateStore.markLoggedOut();
-          await PortalAutoLogin.instance.restoreSession(force: true);
+          await PortalAutoLogin.instance.reportLoginRequired(generation);
         case PortalProbeStatus.unavailable:
           break;
       }
@@ -365,7 +373,6 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Future<void> _clearLoginState() async {
-    await LoginStateStore.markManualLogout();
     if (!mounted) return;
     _scheduleHintTimer?.cancel();
     setState(() {
@@ -438,8 +445,12 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
     );
 
     if (confirmed != true) return;
-    await BrowserDataCleaner.clear();
-    await PortalSessionCookies.clear();
+    await PortalAutoLogin.instance.logout(
+      clear: () async {
+        await BrowserDataCleaner.clear();
+        await PortalSessionCookies.clear();
+      },
+    );
     await _clearLoginState();
     if (!mounted) return;
     ScaffoldMessenger.of(
@@ -584,6 +595,10 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final viewport = MediaQuery.sizeOf(context);
+    final wide = usesSideNavigation(context);
+    // Scaffold supplies the bottom navigation's occupied height to SafeArea.
+    // With a side dock, SafeArea instead uses the system's bottom inset.
+    final cardNavigationGap = wide ? 0.0 : 18.0;
     final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
     final backgroundAsset = _homeBackgroundAsset(viewport);
     final backgroundCacheWidth = _homeBackgroundCacheWidth(
@@ -665,177 +680,207 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final width = constraints.maxWidth;
-                final contentWidth = width > 720 ? 720.0 : width;
+                // The right floating dock overlays the full-bleed background;
+                // keep foreground actions and cards clear of its tap targets.
+                final contentWidth = wide && !isDuoDevice ? width - 76 : width;
                 final tileHeight = ((contentWidth - 40 - 12) / 2).clamp(
                   0.0,
-                  220.0,
+                  constraints.maxHeight < 500 ? 115.0 : 180.0,
                 );
 
                 return Align(
-                  alignment: Alignment.topCenter,
+                  alignment: wide ? Alignment.topLeft : Alignment.topCenter,
                   child: SizedBox(
                     width: contentWidth,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.only(top: 12),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        _greeting(),
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .headlineLarge
-                                            ?.copyWith(
-                                              color: headerColor,
-                                              fontWeight: _homePageSemiBold,
-                                            ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      FractionallySizedBox(
-                                        widthFactor: 0.75,
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          _hitokoto,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodyMedium
-                                              ?.copyWith(
-                                                color: headerColor.withValues(
-                                                  alpha: 0.55,
-                                                ),
-                                                height: 1.35,
-                                              ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              Padding(
-                                // 跟问候语列同一个顶部内边距，让状态徽标的高度
-                                // 对齐"上午好"这行文字，而不是对齐整个 Row。
-                                padding: const EdgeInsets.only(top: 8),
-                                child: RepaintBoundary(
-                                  child: StatusIndicator(
-                                    ready: _loginStatusKnown,
-                                    status: _status,
-                                    onTap: _openPortal,
-                                    onLongPress: _confirmClearLoginState,
-                                  ),
-                                ),
-                              ),
-                            ],
+                      padding: EdgeInsets.fromLTRB(
+                        20,
+                        20,
+                        20,
+                        cardNavigationGap,
+                      ),
+                      child: SingleChildScrollView(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight:
+                                (constraints.maxHeight - 20 - cardNavigationGap)
+                                    .clamp(0.0, double.infinity),
                           ),
-                          const Spacer(),
-                          SizedBox(
-                            height: tileHeight,
-                            child: Align(
-                              alignment: Alignment.bottomCenter,
-                              child: Padding(
-                                padding: const EdgeInsets.only(bottom: 24),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceAround,
+                          child: IntrinsicHeight(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Expanded(
-                                      child: RepaintBoundary(
-                                        child: CircularFeatureButton(
-                                          icon: _doorIcon,
-                                          title: _doorTitle,
-                                          busy:
-                                              _doorState ==
-                                              _DoorButtonState.busy,
-                                          backgroundColor: const Color(
-                                            0xFF22C55E,
-                                          ),
-                                          foregroundColor:
-                                              actionForegroundColor,
-                                          micaOpacity: isDark ? 0.62 : 0.58,
-                                          labelColor: actionLabelColor,
-                                          iconOnly: _iconOnlyMode,
-                                          onTap: _triggerDoor,
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(top: 12),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              _greeting(),
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .headlineLarge
+                                                  ?.copyWith(
+                                                    color: headerColor,
+                                                    fontWeight:
+                                                        _homePageSemiBold,
+                                                  ),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            FractionallySizedBox(
+                                              widthFactor: 0.75,
+                                              alignment: Alignment.centerLeft,
+                                              child: Text(
+                                                _hitokoto,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodyMedium
+                                                    ?.copyWith(
+                                                      color: headerColor
+                                                          .withValues(
+                                                            alpha: 0.55,
+                                                          ),
+                                                      height: 1.35,
+                                                    ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ),
-                                    Expanded(
+                                    Padding(
+                                      // 跟问候语列同一个顶部内边距，让状态徽标的高度
+                                      // 对齐"上午好"这行文字，而不是对齐整个 Row。
+                                      padding: const EdgeInsets.only(top: 8),
                                       child: RepaintBoundary(
-                                        child: CircularFeatureButton(
-                                          icon: Icons.credit_card_rounded,
-                                          title: '付款码',
-                                          backgroundColor: actionCircleColor,
-                                          foregroundColor:
-                                              actionForegroundColor,
-                                          micaOpacity: 0.12,
-                                          labelColor: actionLabelColor,
-                                          iconOnly: _iconOnlyMode,
-                                          onTap: _openPayCode,
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: RepaintBoundary(
-                                        child: CircularFeatureButton(
-                                          icon: Icons.school_outlined,
-                                          title: '二课',
-                                          backgroundColor: actionCircleColor,
-                                          foregroundColor:
-                                              actionForegroundColor,
-                                          micaOpacity: 0.12,
-                                          labelColor: actionLabelColor,
-                                          iconOnly: _iconOnlyMode,
-                                          onTap: _openClassroom,
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: RepaintBoundary(
-                                        child: CircularFeatureButton(
-                                          icon: Icons.shower_outlined,
-                                          title: '洗浴',
-                                          backgroundColor: actionCircleColor,
-                                          foregroundColor:
-                                              actionForegroundColor,
-                                          micaOpacity: 0.12,
-                                          labelColor: actionLabelColor,
-                                          iconOnly: _iconOnlyMode,
-                                          onTap: _openBath,
+                                        child: StatusIndicator(
+                                          ready: _loginStatusKnown,
+                                          status: _status,
+                                          onTap: _openPortal,
+                                          onLongPress: _confirmClearLoginState,
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Transform.translate(
-                              offset: const Offset(0, -8),
-                              child: RepaintBoundary(
-                                child: _UpcomingCourseQuote(
-                                  occurrence: displayedScheduleHint,
-                                  isCurrent: _mockScheduleHint
-                                      ? false
-                                      : _scheduleHintIsCurrent,
-                                  loading: _scheduleHintLoading,
-                                  onTap: () => unawaited(_openSchedule()),
+                                const Spacer(),
+                                SizedBox(
+                                  height: tileHeight,
+                                  child: Align(
+                                    alignment: Alignment.bottomCenter,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 24,
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceAround,
+                                        children: [
+                                          Expanded(
+                                            child: RepaintBoundary(
+                                              child: CircularFeatureButton(
+                                                icon: _doorIcon,
+                                                title: _doorTitle,
+                                                busy:
+                                                    _doorState ==
+                                                    _DoorButtonState.busy,
+                                                backgroundColor: const Color(
+                                                  0xFF22C55E,
+                                                ),
+                                                foregroundColor:
+                                                    actionForegroundColor,
+                                                micaOpacity: isDark
+                                                    ? 0.62
+                                                    : 0.58,
+                                                labelColor: actionLabelColor,
+                                                iconOnly: _iconOnlyMode,
+                                                onTap: _triggerDoor,
+                                              ),
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: RepaintBoundary(
+                                              child: CircularFeatureButton(
+                                                icon: Icons.credit_card_rounded,
+                                                title: '付款码',
+                                                backgroundColor:
+                                                    actionCircleColor,
+                                                foregroundColor:
+                                                    actionForegroundColor,
+                                                micaOpacity: 0.12,
+                                                labelColor: actionLabelColor,
+                                                iconOnly: _iconOnlyMode,
+                                                onTap: _openPayCode,
+                                              ),
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: RepaintBoundary(
+                                              child: CircularFeatureButton(
+                                                icon: Icons.school_outlined,
+                                                title: '二课',
+                                                backgroundColor:
+                                                    actionCircleColor,
+                                                foregroundColor:
+                                                    actionForegroundColor,
+                                                micaOpacity: 0.12,
+                                                labelColor: actionLabelColor,
+                                                iconOnly: _iconOnlyMode,
+                                                onTap: _openClassroom,
+                                              ),
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: RepaintBoundary(
+                                              child: CircularFeatureButton(
+                                                icon: Icons.shower_outlined,
+                                                title: '洗浴',
+                                                backgroundColor:
+                                                    actionCircleColor,
+                                                foregroundColor:
+                                                    actionForegroundColor,
+                                                micaOpacity: 0.12,
+                                                labelColor: actionLabelColor,
+                                                iconOnly: _iconOnlyMode,
+                                                onTap: _openBath,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: SizedBox(
+                                    height: ((contentWidth - 40) / 3).clamp(
+                                      112.0,
+                                      180.0,
+                                    ),
+                                    child: RepaintBoundary(
+                                      child: _UpcomingCourseQuote(
+                                        occurrence: displayedScheduleHint,
+                                        isCurrent: _mockScheduleHint
+                                            ? false
+                                            : _scheduleHintIsCurrent,
+                                        loading: _scheduleHintLoading,
+                                        onTap: () => unawaited(_openSchedule()),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),

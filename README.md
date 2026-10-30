@@ -117,6 +117,15 @@ flutter build apk --release --dart-define=SCHEDULE_CACHE_TTL_DAYS=3
 flutter build ios --release --no-codesign
 ```
 
+iOS 编译需要 **Xcode 27.1 / 27.2（iOS SDK ≥ 27.1）**：iPhone Duo 的
+`verticalBarEdge`、`reservedRegions(kind:)` 只在新 SDK 里存在。部署目标仍然是
+`IPHONEOS_DEPLOYMENT_TARGET = 15.0`，新 API 由 `if #available(iOS 27.1, *)` 兜底，
+所以 iOS 15–26 的设备照常可用。检查方式：
+
+```bash
+xcrun --sdk iphoneos --show-sdk-version   # 期望 >= 27.1
+```
+
 打包 iOS 未签名 IPA：
 
 ```bash
@@ -127,7 +136,7 @@ bash scripts/package_unsigned_ipa.sh --build --name UWHLife_unsigned.ipa
 
 仓库包含两条自动化流程：
 
-- `CI`：推送到 `main` 或创建 Pull Request 时，自动执行 `flutter pub get`、`flutter analyze`、`flutter test`，并构建 Android APK artifact。
+- `CI`：推送到 `main` 或创建 Pull Request 时，自动执行 `flutter pub get`、`flutter analyze`、`flutter test`。
 - `Release`：在 `main` 上推送正式版本 tag 时触发，例如：
 
 ```bash

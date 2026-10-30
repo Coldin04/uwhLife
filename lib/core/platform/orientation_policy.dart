@@ -53,7 +53,7 @@ class _OrientationPolicyState extends State<OrientationPolicy>
   }
 
   void _updateOrientations() {
-    if (!mounted) {
+    if (!mounted || defaultTargetPlatform != TargetPlatform.android) {
       return;
     }
 

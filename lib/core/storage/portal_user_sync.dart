@@ -11,7 +11,18 @@ class PortalUserSync {
   );
 
   static Future<bool> fromCookieHeader(String cookieHeader) async {
-    if (cookieHeader.trim().isEmpty) return false;
+    try {
+      final body = await fetchUserResponse(cookieHeader);
+      return body != null &&
+          await PortalUserStore.saveFromLoginUserResponse(body);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Fetch without changing local state; callers can discard stale results.
+  static Future<String?> fetchUserResponse(String cookieHeader) async {
+    if (cookieHeader.trim().isEmpty) return null;
 
     HttpClient? client;
     try {
@@ -21,20 +32,35 @@ class PortalUserSync {
       final response = await request.close().timeout(
         const Duration(seconds: 8),
       );
-      if (response.statusCode != HttpStatus.ok) return false;
-      final body = await response.transform(utf8.decoder).join();
-      return PortalUserStore.saveFromLoginUserResponse(body);
+      if (response.statusCode != HttpStatus.ok) return null;
+      return await response.transform(utf8.decoder).join().timeout(
+        const Duration(seconds: 8),
+      );
     } catch (_) {
-      return false;
+      return null;
     } finally {
       client?.close(force: true);
     }
   }
 
   static Future<bool> fromWebViewCookies() async {
-    final cookieHeader = await BrowserDataCleaner.getCookies(
-      url: _loginUserUri.toString(),
-    );
-    return fromCookieHeader(cookieHeader);
+    try {
+      final body = await fetchWebViewUserResponse();
+      return body != null &&
+          await PortalUserStore.saveFromLoginUserResponse(body);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<String?> fetchWebViewUserResponse() async {
+    try {
+      final cookieHeader = await BrowserDataCleaner.getCookies(
+        url: _loginUserUri.toString(),
+      );
+      return await fetchUserResponse(cookieHeader);
+    } catch (_) {
+      return null;
+    }
   }
 }

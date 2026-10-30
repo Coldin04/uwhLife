@@ -1,10 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:html/parser.dart' as html_parser;
 
 import '../../core/platform/browser_data_cleaner.dart';
-import '../../core/storage/portal_user_sync.dart';
 import 'ids_aes.dart';
 import 'ids_slider_captcha.dart';
 
@@ -79,7 +79,9 @@ class IdsHttpAuthClient {
     HttpClient? httpClient,
     IdsPasswordEncoder? passwordEncoder,
     IdsSliderSigner? sliderSigner,
-  }) : _httpClient = httpClient ?? HttpClient(),
+  }) : _httpClient =
+           httpClient ??
+           (HttpClient()..connectionTimeout = const Duration(seconds: 8)),
        _passwordEncoder = passwordEncoder ?? IdsPasswordEncoder(),
        _sliderSigner = sliderSigner ?? IdsSliderSigner();
 
@@ -125,11 +127,6 @@ class IdsHttpAuthClient {
         form: fields,
       );
       if (submitted.uri.host.toLowerCase() != _idsHost) {
-        await PortalUserSync.fromCookieHeader(
-          _cookieJar.cookieHeaderFor(
-            Uri.https('ehall.uwh.edu.cn', '/getLoginUser'),
-          ),
-        );
         return IdsLoginResult.authenticated(
           cookieJar: _cookieJar,
           service: service,
@@ -139,6 +136,8 @@ class IdsHttpAuthClient {
       final error = _readLoginError(submitted.body);
       if (error != null) return IdsLoginResult.invalidCredentials(error);
       return const IdsLoginResult.failed('统一认证没有返回服务页面');
+    } on TimeoutException {
+      return const IdsLoginResult.failed('统一认证请求超时');
     } on SocketException {
       return const IdsLoginResult.failed('网络连接失败');
     } on HttpException {
@@ -272,7 +271,9 @@ class IdsHttpAuthClient {
     Map<String, String>? form,
     bool xhr = false,
   }) async {
-    final request = await _httpClient.openUrl(method, uri);
+    final request = await _httpClient
+        .openUrl(method, uri)
+        .timeout(const Duration(seconds: 12));
     request.followRedirects = false;
     if (xhr) {
       request.headers.set('X-Requested-With', 'XMLHttpRequest');
@@ -305,12 +306,14 @@ class IdsHttpAuthClient {
       request.write(_encodeForm(form));
     }
 
-    final response = await request.close();
+    final response = await request.close().timeout(const Duration(seconds: 12));
     _cookieJar.save(uri, response.cookies);
-    final bytes = await response.fold<List<int>>(<int>[], (all, chunk) {
-      all.addAll(chunk);
-      return all;
-    });
+    final bytes = await response
+        .fold<List<int>>(<int>[], (all, chunk) {
+          all.addAll(chunk);
+          return all;
+        })
+        .timeout(const Duration(seconds: 12));
     return _HttpDocument(
       uri: uri,
       statusCode: response.statusCode,
@@ -353,6 +356,7 @@ class IdsPasswordEncoder {
 /// Minimal domain/path-aware jar for the CAS redirect flow.
 class HttpCookieJar {
   final List<_StoredCookie> _cookies = <_StoredCookie>[];
+  final List<_StoredCookie> _deletedCookies = <_StoredCookie>[];
 
   void addCookieHeader(Uri uri, String header) {
     final cookies = <Cookie>[];
@@ -371,8 +375,17 @@ class HttpCookieJar {
   void save(Uri requestUri, List<Cookie> cookies) {
     for (final cookie in cookies) {
       final stored = _StoredCookie.fromCookie(requestUri, cookie);
+      final host = requestUri.host.toLowerCase();
+      if (host != stored.domain && !host.endsWith('.${stored.domain}')) {
+        continue;
+      }
       _cookies.removeWhere((existing) => existing.sameScope(stored));
-      if (!stored.expired) _cookies.add(stored);
+      _deletedCookies.removeWhere((existing) => existing.sameScope(stored));
+      if (stored.expired) {
+        _deletedCookies.add(stored);
+      } else {
+        _cookies.add(stored);
+      }
     }
   }
 
@@ -438,19 +451,28 @@ class HttpCookieJar {
     }
   }
 
-  Future<void> syncToWebView(Iterable<Uri> urls) async {
+  Future<void> syncToWebView(
+    Iterable<Uri> urls, {
+    Future<void> Function(Uri uri, List<String> cookies)? setCookies,
+    Future<void> Function()? persistCookies,
+  }) async {
     _discardExpired();
+    final write =
+        setCookies ??
+        (Uri uri, List<String> cookies) => BrowserDataCleaner.setCookiesForUrl(
+          url: uri.toString(),
+          cookies: cookies,
+        );
     for (final uri in urls) {
-      final cookies = _cookies
-          .where((cookie) => cookie.matches(uri))
+      final cookies = <_StoredCookie>[..._cookies, ..._deletedCookies]
+          // Writing a cookie must not depend on whether its Path matches the
+          // login URL. A later navigation can need a narrower-path cookie.
+          .where((cookie) => cookie.matchesDomain(uri))
           .map((cookie) => cookie.asSetCookieHeader())
           .toList(growable: false);
-      await BrowserDataCleaner.setCookiesForUrl(
-        url: uri.toString(),
-        cookies: cookies,
-      );
+      if (cookies.isNotEmpty) await write(uri, cookies);
     }
-    await BrowserDataCleaner.persistCookies();
+    await (persistCookies ?? BrowserDataCleaner.persistCookies)();
   }
 
   void _discardExpired() {
@@ -463,9 +485,11 @@ class _StoredCookie {
     required this.name,
     required this.value,
     required this.domain,
+    required this.hostOnly,
     required this.path,
     required this.secure,
     required this.httpOnly,
+    required this.sameSite,
     required this.expires,
   });
 
@@ -477,19 +501,27 @@ class _StoredCookie {
         RegExp(r'^\.'),
         '',
       ),
-      path: cookie.path?.isNotEmpty == true ? cookie.path! : '/',
+      hostOnly: cookie.domain == null || cookie.domain!.isEmpty,
+      path: cookie.path?.startsWith('/') == true
+          ? cookie.path!
+          : _defaultCookiePath(requestUri.path),
       secure: cookie.secure,
       httpOnly: cookie.httpOnly,
-      expires: cookie.expires,
+      sameSite: cookie.sameSite?.name,
+      expires: cookie.maxAge == null
+          ? cookie.expires
+          : DateTime.now().add(Duration(seconds: cookie.maxAge!)),
     );
   }
 
   final String name;
   final String value;
   final String domain;
+  final bool hostOnly;
   final String path;
   final bool secure;
   final bool httpOnly;
+  final String? sameSite;
   final DateTime? expires;
 
   static _StoredCookie? fromJson(Map value) {
@@ -506,9 +538,13 @@ class _StoredCookie {
       name: name,
       value: valueText,
       domain: domain,
+      // Old persisted jars had no host-only flag. Keep their former domain
+      // behaviour until they are replaced by a fresh authenticated session.
+      hostOnly: value['hostOnly'] == true,
       path: path,
       secure: value['secure'] == true,
       httpOnly: value['httpOnly'] == true,
+      sameSite: value['sameSite']?.toString(),
       expires: expires,
     );
   }
@@ -517,9 +553,11 @@ class _StoredCookie {
     'name': name,
     'value': value,
     'domain': domain,
+    'hostOnly': hostOnly,
     'path': path,
     'secure': secure,
     'httpOnly': httpOnly,
+    'sameSite': sameSite,
     'expires': expires?.toIso8601String(),
   };
 
@@ -529,19 +567,35 @@ class _StoredCookie {
     return name == other.name && domain == other.domain && path == other.path;
   }
 
-  bool matches(Uri uri) {
+  bool matchesDomain(Uri uri) {
     if (secure && uri.scheme != 'https') return false;
     final host = uri.host.toLowerCase();
-    final domainMatches = host == domain || host.endsWith('.$domain');
-    if (!domainMatches) return false;
-    return uri.path.startsWith(path);
+    return host == domain || (!hostOnly && host.endsWith('.$domain'));
+  }
+
+  bool matches(Uri uri) {
+    if (!matchesDomain(uri)) return false;
+    final requestPath = uri.path.isEmpty ? '/' : uri.path;
+    if (requestPath == path) return true;
+    return requestPath.startsWith(path) &&
+        (path.endsWith('/') ||
+            requestPath.substring(path.length).startsWith('/'));
   }
 
   String asSetCookieHeader() {
-    final parts = <String>['$name=$value', 'Path=$path', 'Domain=$domain'];
+    final parts = <String>['$name=$value', 'Path=$path'];
+    if (!hostOnly) parts.add('Domain=$domain');
+    if (expires != null) parts.add('Expires=${HttpDate.format(expires!)}');
     if (secure) parts.add('Secure');
     if (httpOnly) parts.add('HttpOnly');
+    if (sameSite != null) parts.add('SameSite=$sameSite');
     return parts.join('; ');
+  }
+
+  static String _defaultCookiePath(String requestPath) {
+    if (!requestPath.startsWith('/') || requestPath == '/') return '/';
+    final lastSlash = requestPath.lastIndexOf('/');
+    return lastSlash <= 0 ? '/' : requestPath.substring(0, lastSlash);
   }
 }
 

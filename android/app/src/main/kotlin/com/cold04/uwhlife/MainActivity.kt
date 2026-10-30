@@ -294,11 +294,25 @@ class MainActivity : FlutterActivity() {
 
         try {
             val manager = CookieManager.getInstance()
-            for (cookie in cookies) {
-                manager.setCookie(url, cookie)
+            fun setNext(index: Int) {
+                try {
+                    if (index == cookies.size) {
+                        manager.flush()
+                        result.success(null)
+                        return
+                    }
+                    manager.setCookie(url, cookies[index]) { accepted ->
+                        if (accepted == true) {
+                            setNext(index + 1)
+                        } else {
+                            result.error("set_cookies_failed", "WebView rejected a cookie", null)
+                        }
+                    }
+                } catch (error: Throwable) {
+                    result.error("set_cookies_failed", error.message, null)
+                }
             }
-            manager.flush()
-            result.success(null)
+            setNext(0)
         } catch (error: Throwable) {
             result.error("set_cookies_failed", error.message, null)
         }

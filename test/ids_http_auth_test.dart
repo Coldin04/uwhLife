@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -58,4 +59,93 @@ void main() {
       isEmpty,
     );
   });
+
+  test('host-only cookies and path boundaries do not leak', () {
+    final jar = HttpCookieJar()
+      ..save(Uri.parse('https://ids.uwh.edu.cn/authserver/login'), [
+        Cookie('host', 'one')..path = '/auth',
+        Cookie('domain', 'two')
+          ..domain = 'uwh.edu.cn'
+          ..path = '/',
+      ]);
+    expect(
+      jar.cookieHeaderFor(Uri.parse('https://ids.uwh.edu.cn/authz')),
+      isNot(contains('host=')),
+    );
+    expect(
+      jar.cookieHeaderFor(Uri.parse('https://sub.ids.uwh.edu.cn/auth')),
+      isNot(contains('host=')),
+    );
+    expect(
+      jar.cookieHeaderFor(Uri.parse('https://sub.ids.uwh.edu.cn/auth')),
+      contains('domain=two'),
+    );
+  });
+
+  test(
+    'syncs every cookie for the host with attributes and waits for the bridge',
+    () async {
+      final jar = HttpCookieJar()
+        ..save(Uri.parse('https://ids.uwh.edu.cn/authserver/login'), [
+          Cookie('ids', 'one')
+            ..path = '/authserver/private'
+            ..secure = true
+            ..httpOnly = true
+            ..sameSite = SameSite.lax
+            ..expires = DateTime.utc(2035, 1, 2),
+        ]);
+      final done = Completer<void>();
+      List<String>? received;
+      var finished = false;
+      final sync = jar.syncToWebView(
+        [Uri.parse('https://ids.uwh.edu.cn/authserver/')],
+        setCookies: (uri, cookies) {
+          received = cookies;
+          return done.future;
+        },
+        persistCookies: () async {},
+      )..then((_) => finished = true);
+      await Future<void>.delayed(Duration.zero);
+      expect(finished, isFalse);
+      expect(received, hasLength(1));
+      expect(received!.single, contains('Path=/authserver/private'));
+      expect(
+        received!.single,
+        contains('Expires=Tue, 02 Jan 2035 00:00:00 GMT'),
+      );
+      expect(received!.single, contains('Secure'));
+      expect(received!.single, contains('HttpOnly'));
+      expect(received!.single, contains('SameSite=Lax'));
+      expect(received!.single, isNot(contains('Domain=')));
+      done.complete();
+      await sync;
+      expect(finished, isTrue);
+    },
+  );
+
+  test(
+    'a server deletion reaches the browser and failures propagate',
+    () async {
+      final uri = Uri.parse('https://ids.uwh.edu.cn/authserver/login');
+      final jar = HttpCookieJar()
+        ..save(uri, [Cookie('ids', 'old')..path = '/'])
+        ..save(uri, [
+          Cookie('ids', '')
+            ..path = '/'
+            ..maxAge = 0,
+        ]);
+      expect(jar.cookieHeaderFor(uri), isEmpty);
+      await expectLater(
+        jar.syncToWebView(
+          [uri],
+          setCookies: (_, cookies) async {
+            expect(cookies.single, contains('Expires='));
+            throw StateError('bridge unavailable');
+          },
+          persistCookies: () async {},
+        ),
+        throwsStateError,
+      );
+    },
+  );
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uwhlife/core/storage/login_state_store.dart';
@@ -44,6 +46,128 @@ final _authenticated = IdsLoginResult.authenticated(
 
 void main() {
   group('PortalAutoLogin', () {
+    test(
+      'logout waits for an in-flight cookie write and wins over recovery',
+      () async {
+        final syncStarted = Completer<void>();
+        final finishSync = Completer<void>();
+        final events = <String>[];
+        final autoLogin = PortalAutoLogin(
+          readLoggedIn: () async => false,
+          readManualLogout: () async => false,
+          readCredentials: () async => ('student', 'password'),
+          login:
+              ({
+                required username,
+                required password,
+                required service,
+              }) async => _authenticated,
+          syncCookies: (_) async {
+            events.add('sync-start');
+            syncStarted.complete();
+            await finishSync.future;
+            events.add('sync-end');
+          },
+          markLoggedIn: () async => events.add('logged-in'),
+          markManualLogout: () async => events.add('logged-out'),
+        );
+        final recovery = autoLogin.restoreSession(force: true);
+        await syncStarted.future;
+        final logout = autoLogin.logout(clear: () async => events.add('clear'));
+        finishSync.complete();
+        expect(await recovery, PortalAutoLoginOutcome.skipped);
+        await logout;
+        expect(events, ['sync-start', 'sync-end', 'logged-out', 'clear']);
+      },
+    );
+
+    test('stale expiry retries only after a newer successful login', () async {
+      final autoLogin = PortalAutoLogin(
+        readManualLogout: () async => false,
+        markLoggedIn: () async {},
+        markManualLogout: () async {},
+      );
+      final old = autoLogin.generation;
+      final login = autoLogin.beginInteractiveLogin();
+      expect(
+        await autoLogin.reportLoginRequired(old),
+        PortalAutoLoginOutcome.skipped,
+      );
+      expect(
+        await autoLogin.completeInteractiveLogin(
+          observedGeneration: login,
+          syncCookies: () async {},
+        ),
+        isTrue,
+      );
+      expect(
+        await autoLogin.reportLoginRequired(old),
+        PortalAutoLoginOutcome.restored,
+      );
+      await autoLogin.logout(clear: () async {});
+      expect(
+        await autoLogin.reportLoginRequired(old),
+        PortalAutoLoginOutcome.skipped,
+      );
+    });
+
+    test('a cookie sync failure never marks the session logged in', () async {
+      var marked = false;
+      final autoLogin = PortalAutoLogin(
+        readLoggedIn: () async => false,
+        readManualLogout: () async => false,
+        readCredentials: () async => ('student', 'password'),
+        login:
+            ({required username, required password, required service}) async =>
+                _authenticated,
+        syncCookies: (_) async => throw StateError('bridge unavailable'),
+        markLoggedIn: () async => marked = true,
+      );
+      expect(await autoLogin.restoreSession(), PortalAutoLoginOutcome.failed);
+      expect(marked, isFalse);
+    });
+
+    test(
+      'concurrent expiry reports share recovery and waiting observes it',
+      () async {
+        final syncStarted = Completer<void>();
+        final finishSync = Completer<void>();
+        var loginAttempts = 0;
+        var expiryCount = 0;
+        final autoLogin = PortalAutoLogin(
+          readManualLogout: () async => false,
+          readCredentials: () async => ('student', 'password'),
+          login:
+              ({required username, required password, required service}) async {
+                loginAttempts++;
+                return _authenticated;
+              },
+          markLoggedOut: () async => expiryCount++,
+          syncCookies: (_) async {
+            syncStarted.complete();
+            await finishSync.future;
+          },
+          markLoggedIn: () async {},
+        );
+        final generation = autoLogin.generation;
+        final first = autoLogin.reportLoginRequired(generation);
+        final second = autoLogin.reportLoginRequired(generation);
+        await syncStarted.future;
+        var finishedWaiting = false;
+        final wait = autoLogin.waitForRecovery().then(
+          (_) => finishedWaiting = true,
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(finishedWaiting, isFalse);
+        finishSync.complete();
+        expect(await first, PortalAutoLoginOutcome.restored);
+        expect(await second, PortalAutoLoginOutcome.restored);
+        await wait;
+        expect(loginAttempts, 1);
+        expect(expiryCount, 1);
+      },
+    );
+
     test('restores the session with the saved credentials', () async {
       final recorder = _Recorder();
       final autoLogin = _autoLogin(recorder, result: _authenticated);

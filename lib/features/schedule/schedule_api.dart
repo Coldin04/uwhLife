@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:html/parser.dart' as html_parser;
 
 import '../../core/platform/browser_data_cleaner.dart';
+import '../auth/ids_login_form.dart';
 import '../auth/portal_auto_login.dart';
 import 'models/schedule_models.dart';
 
@@ -64,26 +65,46 @@ class ScheduleApi {
   }
 
   static Future<ScheduleData> fetchSchedule({String? termCode}) async {
+    await PortalAutoLogin.instance.waitForRecovery();
+    final generation = PortalAutoLogin.instance.generation;
     try {
-      return await _fetchSchedule(termCode: termCode);
-    } on ScheduleAuthenticationException {
+      return await _fetchSchedule(termCode: termCode, generation: generation);
+    } on ScheduleAuthenticationException catch (error) {
       // Ehall 与 IDS 的 Cookie 可以分别过期。课表首次请求发现认证页后，
       // 用已保存凭据刷新一次 IDS 会话，再完整重试一次原请求链。
-      final outcome = await PortalAutoLogin.instance.restoreSession(
-        force: true,
-      );
+      final outcome = error.confirmedIdsLogin
+          ? await PortalAutoLogin.instance.reportLoginRequired(generation)
+          : await PortalAutoLogin.instance.restoreSession(force: true);
       if (outcome != PortalAutoLoginOutcome.restored) {
         rethrow;
       }
       // A native subsystem response cannot prove that the browser is showing
       // the IDS credential form. Keep failures local to this request.
-      return _fetchSchedule(termCode: termCode);
+      final retryGeneration = PortalAutoLogin.instance.generation;
+      try {
+        return await _fetchSchedule(
+          termCode: termCode,
+          generation: retryGeneration,
+        );
+      } on ScheduleAuthenticationException catch (retryError) {
+        if (retryError.confirmedIdsLogin) {
+          await PortalAutoLogin.instance.reportLoginRequired(
+            retryGeneration,
+            recover: false,
+          );
+        }
+        rethrow;
+      }
     }
   }
 
-  static Future<ScheduleData> _fetchSchedule({String? termCode}) async {
+  static Future<ScheduleData> _fetchSchedule({
+    String? termCode,
+    required int generation,
+  }) async {
     final client = _ScheduleHttpClient(
       nativeCookieHosts: const <String>{'ids.uwh.edu.cn'},
+      generation: generation,
     );
     try {
       // The portal session alone can produce an empty pageMeta role. Start at
@@ -266,7 +287,13 @@ class ScheduleApi {
       'login=${_looksLikeLoginPage(landingHtml)}',
     );
     if (_looksLikeLoginPage(landingHtml)) {
-      throw const ScheduleAuthenticationException('教务系统登录态已失效，请重新登录统一门户');
+      throw ScheduleAuthenticationException(
+        '教务系统登录态已失效，请重新登录统一门户',
+        confirmedIdsLogin: isIdsLoginForm(
+          url: landing.uri.toString(),
+          body: landingHtml,
+        ),
+      );
     }
     throw const ScheduleApiException('课表初始化页未返回教务角色，请重新登录统一门户后重试');
   }
@@ -525,14 +552,17 @@ class _ScheduleHttpClient {
   static const _acceptLanguage =
       'zh-CN,zh;q=0.9,zh-TW;q=0.8,zh-HK;q=0.7,en-US;q=0.6,en;q=0.5';
 
-  _ScheduleHttpClient({required Set<String> nativeCookieHosts})
-    : _nativeCookieHosts = nativeCookieHosts
-          .map((host) => host.toLowerCase())
-          .toSet();
+  _ScheduleHttpClient({
+    required Set<String> nativeCookieHosts,
+    required this.generation,
+  }) : _nativeCookieHosts = nativeCookieHosts
+           .map((host) => host.toLowerCase())
+           .toSet();
 
   final HttpClient _client = HttpClient();
   final _CookieJar _cookies = _CookieJar();
   final Set<String> _nativeCookieHosts;
+  final int generation;
 
   Future<_ScheduleResponse> getText(Uri uri) async {
     return _requestFollowing(uri, method: 'GET');
@@ -690,11 +720,14 @@ class _ScheduleHttpClient {
     List<Cookie> cookies,
   ) async {
     if (cookies.isEmpty) return;
-    await BrowserDataCleaner.setCookiesForUrl(
-      url: uri.toString(),
-      cookies: cookies
-          .map(_CookieJar.asSetCookieHeader)
-          .toList(growable: false),
+    await PortalAutoLogin.instance.applyCookiesIfCurrent(
+      observedGeneration: generation,
+      write: () => BrowserDataCleaner.setCookiesForUrl(
+        url: uri.toString(),
+        cookies: cookies
+            .map((cookie) => cookie.toString())
+            .toList(growable: false),
+      ),
     );
     debugPrint(
       '[ScheduleApi] response cookies on ${uri.host}: '
@@ -768,17 +801,6 @@ class _CookieJar {
         .toList(growable: false);
   }
 
-  static String asSetCookieHeader(Cookie cookie) {
-    final parts = <String>['${cookie.name}=${cookie.value}'];
-    if (cookie.path?.isNotEmpty == true) parts.add('Path=${cookie.path}');
-    if (cookie.domain?.isNotEmpty == true) {
-      parts.add('Domain=${cookie.domain}');
-    }
-    if (cookie.secure) parts.add('Secure');
-    if (cookie.httpOnly) parts.add('HttpOnly');
-    return parts.join('; ');
-  }
-
   void save(Uri requestUri, List<Cookie> cookies) {
     for (final cookie in cookies) {
       final domain = (cookie.domain ?? requestUri.host)
@@ -815,5 +837,10 @@ class ScheduleApiException implements Exception {
 }
 
 class ScheduleAuthenticationException extends ScheduleApiException {
-  const ScheduleAuthenticationException(super.message);
+  const ScheduleAuthenticationException(
+    super.message, {
+    this.confirmedIdsLogin = false,
+  });
+
+  final bool confirmedIdsLogin;
 }

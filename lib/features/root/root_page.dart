@@ -7,12 +7,15 @@ import 'package:flutter/services.dart';
 
 import '../../core/deep_links/deep_link_destination.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/platform/side_navigation.dart';
+import '../../core/platform/bottom_spacing.dart';
 import '../../core/storage/login_state_store.dart';
 import '../../core/utils/route_utils.dart';
 import '../../core/utils/app_scheme_launcher.dart';
 import '../apps/app_list_page.dart';
 import '../apps/models/app_entry.dart';
 import '../auth/ids_login_page.dart';
+import '../auth/portal_auto_login.dart';
 import '../home/home_page.dart';
 import '../message/message_api.dart';
 import '../paycode/paycode_screen.dart';
@@ -239,6 +242,7 @@ class _RootPageState extends State<RootPage>
   }
 
   Future<void> _openPortal() async {
+    await PortalAutoLogin.instance.waitForRecovery();
     final loggedIn = await LoginStateStore.readLoggedIn();
     if (!mounted) return;
     if (loggedIn) {
@@ -300,6 +304,7 @@ class _RootPageState extends State<RootPage>
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final useSideNavigation = usesSideNavigation(context);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
@@ -318,45 +323,84 @@ class _RootPageState extends State<RootPage>
         body: Stack(
           children: [
             Positioned.fill(child: _RootPageBackground(isDark: isDark)),
-            AnimatedBuilder(
-              animation: _animController,
-              builder: (context, child) {
-                return FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: SlideTransition(
-                    position: _slideAnimation,
-                    child: child,
+            Positioned.fill(
+              child: AnimatedBuilder(
+                animation: _animController,
+                builder: (context, child) {
+                  return FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: SlideTransition(
+                      position: _slideAnimation,
+                      child: child,
+                    ),
+                  );
+                },
+                // 页面内容单独成层：底栏那层毛玻璃每帧都要采样它下面的画面，
+                // 不切开的话内容重绘会连带整条底栏重绘。
+                child: RepaintBoundary(
+                  child: ValueListenableBuilder<int>(
+                    valueListenable: _currentIndex,
+                    builder: (context, index, _) => IndexedStack(
+                      index: index,
+                      children: [
+                        _pages[0],
+                        for (final page in _pages.skip(1))
+                          SafeArea(
+                            top: false,
+                            bottom: false,
+                            left: useSideNavigation,
+                            right: useSideNavigation,
+                            child: page,
+                          ),
+                      ],
+                    ),
                   ),
-                );
-              },
-              // 页面内容单独成层：底栏那层毛玻璃每帧都要采样它下面的画面，
-              // 不切开的话内容重绘会连带整条底栏重绘。
-              child: RepaintBoundary(
-                child: ValueListenableBuilder<int>(
-                  valueListenable: _currentIndex,
-                  builder: (context, index, _) =>
-                      IndexedStack(index: index, children: _pages),
                 ),
               ),
             ),
-          ],
-        ),
-        bottomNavigationBar: RepaintBoundary(
-          child: ValueListenableBuilder<bool>(
-            valueListenable: MessageApi.hasUnreadMessages,
-            builder: (context, hasUnreadMessages, _) =>
-                ValueListenableBuilder<int>(
-                  valueListenable: _currentIndex,
-                  builder: (context, index, _) => _SlidingNavBar(
-                    currentIndex: index,
-                    hasUnreadMessages: hasUnreadMessages,
-                    onTap: _switchTab,
-                    isDark: isDark,
-                    scheme: scheme,
+            if (useSideNavigation)
+              Positioned(
+                top: 0,
+                bottom: 0,
+                right: systemVerticalEdge == 'left' ? null : 0,
+                left: systemVerticalEdge == 'left' ? 0 : null,
+                child: RepaintBoundary(
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: MessageApi.hasUnreadMessages,
+                    builder: (context, hasUnreadMessages, _) =>
+                        ValueListenableBuilder<int>(
+                          valueListenable: _currentIndex,
+                          builder: (context, index, _) => _SideNavBar(
+                            currentIndex: index,
+                            hasUnreadMessages: hasUnreadMessages,
+                            onTap: _switchTab,
+                            isDark: isDark,
+                            scheme: scheme,
+                          ),
+                        ),
                   ),
                 ),
-          ),
+              ),
+          ],
         ),
+        bottomNavigationBar: useSideNavigation
+            ? null
+            : RepaintBoundary(
+                child: ValueListenableBuilder<bool>(
+                  valueListenable: MessageApi.hasUnreadMessages,
+                  builder: (context, hasUnreadMessages, _) =>
+                      ValueListenableBuilder<int>(
+                        valueListenable: _currentIndex,
+                        builder: (context, index, _) => _SlidingNavBar(
+                          currentIndex: index,
+                          hasUnreadMessages: hasUnreadMessages,
+                          onTap: _switchTab,
+                          isDark: isDark,
+                          scheme: scheme,
+                        ),
+                      ),
+                ),
+              ),
       ),
     );
   }
@@ -442,6 +486,129 @@ const _items = [
 
 const _itemLabels = ['首页', '课表', '应用', '我的'];
 
+class _SideNavBar extends StatelessWidget {
+  const _SideNavBar({
+    required this.currentIndex,
+    required this.hasUnreadMessages,
+    required this.onTap,
+    required this.isDark,
+    required this.scheme,
+  });
+
+  final int currentIndex;
+  final bool hasUnreadMessages;
+  final ValueChanged<int> onTap;
+  final bool isDark;
+  final ColorScheme scheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final onHome = currentIndex == 0;
+    final foreground = onHome || isDark ? Colors.white : scheme.onSurface;
+    final rightInset = systemVerticalEdge == 'left'
+        ? MediaQuery.paddingOf(context).left
+        : MediaQuery.paddingOf(context).right;
+    return SizedBox(
+      width: 76 + rightInset,
+      child: SafeArea(
+        top: true,
+        bottom: true,
+        left: false,
+        right: false,
+        child: Padding(
+          padding: EdgeInsets.only(
+            right: systemVerticalEdge == 'left'
+                ? 0
+                : sideControlRightInset(context, 60),
+            left: systemVerticalEdge == 'left'
+                ? sideControlRightInset(context, 60)
+                : 0,
+          ),
+          child: Align(
+            alignment: systemVerticalEdge == 'left'
+                ? Alignment.bottomLeft
+                : Alignment.bottomRight,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                child: Container(
+                  width: 60,
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  decoration: BoxDecoration(
+                    color: (onHome ? Colors.white : scheme.surface).withValues(
+                      alpha: onHome ? 0.18 : 0.78,
+                    ),
+                    border: Border.all(
+                      color: foreground.withValues(alpha: 0.16),
+                    ),
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(_items.length, (i) {
+                      final selected = i == currentIndex;
+                      return Semantics(
+                        button: true,
+                        selected: selected,
+                        label: i == 3 && hasUnreadMessages
+                            ? '我的，有未读消息'
+                            : _itemLabels[i],
+                        child: InkWell(
+                          onTap: () => onTap(i),
+                          child: SizedBox(
+                            width: 60,
+                            height: 56,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Icon(
+                                      selected
+                                          ? _items[i].activeIcon
+                                          : _items[i].icon,
+                                      size: 21,
+                                      color: foreground.withValues(
+                                        alpha: selected ? 1 : 0.68,
+                                      ),
+                                    ),
+                                    if (i == 3 && hasUnreadMessages)
+                                      const Positioned(
+                                        top: -3,
+                                        right: -4,
+                                        child: _UnreadDot(),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _itemLabels[i],
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: foreground.withValues(
+                                      alpha: selected ? 1 : 0.68,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _SlidingNavBar extends StatelessWidget {
   const _SlidingNavBar({
     required this.currentIndex,
@@ -472,85 +639,113 @@ class _SlidingNavBar extends StatelessWidget {
     final activeColor = onHomeTab || isDark
         ? Colors.white
         : const Color(0xFF111827);
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-
-    return ClipRect(
+    final floating =
+        systemAdaptivePhone && MediaQuery.sizeOf(context).shortestSide >= 600;
+    final bar = ClipRRect(
+      borderRadius: floating ? BorderRadius.circular(28) : BorderRadius.zero,
       child: BackdropFilter(
         // 底栏下方的列表会持续变化；保持真实模糊，但用较小采样半径。
         filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
         child: Container(
-          // 比之前缩短 5px；图标组同步上移 5px，保持其相对屏幕位置。
-          height: 66 + bottomPadding,
-          padding: EdgeInsets.only(bottom: bottomPadding + 3),
           decoration: BoxDecoration(
             color: onHomeTab
                 ? Colors.white.withValues(alpha: 0.16)
                 : isDark
                 ? const Color(0xFF0B0E13).withValues(alpha: 0.62)
                 : scheme.surface.withValues(alpha: 0.56),
-            border: Border(
-              top: BorderSide(
-                color: (onHomeTab || isDark ? Colors.white : Colors.black)
-                    .withValues(alpha: 0.08),
+            borderRadius: floating ? BorderRadius.circular(28) : null,
+            border: floating
+                ? Border.all(
+                    color: (onHomeTab || isDark ? Colors.white : Colors.black)
+                        .withValues(alpha: 0.12),
+                  )
+                : Border(
+                    top: BorderSide(
+                      color: (onHomeTab || isDark ? Colors.white : Colors.black)
+                          .withValues(alpha: 0.08),
+                    ),
+                  ),
+          ),
+          child: SafeArea(
+            top: false,
+            bottom: !floating,
+            child: SizedBox(
+              height: 50,
+              child: Row(
+                children: List.generate(_items.length, (i) {
+                  final selected = i == currentIndex;
+                  final color = selected ? activeColor : inactiveColor;
+                  return Expanded(
+                    child: Semantics(
+                      button: true,
+                      selected: selected,
+                      label: i == 3 && hasUnreadMessages
+                          ? '我的，有未读消息'
+                          : _itemLabels[i],
+                      child: InkWell(
+                        onTap: () => onTap(i),
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 1),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Icon(
+                                    selected
+                                        ? _items[i].activeIcon
+                                        : _items[i].icon,
+                                    color: color,
+                                    size: 22,
+                                  ),
+                                  if (i == 3 && hasUnreadMessages)
+                                    const Positioned(
+                                      top: -3,
+                                      right: -4,
+                                      child: _UnreadDot(),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _itemLabels[i],
+                                style: TextStyle(
+                                  color: color,
+                                  fontSize: 10,
+                                  fontWeight: selected
+                                      ? FontWeight.w500
+                                      : FontWeight.w400,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
               ),
             ),
           ),
-          child: Row(
-            children: List.generate(_items.length, (i) {
-              final selected = i == currentIndex;
-              final color = selected ? activeColor : inactiveColor;
-              return Expanded(
-                child: Semantics(
-                  button: true,
-                  selected: selected,
-                  label: i == 3 && hasUnreadMessages
-                      ? '我的，有未读消息'
-                      : _itemLabels[i],
-                  child: InkWell(
-                    onTap: () => onTap(i),
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 1, bottom: 3),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Icon(
-                                selected
-                                    ? _items[i].activeIcon
-                                    : _items[i].icon,
-                                color: color,
-                                size: 24,
-                              ),
-                              if (i == 3 && hasUnreadMessages)
-                                const Positioned(
-                                  top: -3,
-                                  right: -4,
-                                  child: _UnreadDot(),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            _itemLabels[i],
-                            style: TextStyle(
-                              color: color,
-                              fontSize: 11,
-                              fontWeight: selected
-                                  ? FontWeight.w500
-                                  : FontWeight.w400,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }),
-          ),
+        ),
+      ),
+    );
+    if (!floating) return bar;
+    final systemBottomInset = MediaQuery.paddingOf(context).bottom;
+    final size = MediaQuery.sizeOf(context);
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: size.height > size.width
+            ? portraitFloatingBottomGap(systemBottomInset)
+            : systemBottomInset,
+      ),
+      child: Center(
+        heightFactor: 1,
+        child: SizedBox(
+          width: MediaQuery.sizeOf(context).width.clamp(0.0, 360.0),
+          child: bar,
         ),
       ),
     );

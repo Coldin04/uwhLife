@@ -29,6 +29,55 @@ import webview_flutter_wkwebview
       with: engineBridge.applicationRegistrar.messenger()
     )
 
+    let deviceChannel = FlutterMethodChannel(
+      name: "uwhlife/device",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
+    deviceChannel.setMethodCallHandler { [weak self] call, result in
+      guard let self else { result(nil); return }
+      guard call.method == "layout" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      guard let view = self.topViewController()?.view, let window = view.window else {
+        result(nil)
+        return
+      }
+      if #available(iOS 27.1, *) {
+        let edge = view.traitCollection.verticalBarEdge
+        let status = window.windowScene?.statusBarManager?.statusBarFrame ?? .zero
+        let regions = view.reservedRegions(kind: .occlusion)
+        let bottom = regions.reduce(status.maxY) { max($0, $1.frame.maxY) }
+        let rtl = view.effectiveUserInterfaceLayoutDirection == .rightToLeft
+        let edgeName = edge == .unspecified ? "none" :
+          ((edge == .trailing) != rtl ? "right" : "left")
+        let s = view.safeAreaInsets
+        // The system cluster can sit slightly off the middle of the side
+        // safe area. Prefer a compact actual occlusion within that strip
+        // (e.g. the camera), excluding elongated fold-like regions.
+        let sideWidth = edgeName == "right" ? s.right : s.left
+        let sideRect = edgeName == "right"
+          ? CGRect(x: view.bounds.maxX - sideWidth, y: view.bounds.minY,
+                   width: sideWidth, height: view.bounds.height)
+          : CGRect(x: view.bounds.minX, y: view.bounds.minY,
+                   width: sideWidth, height: view.bounds.height)
+        let sideOcclusion = edgeName == "none" || sideWidth <= 0 ? nil :
+          regions.map { $0.frame }.filter {
+            !$0.isEmpty && sideRect.contains($0) &&
+              max($0.width, $0.height) <= 2 * min($0.width, $0.height)
+          }.min { $0.width < $1.width }
+        let sideCenterInset = sideOcclusion.map {
+          edgeName == "right" ? view.bounds.maxX - $0.midX : $0.midX - view.bounds.minX
+        } ?? 0
+        NSLog("[DuoLayout] bounds=\(view.bounds) safe=\(s) status=\(status) edge=\(edgeName) occlusions=\(regions.map { $0.frame })")
+        result(["edge": edgeName, "reservedBottom": bottom,
+                "sideCenterInset": sideCenterInset,
+                "adaptivePhone": view.traitCollection.userInterfaceIdiom == .phone])
+      } else {
+        result(["edge": "none", "reservedBottom": 0, "adaptivePhone": false])
+      }
+    }
+
     let channel = FlutterMethodChannel(
       name: wkInjectorChannelName,
       binaryMessenger: engineBridge.applicationRegistrar.messenger()
@@ -415,8 +464,8 @@ import webview_flutter_wkwebview
       let cookies = headerFields.flatMap {
         HTTPCookie.cookies(withResponseHeaderFields: $0, for: parsedUrl)
       }
-      if cookies.isEmpty {
-        result(nil)
+      guard cookies.count == rawCookies.count else {
+        result(FlutterError(code: "invalid_cookie", message: "Unable to parse every cookie", details: nil))
         return
       }
       var remaining = cookies.count
@@ -440,10 +489,21 @@ import webview_flutter_wkwebview
       }
       let cookieStore = WKWebsiteDataStore.default().httpCookieStore
       cookieStore.getAllCookies { cookies in
-        let host = parsedUrl.host ?? ""
+        let host = (parsedUrl.host ?? "").lowercased()
+        let requestPath = parsedUrl.path.isEmpty ? "/" : parsedUrl.path
         let matching = cookies.filter { cookie in
-          host.hasSuffix(cookie.domain) || cookie.domain.hasPrefix(".") && host.hasSuffix(String(cookie.domain.dropFirst()))
-        }
+          let domain = cookie.domain.lowercased()
+          let normalizedDomain = domain.hasPrefix(".") ? String(domain.dropFirst()) : domain
+          let domainMatches = host == normalizedDomain ||
+            (domain.hasPrefix(".") && host.hasSuffix("." + normalizedDomain))
+          let cookiePath = cookie.path.isEmpty ? "/" : cookie.path
+          let pathMatches = requestPath == cookiePath ||
+            (requestPath.hasPrefix(cookiePath) &&
+              (cookiePath.hasSuffix("/") || requestPath.dropFirst(cookiePath.count).hasPrefix("/")))
+          return domainMatches && pathMatches &&
+            (!cookie.isSecure || parsedUrl.scheme?.lowercased() == "https") &&
+            (cookie.expiresDate == nil || cookie.expiresDate! > Date())
+        }.sorted { $0.path.count > $1.path.count }
         let cookieString = matching.map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
         result(cookieString)
       }

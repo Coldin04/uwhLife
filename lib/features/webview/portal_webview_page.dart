@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,9 +10,12 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
 import '../../core/platform/browser_data_cleaner.dart';
+import '../../core/platform/side_navigation.dart';
 import '../../core/storage/boundary_debug_settings.dart';
 import '../../core/storage/login_state_store.dart';
 import '../../core/storage/portal_credentials.dart';
+import '../../core/storage/portal_user_store.dart';
+import '../../core/storage/portal_user_sync.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/external_link.dart';
 import '../auth/ids_login_form.dart';
@@ -86,12 +90,29 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
   late final IdsLoginGuard _idsLoginGuard;
   bool _idsRecoveryAttempted = false;
   bool _recoveringIdsSession = false;
+  bool _verifyingPortalLogin = false;
+  bool _manualPortalLoginVerified = false;
+  (String, int)? _pendingPortalVerification;
+  int _navigationSessionGeneration = PortalAutoLogin.instance.generation;
 
   /// 网页顶部区域的明暗，用来决定状态栏图标颜色；null 表示还没采样到。
   Brightness? _pageTopBrightness;
+  Route<dynamic>? _controlsRoute;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (_controlsRoute != route) {
+      routesWithOwnControls.remove(_controlsRoute);
+      _controlsRoute = route;
+      if (route != null) routesWithOwnControls.add(route);
+    }
+  }
 
   @override
   void dispose() {
+    routesWithOwnControls.remove(_controlsRoute);
     _launchOverlayDelayTimer?.cancel();
     _statusBarResampleTimer?.cancel();
     _idsLoginGuard.dispose();
@@ -320,9 +341,16 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
       ),
       onLoginRequired: () async {
         if (!mounted) return;
-        await LoginStateStore.markLoggedOut();
         if (widget.autoRecoverIdsSession && _lastUrl != null) {
-          await _recoverIdsSessionIfStillNeeded(_lastUrl!);
+          await _recoverIdsSessionIfStillNeeded(
+            _lastUrl!,
+            _navigationSessionGeneration,
+          );
+        } else {
+          await PortalAutoLogin.instance.reportLoginRequired(
+            _navigationSessionGeneration,
+            recover: false,
+          );
         }
       },
     );
@@ -341,6 +369,7 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
         },
         onPageStarted: (url) {
           if (!mounted) return;
+          _navigationSessionGeneration = PortalAutoLogin.instance.generation;
           _lastUrl = url;
           _idsLoginGuard.pageStarted(url);
           setState(() {
@@ -351,6 +380,7 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
         },
         onPageFinished: (url) async {
           if (!mounted) return;
+          final generation = _navigationSessionGeneration;
           _lastUrl = url;
           _idsLoginGuard.pageFinished(url);
           setState(() {
@@ -362,7 +392,7 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
           await _injectHybridBridge();
           await _debugHybridBridgeState('pageFinished');
           await _maybeInjectBoundaryDebug(url);
-          await _trackLoginTransition(url);
+          await _trackLoginTransition(url, generation);
           await _maybeAutofill(url);
           // 有些页面首屏之后才铺背景色，稍后再采样一次。
           _statusBarResampleTimer?.cancel();
@@ -422,6 +452,10 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
   Future<void> _initializeWebView() async {
     await _injectHybridBridgeAtDocumentStart();
     await _injectBoundaryDebugAtDocumentStart();
+    if (widget.autoRecoverIdsSession) {
+      await PortalAutoLogin.instance.waitForRecovery();
+    }
+    if (!mounted) return;
     await _controller.loadRequest(Uri.parse(widget.initialUrl));
   }
 
@@ -662,16 +696,56 @@ JSON.stringify({
 
   /// URL changes through IDS are normal SSO traffic. Authentication loss is
   /// written only by IdsLoginGuard after the visible form has settled.
-  Future<void> _trackLoginTransition(String url) async {
+  Future<void> _trackLoginTransition(String url, int generation) async {
     final uri = Uri.tryParse(url);
-    if (uri?.host.toLowerCase() == 'ehall.uwh.edu.cn') {
-      _idsRecoveryAttempted = false;
-      await LoginStateStore.markLoggedIn();
-      await BrowserDataCleaner.persistCookies();
+    if (uri?.host.toLowerCase() != 'ehall.uwh.edu.cn') return;
+    if (_verifyingPortalLogin) {
+      _pendingPortalVerification = (url, generation);
+      return;
+    }
+    _verifyingPortalLogin = true;
+    try {
+      if (widget.autoRecoverIdsSession &&
+          await LoginStateStore.readManualLogout()) {
+        return;
+      }
+      if (widget.autoRecoverIdsSession && await LoginStateStore.readLoggedIn()) {
+        return;
+      }
+      if (!widget.autoRecoverIdsSession && _manualPortalLoginVerified) return;
+      // Reaching the portal domain alone is not proof of authentication.
+      // getLoginUser must return a recognized user before updating state.
+      final body = await PortalUserSync.fetchWebViewUserResponse();
+      if (body == null) return;
+      final committed = await PortalAutoLogin.instance.completeInteractiveLogin(
+        observedGeneration: generation,
+        syncCookies: () async {
+          if (!await PortalUserStore.saveFromLoginUserResponse(body)) {
+            throw const FormatException('Invalid portal user response');
+          }
+          await BrowserDataCleaner.persistCookies();
+        },
+      );
+      if (committed) {
+        _idsRecoveryAttempted = false;
+        if (!widget.autoRecoverIdsSession) _manualPortalLoginVerified = true;
+      }
+    } on FormatException {
+      // A redirect or malformed response is not proof of a login.
+    } finally {
+      _verifyingPortalLogin = false;
+      final pending = _pendingPortalVerification;
+      _pendingPortalVerification = null;
+      if (mounted && pending != null) {
+        unawaited(_trackLoginTransition(pending.$1, pending.$2));
+      }
     }
   }
 
-  Future<void> _recoverIdsSessionIfStillNeeded(String loginUrl) async {
+  Future<void> _recoverIdsSessionIfStillNeeded(
+    String loginUrl,
+    int generation,
+  ) async {
     if (!mounted ||
         _recoveringIdsSession ||
         _idsRecoveryAttempted ||
@@ -682,8 +756,8 @@ JSON.stringify({
     _recoveringIdsSession = true;
     try {
       // force=true 很关键：Ehall 可能仍有可用 Cookie，但 IDS SSO 已失效。
-      final outcome = await PortalAutoLogin.instance.restoreSession(
-        force: true,
+      final outcome = await PortalAutoLogin.instance.reportLoginRequired(
+        generation,
       );
       if (!mounted) return;
       if (outcome == PortalAutoLoginOutcome.restored) {
@@ -2228,15 +2302,16 @@ JSON.stringify({
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
     final topInset = mq.padding.top;
+    final wideLayout = usesSideNavigation(context);
     // 悬浮按钮所占的纵向空间：顶部偏移 8 + 胶囊高 32 + 与内容的间距 8
     // 全屏页（topSafeArea = false）网页顶到状态栏，用悬浮胶囊；
     // 非全屏页留出传统顶栏，网页整体下移。
     final bool fullscreen = !widget.topSafeArea;
     final double webviewTopPadding = fullscreen
         ? 0
-        : topInset + WebViewTopBar.toolbarHeight;
+        : topInset + (wideLayout ? 0 : WebViewTopBar.toolbarHeight);
     final double webviewBottomPadding = widget.bottomSafeArea
-        ? mq.padding.bottom
+        ? (wideLayout ? 0 : mq.padding.bottom)
         : 0;
 
     return PopScope(
@@ -2256,6 +2331,8 @@ JSON.stringify({
                   padding: EdgeInsets.only(
                     top: webviewTopPadding,
                     bottom: webviewBottomPadding,
+                    left: wideLayout ? mq.padding.left : 0,
+                    right: wideLayout ? mq.padding.right : 0,
                   ),
                   child: WebViewWidget(controller: _controller),
                 ),
@@ -2339,7 +2416,26 @@ JSON.stringify({
                   ),
                 ),
               ),
-              if (fullscreen) ...[
+              if (wideLayout)
+                Positioned(
+                  top: 0,
+                  bottom: 0,
+                  right: systemVerticalEdge == 'left' ? null : 0,
+                  left: systemVerticalEdge == 'left' ? 0 : null,
+                  child: SafeArea(
+                    left: false,
+                    top: true,
+                    right: false,
+                    bottom: true,
+                    child: _WebViewSideBar(
+                      onBack: _handleBack,
+                      onRefresh: _reloadPage,
+                      onOpenInBrowser: _openCurrentPageInBrowser,
+                      onClose: _handleClose,
+                    ),
+                  ),
+                )
+              else if (fullscreen) ...[
                 // 左上：返回（先回退 WebView 历史，无可退则关闭页面）
                 Positioned(
                   top: topInset + 8,
@@ -2376,6 +2472,104 @@ JSON.stringify({
                   ),
                 ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WebViewSideBar extends StatelessWidget {
+  const _WebViewSideBar({
+    required this.onBack,
+    required this.onRefresh,
+    required this.onOpenInBrowser,
+    required this.onClose,
+  });
+
+  final VoidCallback onBack;
+  final VoidCallback onRefresh;
+  final VoidCallback onOpenInBrowser;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final foreground = isDark ? Colors.white : const Color(0xFF1F2937);
+    return Align(
+      alignment: systemVerticalEdge == 'left'
+          ? Alignment.topLeft
+          : Alignment.topRight,
+      child: Padding(
+        padding: EdgeInsets.only(
+          right: systemVerticalEdge == 'left'
+              ? 0
+              : sideControlRightInset(context, 48),
+          left: systemVerticalEdge == 'left'
+              ? sideControlRightInset(context, 48)
+              : 0,
+          top: isDuoDevice ? systemReservedBottom + 4 : 12,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            child: Container(
+              width: 48,
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.surface.withValues(alpha: 0.82),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              foregroundDecoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: foreground.withValues(alpha: 0.14)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: '返回',
+                    onPressed: onBack,
+                    icon: const Icon(Icons.arrow_back_rounded, size: 20),
+                    color: foreground,
+                    iconSize: 20,
+                    style: IconButton.styleFrom(
+                      fixedSize: const Size.square(48),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ),
+                  WebViewMoreMenu(
+                    onRefresh: onRefresh,
+                    onOpenInBrowser: onOpenInBrowser,
+                    dark: isDark,
+                    builder: (context, open) => IconButton(
+                      tooltip: '更多',
+                      onPressed: open,
+                      icon: const Icon(Icons.more_horiz_rounded, size: 20),
+                      color: foreground,
+                      iconSize: 20,
+                      style: IconButton.styleFrom(
+                        fixedSize: const Size.square(48),
+                        padding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: '关闭',
+                    onPressed: onClose,
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    color: foreground,
+                    iconSize: 20,
+                    style: IconButton.styleFrom(
+                      fixedSize: const Size.square(48),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),

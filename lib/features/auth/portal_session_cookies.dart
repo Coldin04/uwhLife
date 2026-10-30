@@ -28,12 +28,9 @@ class _SecurePortalSessionCookiePersistence
   Future<void> clear() => _storage.delete(key: _key);
 }
 
-/// Securely persisted cookies produced by either IDS login flow.
-///
-/// The module restores its in-memory jar lazily after a cold start. WebView is
-/// retained only as a compatibility fallback when no identity cookie could be
-/// imported (for example, an incomplete login or a platform cookie-store
-/// failure).
+/// Legacy encrypted Cookie storage retained to clear data from older releases.
+/// Current authentication and service requests use the WebView cookie store;
+/// they must not seed a session from this historical copy.
 class PortalSessionCookies {
   PortalSessionCookies._();
 
