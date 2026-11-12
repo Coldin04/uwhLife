@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 const FontWeight _overlayBold = FontWeight.w500;
 const Color _overlayBrandGreen = Color(0xFF22C55E);

@@ -5,13 +5,15 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 2.1.1+38
 
 environment:
-  sdk: ^3.11.5
+  sdk: ^3.13.0
+  flutter: '>=3.47.0'
 
 dependencies:
   flutter:
     sdk: flutter
 
   # UI and platform integration.
+  material_ui: 1.0.0
   cupertino_icons: ^1.0.8
   webview_flutter: ^4.10.0
   webview_flutter_android: ^4.11.0

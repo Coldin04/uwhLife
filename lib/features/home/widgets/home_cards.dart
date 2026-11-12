@@ -1,6 +1,6 @@
 import 'dart:ui' show ImageFilter;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 const FontWeight _homeBold = FontWeight.w500;
 const FontWeight _homeSemiBold = FontWeight.w400;

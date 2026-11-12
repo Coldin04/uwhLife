@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 Route<T> createSlideFadeRoute<T>(Widget page) {
   const curve = Curves.easeOutCubic;

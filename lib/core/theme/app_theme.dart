@@ -1,6 +1,6 @@
 import 'dart:ui' show ImageFilter;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 // 全局字体是内置的阿里普惠体，pubspec 里只声明了 400 / 500 / 700 三个字重，
 // 这三档之外（w600、w800）都会被就近映射，写了也看不出区别。

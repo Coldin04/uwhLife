@@ -1,7 +1,7 @@
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
 import 'core/platform/orientation_policy.dart';

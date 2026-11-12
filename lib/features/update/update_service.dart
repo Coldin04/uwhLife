@@ -11,9 +11,7 @@ import 'update_manifest.dart';
 typedef DownloadProgress = void Function(int received, int? total);
 
 class UpdateService {
-  const UpdateService({HttpClient? client, Directory? cacheDirectory})
-    : _client = client,
-      _cacheDirectory = cacheDirectory;
+  const UpdateService({this._client, this._cacheDirectory});
 
   static const manifestUrls = [
     // Gitee 更新源已停用，更新检测只访问 GitHub。

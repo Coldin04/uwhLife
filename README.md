@@ -6,6 +6,8 @@
 
 > 本项目使用 vibe coding 方式编写。
 
+> 声明：本项目仅通过网页接口，不会使用或存储任何敏感信息并上传。如果担心安全问题，欢迎进行源码审查。
+
 本项目灵感来自 [自在东湖](https://chilleast.soilzhu.su/)
 
 uwhLife / 芜忧芜院 是一个面向芜湖学院校园生活场景的 Flutter 移动端应用。项目当前聚焦常用校园入口和移动端体验：统一门户、校园应用列表、付款码、开门、热水/洗浴、智慧课堂、消息与个人页等。
@@ -85,7 +87,7 @@ uwhLife / 芜忧芜院 是一个面向芜湖学院校园生活场景的 Flutter 
 
 ## 本地开发
 
-准备 Flutter stable 环境后执行：
+准备 Flutter stable 环境（Flutter ≥ 3.47.0、Dart ≥ 3.13.0）后执行：
 
 ```bash
 flutter pub get
@@ -120,11 +122,6 @@ flutter build ios --release --no-codesign
 iOS 编译需要 **Xcode 27.1 / 27.2（iOS SDK ≥ 27.1）**：iPhone Duo 的
 `verticalBarEdge`、`reservedRegions(kind:)` 只在新 SDK 里存在。部署目标仍然是
 `IPHONEOS_DEPLOYMENT_TARGET = 15.0`，新 API 由 `if #available(iOS 27.1, *)` 兜底，
-所以 iOS 15–26 的设备照常可用。检查方式：
-
-```bash
-xcrun --sdk iphoneos --show-sdk-version   # 期望 >= 27.1
-```
 
 打包 iOS 未签名 IPA：
 

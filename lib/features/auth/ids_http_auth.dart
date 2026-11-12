@@ -21,10 +21,9 @@ class IdsLoginResult {
   const IdsLoginResult._({
     required this.status,
     this.message,
-    HttpCookieJar? cookieJar,
-    Uri? service,
-  }) : _cookieJar = cookieJar,
-       _service = service;
+    this._cookieJar,
+    this._service,
+  });
 
   const IdsLoginResult.authenticated({
     required HttpCookieJar cookieJar,

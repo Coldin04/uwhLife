@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' show ImageFilter;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
 import 'models/app_entry.dart';
