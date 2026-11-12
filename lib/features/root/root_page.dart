@@ -294,7 +294,6 @@ class _RootPageState extends State<RootPage>
           icon: Icons.shower_outlined,
           initialUrl: 'http://ymtpt.uwh.edu.cn:27072/uwc_webapp',
           accentColor: Color(0xFF06B6D4),
-          topSafeArea: false,
         ),
       ),
     );

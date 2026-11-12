@@ -1,11 +1,9 @@
 {
-  "title": "v2.1.0 更新",
+  "title": "v2.1.1 更新",
   "mandatory": false,
   "minSupportedVersionCode": 30,
   "notes": [
-    "适配了iPhone Duo的界面，受限于flutter，暂未完美适配",
-    "优化了登录问题",
-    "提升了软件性能，减少软件包体积",
+    "优化了开水洗浴的显示体验",
     "解决了一些已知问题"
   ]
 }

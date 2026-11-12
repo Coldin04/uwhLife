@@ -9,7 +9,7 @@
   {"name": "一码通充值",     "category": "一码通", "icon": "account_balance_wallet_rounded", "color": "14B8A6", "url": "https://webapp.xiaofubao.com/card/card_recharge.shtml?platform=WJ&schoolCode=2023061501&authAppid=4622023061501"},
   {"name": "一码通余额",     "category": "一码通", "icon": "savings_rounded",            "color": "22C55E", "url": "https://webapp.xiaofubao.com/card/card_remain.shtml?platform=WJ&schoolCode=2023061501&authAppid=4622023061501"},
   {"name": "宿舍电费充值",   "category": "一码通", "icon": "bolt_rounded",               "color": "F59E0B", "url": "http://223.241.72.135:24381/Recharge.aspx"},
-  {"name": "开水洗浴",       "category": "一码通", "icon": "shower_rounded",             "color": "06B6D4", "url": "http://ymtpt.uwh.edu.cn:27072/uwc_webapp", "topSafeArea": false},
+  {"name": "开水洗浴",       "category": "一码通", "icon": "shower_rounded",             "color": "06B6D4", "url": "http://ymtpt.uwh.edu.cn:27072/uwc_webapp"},
   {"name": "扫一扫",         "category": "一码通", "icon": "qr_code_scanner_rounded",    "color": "0EA5E9", "url": "https://webapp.xiaofubao.com/card/card_home_scan.shtml?platform=WJ&schoolCode=2023061501&authAppid=4622023061501"},
   {"name": "毕业生退费",     "category": "一码通", "icon": "currency_exchange_rounded",  "color": "EA580C", "url": "http://223.241.72.135:24381/Refund.aspx"},
 
