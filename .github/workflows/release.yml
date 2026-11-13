@@ -49,6 +49,8 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          # Match the Flutter SDK declared in the local Nix configuration.
+          flutter-version: '3.50.0'
           channel: stable
           cache: true
 

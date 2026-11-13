@@ -23,16 +23,13 @@ val hasReleaseSigning = releaseSigningValue("storeFile", "ANDROID_KEYSTORE_PATH"
 
 android {
     namespace = "com.cold04.uwhlife"
-    compileSdk = flutter.compileSdkVersion
+    // reactive_ble_mobile 5.6 requires Android SDK 37.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {
@@ -73,6 +70,12 @@ android {
                 signingConfigs.getByName("debug")
             }
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 

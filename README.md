@@ -87,7 +87,9 @@ uwhLife / 芜忧芜院 是一个面向芜湖学院校园生活场景的 Flutter 
 
 ## 本地开发
 
-准备 Flutter stable 环境（Flutter ≥ 3.47.0、Dart ≥ 3.13.0）后执行：
+准备 Flutter stable 环境（Flutter ≥ 3.50.0、Dart ≥ 3.14.0）后执行：
+
+发布 CI 固定使用 Flutter 3.50.0，本地 Nix 配置也固定同一版本；升级 Flutter 时需同时核对 Gradle、Android Gradle Plugin 和 Kotlin 的兼容性。
 
 ```bash
 flutter pub get
