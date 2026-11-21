@@ -172,6 +172,42 @@ void main() {
     );
   });
 
+  test('boundary debug URL matches any sign path under ehall', () {
+    expect(
+      BoundaryDebugSettings.matchesUrl(
+        'https://ehall.uwh.edu.cn/student/cas/wap/menu/student/sign/stu/sign'
+        '?show_model=2&show_model_only_one=1',
+      ),
+      isTrue,
+    );
+    expect(
+      BoundaryDebugSettings.matchesUrl(
+        'http://ehall.uwh.edu.cn/xxxx/sign/xxxx',
+      ),
+      isTrue,
+    );
+    expect(
+      BoundaryDebugSettings.matchesUrl(
+        'https://ehall.uwh.edu.cn/a/b/c/sign/d/e/f',
+      ),
+      isTrue,
+    );
+    expect(
+      BoundaryDebugSettings.matchesUrl('https://ehall.uwh.edu.cn/xxxx/sign'),
+      isTrue,
+    );
+    expect(
+      BoundaryDebugSettings.matchesUrl(
+        'https://ehall.uwh.edu.cn/xxxx/design/xxxx',
+      ),
+      isFalse,
+    );
+    expect(
+      BoundaryDebugSettings.matchesUrl('https://oa.uwh.edu.cn/xxxx/sign/xxxx'),
+      isFalse,
+    );
+  });
+
   testWidgets(
     'profile groups credential and payment-code controls in settings',
     (tester) async {

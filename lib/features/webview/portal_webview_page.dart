@@ -657,12 +657,7 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
   }
 
   bool _isBoundaryDebugUrl(String url) {
-    final uri = Uri.tryParse(url);
-    if (uri == null) return false;
-    final scheme = uri.scheme.toLowerCase();
-    if (scheme != 'http' && scheme != 'https') return false;
-    return uri.host.toLowerCase() == 'ehall.uwh.edu.cn' &&
-        uri.path.startsWith('/student/cas/wap/menu/student/sign/stu/sign');
+    return BoundaryDebugSettings.matchesUrl(url);
   }
 
   Future<void> _debugHybridBridgeState(String source) async {
@@ -1888,8 +1883,9 @@ JSON.stringify({
     final city = jsonEncode(settings.city);
     return '''
 (function(){
-  var target = /^https?:\\/\\/ehall\\.uwh\\.edu\\.cn\\/student\\/cas\\/wap\\/menu\\/student\\/sign\\/stu\\/sign/;
-  if (!target.test(location.href)) return;
+  if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
+  if (location.hostname.toLowerCase() !== 'ehall.uwh.edu.cn') return;
+  if (!/(?:^|\\/)sign(?:\\/|\$)/.test(location.pathname)) return;
 
   var mock = {
     longitude: $lng,

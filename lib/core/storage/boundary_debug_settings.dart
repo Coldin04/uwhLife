@@ -12,7 +12,7 @@ class BoundaryDebugSettings {
   });
 
   static const targetPattern =
-      r'^https?://ehall\.uwh\.edu\.cn/student/cas/wap/menu/student/sign/stu/sign';
+      r'^https?://ehall\.uwh\.edu\.cn/(?:.*/)?sign(?:/|$)';
 
   static const _enabledKey = 'boundary_debug_enabled';
   static const _menuVisibleKey = 'boundary_debug_menu_visible';
@@ -39,6 +39,18 @@ class BoundaryDebugSettings {
   final String address;
   final String city;
   final bool mockScheduleHint;
+
+  /// 签到页 URL：`ehall.uwh.edu.cn` 的路径中任意层级出现 `sign` 段即可。
+  ///
+  /// 例如 `/xxxx/sign/xxxx`，其中前后 xxxx 都可以包含任意 `/`。
+  static bool matchesUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+    final scheme = uri.scheme.toLowerCase();
+    if (scheme != 'http' && scheme != 'https') return false;
+    if (uri.host.toLowerCase() != 'ehall.uwh.edu.cn') return false;
+    return uri.pathSegments.contains('sign');
+  }
 
   BoundaryDebugSettings copyWith({
     bool? enabled,

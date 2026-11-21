@@ -1,10 +1,8 @@
 {
-  "title": "v2.1.1 更新",
+  "title": "v2.1.2 更新",
   "mandatory": false,
-  "minSupportedVersionCode": 30,
+  "minSupportedVersionCode": 39,
   "notes": [
-    "优化了开水洗浴的显示体验",
-    "优化了新版 Flutter 的兼容性",
     "解决了一些已知问题"
   ]
 }
