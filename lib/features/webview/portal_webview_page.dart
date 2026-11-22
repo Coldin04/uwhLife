@@ -1951,6 +1951,71 @@ JSON.stringify({
     } catch (_) {}
   }
 
+  function fillLocation(addressId, zbId, lyId, cityId, callback) {
+    var x = mock.longitude - 0.0065;
+    var y = mock.latitude - 0.006;
+    var xPi = Math.PI * 3000.0 / 180.0;
+    var radius = Math.sqrt(x * x + y * y) - 0.00002 * Math.sin(y * xPi);
+    var angle = Math.atan2(y, x) - 0.000003 * Math.cos(x * xPi);
+    var coordinates = (radius * Math.cos(angle)) + ',' + (radius * Math.sin(angle));
+    function writeField(id, value) {
+      var field = id && document.getElementById(id);
+      if (!field) return;
+      if ('value' in field) field.value = value;
+      field.textContent = value;
+    }
+    writeField(addressId, mock.address);
+    writeField(zbId, coordinates);
+    writeField(lyId, 'wis');
+    writeField(cityId, mock.city);
+    patchCheckDistance();
+    if (typeof callback === 'function') callback(mock.address, coordinates, 'wis', mock.city);
+  }
+
+  function patchCheckDistance() {
+    if (typeof window.checkDistance !== 'function' ||
+        !document.getElementById('qdwzZt') ||
+        !document.getElementById('fwwDistance')) return;
+    window.checkDistance = function() {
+      var status = document.getElementById('qdwzZt');
+      var distance = document.getElementById('fwwDistance');
+      if (status) status.value = '1';
+      if (distance) distance.value = '';
+      return true;
+    };
+  }
+
+  function patchJutil(target) {
+    if (!target) return;
+    target.getLocation = fillLocation;
+  }
+  var jutilValue = window.jutil;
+  patchJutil(jutilValue);
+  try {
+    Object.defineProperty(window, 'jutil', {
+      configurable: true,
+      enumerable: true,
+      get: function() { return jutilValue; },
+      set: function(value) { jutilValue = value; patchJutil(value); }
+    });
+  } catch (_) {}
+
+  function recoverLocation() {
+    var zb = document.getElementById('zb');
+    var address = document.getElementById('address');
+    var button = document.getElementById('btn_sign');
+    if (!zb || !address || !button || !window.jutil || typeof window.checkDistance !== 'function') return false;
+    if (!zb.value || !address.textContent) {
+      fillLocation('address', 'zb', 'ly', null, function() {
+        window.checkDistance();
+        button.disabled = false;
+        var link = document.getElementById('reload_location_link');
+        if (link) link.removeAttribute('disabled');
+      });
+    }
+    return true;
+  }
+
   window.SFWis = {
     config: function(params, cb) {
     if (typeof params === 'function') params(true);
@@ -2015,6 +2080,8 @@ JSON.stringify({
   var attempts = 0;
   var timer = setInterval(function() {
     attempts++;
+    patchJutil(window.jutil);
+    recoverLocation();
     patchCampus(window.campus);
     patchNavigatorGeolocation();
     if (window.SFWis) {
