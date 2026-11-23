@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:ui' show ImageFilter;
 
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -369,6 +370,7 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
         },
         onPageStarted: (url) {
           if (!mounted) return;
+          _bdDiagLog('pageStarted url=$url');
           _navigationSessionGeneration = PortalAutoLogin.instance.generation;
           _lastUrl = url;
           _idsLoginGuard.pageStarted(url);
@@ -380,6 +382,7 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
         },
         onPageFinished: (url) async {
           if (!mounted) return;
+          _bdDiagLog('pageFinished url=$url');
           final generation = _navigationSessionGeneration;
           _lastUrl = url;
           _idsLoginGuard.pageFinished(url);
@@ -392,6 +395,7 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
           await _injectHybridBridge();
           await _debugHybridBridgeState('pageFinished');
           await _maybeInjectBoundaryDebug(url);
+          await _probeBoundaryDebugState(url, 'afterPageFinished');
           await _trackLoginTransition(url, generation);
           await _maybeAutofill(url);
           // 有些页面首屏之后才铺背景色，稍后再采样一次。
@@ -588,11 +592,13 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
     }
     if (platform is AndroidWebViewController) {
       try {
-        await _androidInjectorChannel
-            .invokeMethod('injectDocumentStartScript', {
-              'webViewIdentifier': platform.webViewIdentifier,
-              'script': _documentStartScript,
-            });
+        await _androidInjectorChannel.invokeMethod(
+          'injectDocumentStartScript',
+          {
+            'webViewIdentifier': platform.webViewIdentifier,
+            'script': _documentStartScript,
+          },
+        );
         debugPrint(
           '[HuBridge.inject] Android document-start injection installed '
           'for webView=${platform.webViewIdentifier}',
@@ -606,19 +612,44 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
   }
 
   Future<void> _injectBoundaryDebugAtDocumentStart() async {
+    final stopwatch = Stopwatch()..start();
+    _bdDiagLog('document-start install begin');
     final saved = await BoundaryDebugSettings.read();
     final settings = saved.enabled ? saved : BoundaryDebugSettings.defaults;
     final script = _buildBoundaryDebugScript(settings);
     final platform = _controller.platform;
     if (platform is WebKitWebViewController) {
-      try {
-        await _wkInjectorChannel.invokeMethod('injectDocumentStartScript', {
-          'webViewIdentifier': platform.webViewIdentifier,
-          'script': script,
-        });
-        debugPrint('[BoundaryDebug] iOS document-start injection installed');
-      } catch (e) {
-        debugPrint('[BoundaryDebug] iOS document-start injection failed: $e');
+      for (var attempt = 1; attempt <= 10; attempt++) {
+        try {
+          final detail = await _wkInjectorChannel
+              .invokeMethod<Map<dynamic, dynamic>>(
+                'injectDocumentStartScript',
+                {
+                  'webViewIdentifier': platform.webViewIdentifier,
+                  'script': script,
+                },
+              );
+          _bdDiagLog(
+            'iOS document-start installed attempt=$attempt '
+            'elapsed=${stopwatch.elapsedMilliseconds}ms '
+            'webView=${platform.webViewIdentifier} native=$detail',
+          );
+          return;
+        } on PlatformException catch (e) {
+          _bdDiagLog(
+            'iOS document-start FAILED attempt=$attempt '
+            'elapsed=${stopwatch.elapsedMilliseconds}ms '
+            'code=${e.code} message=${e.message} details=${e.details}',
+          );
+          if (e.code != 'no_webview' || attempt == 10) return;
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+        } catch (e) {
+          _bdDiagLog(
+            'iOS document-start failed attempt=$attempt '
+            'elapsed=${stopwatch.elapsedMilliseconds}ms error=$e',
+          );
+          return;
+        }
       }
       return;
     }
@@ -642,22 +673,64 @@ class _PortalWebViewPageState extends State<PortalWebViewPage> {
   /// 签到页始终注入定位，否则页面拿不到坐标。边界测试开关只决定注入哪个
   /// 地点：关闭时固定用默认的图书馆，打开后才用测试页里改过的坐标覆盖。
   Future<void> _maybeInjectBoundaryDebug(String url) async {
-    if (!_isBoundaryDebugUrl(url)) return;
+    final matched = _isBoundaryDebugUrl(url);
+    _bdDiagLog('runtime check matched=$matched url=$url');
+    if (!matched) return;
     final saved = await BoundaryDebugSettings.read();
     final settings = saved.enabled ? saved : BoundaryDebugSettings.defaults;
+    final stopwatch = Stopwatch()..start();
     try {
       await _controller.runJavaScript(_buildBoundaryDebugScript(settings));
-      debugPrint(
-        '[BoundaryDebug] runtime injection applied '
-        '(${saved.enabled ? 'custom' : 'default'})',
+      _bdDiagLog(
+        'runtime injection applied '
+        '(${saved.enabled ? 'custom' : 'default'}) '
+        'in ${stopwatch.elapsedMilliseconds}ms',
       );
+      await Future<void>.delayed(const Duration(milliseconds: 350));
+      await _probeBoundaryDebugState(url, 'afterRuntimeInjection');
     } catch (e) {
-      debugPrint('[BoundaryDebug] runtime injection failed: $e');
+      _bdDiagLog(
+        'runtime injection failed after '
+        '${stopwatch.elapsedMilliseconds}ms: $e',
+      );
     }
   }
 
   bool _isBoundaryDebugUrl(String url) {
     return BoundaryDebugSettings.matchesUrl(url);
+  }
+
+  void _bdDiagLog(String message) {
+    if (!kDebugMode) return;
+    debugPrint('[BoundaryDebugDiag] $message');
+  }
+
+  Future<void> _probeBoundaryDebugState(String url, String source) async {
+    if (!kDebugMode || !_isBoundaryDebugUrl(url)) return;
+    try {
+      final state = await _controller.runJavaScriptReturningResult(r'''
+JSON.stringify((function(){
+  function valueOf(id){
+    var el = document.getElementById(id);
+    return el ? (el.value || el.textContent || '') : null;
+  }
+  return {
+    readyState: document.readyState,
+    diag: window.__bdDiag || null,
+    jutil: typeof window.jutil,
+    getLocationPatched: window.__bdGetLocationPatched === true,
+    zb: valueOf('zb'),
+    address: valueOf('address'),
+    ly: valueOf('ly'),
+    qdwzZt: valueOf('qdwzZt'),
+    signDisabled: (document.getElementById('btn_sign') || {}).disabled
+  };
+})())
+''');
+      _bdDiagLog('probe($source) $url => $state');
+    } catch (e) {
+      _bdDiagLog('probe($source) failed url=$url error=$e');
+    }
   }
 
   Future<void> _debugHybridBridgeState(String source) async {
@@ -704,7 +777,8 @@ JSON.stringify({
           await LoginStateStore.readManualLogout()) {
         return;
       }
-      if (widget.autoRecoverIdsSession && await LoginStateStore.readLoggedIn()) {
+      if (widget.autoRecoverIdsSession &&
+          await LoginStateStore.readLoggedIn()) {
         return;
       }
       if (!widget.autoRecoverIdsSession && _manualPortalLoginVerified) return;
@@ -1883,9 +1957,39 @@ JSON.stringify({
     final city = jsonEncode(settings.city);
     return '''
 (function(){
-  if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
-  if (location.hostname.toLowerCase() !== 'ehall.uwh.edu.cn') return;
-  if (!/(?:^|\\/)sign(?:\\/|\$)/.test(location.pathname)) return;
+  var previousDiag = window.__bdDiag || null;
+  var diag = {
+    build: 'bd-diag-1',
+    t: Math.round(performance.now()),
+    href: location.href,
+    ready: document.readyState,
+    top: window.top === window,
+    repeat: !!previousDiag
+  };
+  window.__bdDiag = diag;
+  function diagLog(message) {
+    try {
+      console.log('[BoundaryDebugDiag]', message, location.href, 't=' + Math.round(performance.now()));
+    } catch (_) {}
+  }
+  diagLog('script start repeat=' + diag.repeat + ' ready=' + diag.ready + ' top=' + diag.top);
+  if (location.protocol !== 'http:' && location.protocol !== 'https:') {
+    diag.skip = 'protocol';
+    diagLog('skip protocol ' + location.protocol);
+    return;
+  }
+  if (location.hostname.toLowerCase() !== 'ehall.uwh.edu.cn') {
+    diag.skip = 'host';
+    diagLog('skip host ' + location.hostname);
+    return;
+  }
+  if (!/(?:^|\\/)sign(?:\\/|\$)/.test(location.pathname)) {
+    diag.skip = 'path';
+    diagLog('skip path ' + location.pathname);
+    return;
+  }
+  diag.matched = true;
+  diagLog('matched');
 
   var mock = {
     longitude: $lng,
@@ -1969,6 +2073,9 @@ JSON.stringify({
     writeField(lyId, 'wis');
     writeField(cityId, mock.city);
     patchCheckDistance();
+    diag.filledAt = Math.round(performance.now());
+    diag.filledZb = coordinates;
+    diagLog('form filled zb=' + coordinates);
     if (typeof callback === 'function') callback(mock.address, coordinates, 'wis', mock.city);
   }
 
@@ -1988,6 +2095,8 @@ JSON.stringify({
   function patchJutil(target) {
     if (!target) return;
     target.getLocation = fillLocation;
+    window.__bdGetLocationPatched = true;
+    diag.jutilPatchedAt = Math.round(performance.now());
   }
   var jutilValue = window.jutil;
   patchJutil(jutilValue);
@@ -2006,6 +2115,7 @@ JSON.stringify({
     var button = document.getElementById('btn_sign');
     if (!zb || !address || !button || !window.jutil || typeof window.checkDistance !== 'function') return false;
     if (!zb.value || !address.textContent) {
+      diag.recoverAt = Math.round(performance.now());
       fillLocation('address', 'zb', 'ly', null, function() {
         window.checkDistance();
         button.disabled = false;
@@ -2015,6 +2125,59 @@ JSON.stringify({
     }
     return true;
   }
+
+  window.__boundaryDebugRelocate = function() {
+    var address = document.getElementById('address');
+    var coordinates = document.getElementById('zb');
+    var link = document.getElementById('reload_location_link');
+    if (!link) return;
+    var feedback = document.getElementById('boundary_debug_relocate_feedback');
+    if (!feedback) {
+      feedback = document.createElement('span');
+      feedback.id = 'boundary_debug_relocate_feedback';
+      feedback.setAttribute('role', 'status');
+      feedback.style.marginLeft = '8px';
+      link.parentNode.appendChild(feedback);
+    }
+    if (!address || !coordinates) {
+      feedback.textContent = '重新获取失败，请刷新页面';
+      diagLog('relocate failed: missing form fields');
+      return;
+    }
+    fillLocation('address', 'zb', 'ly', null, function() {
+      var button = document.getElementById('btn_sign');
+      if (button) button.disabled = false;
+      link.removeAttribute('disabled');
+      feedback.textContent = '已重新获取';
+      diagLog('relocate clicked: form filled');
+      clearTimeout(window.__boundaryDebugFeedbackTimer);
+      window.__boundaryDebugFeedbackTimer = setTimeout(function() {
+        feedback.textContent = '';
+      }, 2500);
+    });
+  };
+  if (!window.__boundaryDebugRelocateListener) {
+    window.__boundaryDebugRelocateListener = function(event) {
+      var target = event.target;
+      var link = target && target.closest && target.closest('#reload_location_link');
+      if (!link) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (typeof window.__boundaryDebugRelocate === 'function') {
+        window.__boundaryDebugRelocate();
+      }
+    };
+    document.addEventListener('click', window.__boundaryDebugRelocateListener, true);
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    diag.domReadyAt = Math.round(performance.now());
+    diagLog('DOMContentLoaded');
+  });
+  window.addEventListener('load', function() {
+    diag.loadAt = Math.round(performance.now());
+    diagLog('load');
+  });
 
   window.SFWis = {
     config: function(params, cb) {
@@ -2580,9 +2743,8 @@ class _WebViewSideBar extends StatelessWidget {
             child: Container(
               width: 48,
               decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.surface.withValues(alpha: 0.82),
+                color: Theme.of(context).colorScheme.surface
+                    .withValues(alpha: 0.82),
                 borderRadius: BorderRadius.circular(24),
               ),
               foregroundDecoration: BoxDecoration(

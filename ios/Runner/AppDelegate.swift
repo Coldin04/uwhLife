@@ -394,13 +394,26 @@ import webview_flutter_wkwebview
       return
     }
 
-    let userScript = WKUserScript(
-      source: script,
-      injectionTime: .atDocumentStart,
-      forMainFrameOnly: false
-    )
-    webView.configuration.userContentController.addUserScript(userScript)
-    result(nil)
+    let controller = webView.configuration.userContentController
+    let alreadyInstalled = controller.userScripts.contains { $0.source == script }
+    if !alreadyInstalled {
+      let userScript = WKUserScript(
+        source: script,
+        injectionTime: .atDocumentStart,
+        forMainFrameOnly: false
+      )
+      controller.addUserScript(userScript)
+    }
+    let detail: [String: Any] = [
+      "identifier": identifier,
+      "alreadyInstalled": alreadyInstalled,
+      "userScriptCount": controller.userScripts.count,
+      "url": webView.url?.absoluteString ?? "",
+      "loading": webView.isLoading,
+      "lookupErrors": lookupErrors.joined(separator: ","),
+    ]
+    NSLog("[BoundaryDebug] iOS user-script install %@", String(describing: detail))
+    result(detail)
   }
 
   private func handleBrowserData(call: FlutterMethodCall, result: @escaping FlutterResult) {
