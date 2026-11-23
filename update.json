@@ -2,31 +2,31 @@
   "schemaVersion": 1,
   "app": "uwhLife",
   "android": {
-    "versionName": "2.1.3",
-    "versionCode": 40,
-    "minSupportedVersionCode": 40,
+    "versionName": "2.1.4",
+    "versionCode": 41,
+    "minSupportedVersionCode": 41,
     "mandatory": true,
-    "title": "v2.1.3 更新",
+    "title": "v2.1.4 更新",
     "notes": [
       "解决了一些已知问题"
     ],
-    "apkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.3/UWHLife_android_arm64-v8a.apk",
+    "apkUrl": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.4/UWHLife_android_arm64-v8a.apk",
     "apkUrls": {
-      "armeabi-v7a": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.3/UWHLife_android_armeabi-v7a.apk",
-      "arm64-v8a": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.3/UWHLife_android_arm64-v8a.apk",
-      "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.3/UWHLife_android_x86_64.apk"
+      "armeabi-v7a": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.4/UWHLife_android_armeabi-v7a.apk",
+      "arm64-v8a": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.4/UWHLife_android_arm64-v8a.apk",
+      "x86_64": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.4/UWHLife_android_x86_64.apk"
     },
     "sha256ByAbi": {
-      "armeabi-v7a": "a7130f08ce719ddc1ba76934ebbd191450149838a4a2e58f8e09afb1cd4f65b6",
-      "arm64-v8a": "de1f519fcc46687aa7bd4551c80e2ba59502f2eea04c0134a38049bfbb988a6d",
-      "x86_64": "ef304eca8f2859905f20121894b17023be99808d512304eb58e6da6861e38a31"
+      "armeabi-v7a": "fc164222b4d5fb8e2e0bbd084392dd1a4461a816009efd5481ee5eda5b005f98",
+      "arm64-v8a": "7b853a8be46995bb673c83fe152456d6fa6e2224e3bc636fe91496ed8aa475ea",
+      "x86_64": "b988690ce163de59113524b2fe6549fe78f8e9a190509eaffcfcacb74054e651"
     },
-    "sha256": "de1f519fcc46687aa7bd4551c80e2ba59502f2eea04c0134a38049bfbb988a6d"
+    "sha256": "7b853a8be46995bb673c83fe152456d6fa6e2224e3bc636fe91496ed8aa475ea"
   },
   "ios": {
-    "versionName": "2.1.3",
-    "buildVersion": "40",
-    "title": "v2.1.3 更新",
+    "versionName": "2.1.4",
+    "buildVersion": "41",
+    "title": "v2.1.4 更新",
     "notes": [
       "解决了一些已知问题"
     ],

@@ -39,12 +39,12 @@
       ],
       "versions": [
         {
-          "version": "2.1.3",
-          "buildVersion": "40",
-          "date": "2026-11-22",
+          "version": "2.1.4",
+          "buildVersion": "41",
+          "date": "2026-11-23",
           "localizedDescription": "本次更新:\n1. 解决了一些已知问题",
-          "downloadURL": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.3/UWHLife_unsigned.ipa",
-          "size": 11178340,
+          "downloadURL": "https://github.com/Coldin04/uwhLife/releases/download/v2.1.4/UWHLife_unsigned.ipa",
+          "size": 11185836,
           "minOSVersion": "15.0"
         }
       ],
@@ -60,6 +60,15 @@
     }
   ],
   "news": [
+    {
+      "title": "v2.1.4 更新",
+      "identifier": "2.1.4",
+      "caption": "解决了一些已知问题",
+      "date": "2026-11-23",
+      "tintColor": "#2196F3",
+      "notify": true,
+      "appID": "com.cold04.uwhlife"
+    },
     {
       "title": "v2.1.3 更新",
       "identifier": "2.1.3",
